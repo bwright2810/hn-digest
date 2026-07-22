@@ -82,9 +82,12 @@ describe("HackerNewsClient", () => {
     });
     const client = new HackerNewsClient({ concurrency: 2, fetch, retries: 0 });
 
-    const result = await client.getCommentDescendants([101, 102, 103]);
+    const result = await client.getCommentDescendants([101, 102, 103], 100);
 
     expect(result.comments.map(({ id }) => id)).toEqual([101, 104, 105]);
+    expect(result.unavailableComments).toEqual([
+      { id: 102, parent: 100, deleted: true, dead: false },
+    ]);
     expect(result.unavailableItemIds).toEqual([102, 103]);
     expect(result.failures).toEqual([]);
   });

@@ -32,8 +32,16 @@ export interface ItemFailure {
 
 export interface CommentTreeResult {
   readonly comments: readonly HackerNewsComment[];
+  readonly unavailableComments: readonly UnavailableComment[];
   readonly unavailableItemIds: readonly number[];
   readonly failures: readonly ItemFailure[];
+}
+
+export interface UnavailableComment {
+  readonly id: number;
+  readonly parent: number;
+  readonly deleted: boolean;
+  readonly dead: boolean;
 }
 
 export interface HackerNewsClientOptions {
@@ -106,39 +114,58 @@ export class HackerNewsClient {
 
   async getCommentDescendants(
     rootItemIds: readonly number[],
+    rootParentItemId?: number,
   ): Promise<CommentTreeResult> {
-    const pending = [...rootItemIds];
+    const pending = rootItemIds.map((id) => ({
+      id,
+      parent: rootParentItemId,
+    }));
     const visited = new Set<number>();
     const comments: HackerNewsComment[] = [];
+    const unavailableComments: UnavailableComment[] = [];
     const unavailableItemIds: number[] = [];
     const failures: ItemFailure[] = [];
 
     while (pending.length > 0) {
       const batch = pending.splice(0, this.concurrency);
-      const unvisited = batch.filter((itemId) => {
-        if (visited.has(itemId)) return false;
-        visited.add(itemId);
+      const unvisited = batch.filter(({ id }) => {
+        if (visited.has(id)) return false;
+        visited.add(id);
         return true;
       });
-      const results = await this.getItems(unvisited);
+      const results = await this.getItems(unvisited.map(({ id }) => id));
 
       results.forEach((result, index) => {
-        const itemId = unvisited[index];
+        const { id: itemId, parent } = unvisited[index];
         if (result === null) {
           unavailableItemIds.push(itemId);
         } else if (isItemFailure(result)) {
           failures.push(result);
         } else if (result.deleted || result.dead) {
           unavailableItemIds.push(itemId);
-          if ("kids" in result) pending.push(...(result.kids ?? []));
+          if (parent !== undefined && result.type === "comment") {
+            unavailableComments.push({
+              id: itemId,
+              parent,
+              deleted: result.deleted === true,
+              dead: result.dead === true,
+            });
+          }
+          if ("kids" in result) {
+            pending.push(
+              ...(result.kids ?? []).map((id) => ({ id, parent: itemId })),
+            );
+          }
         } else if (isComment(result)) {
           comments.push(result);
-          pending.push(...(result.kids ?? []));
+          pending.push(
+            ...(result.kids ?? []).map((id) => ({ id, parent: itemId })),
+          );
         }
       });
     }
 
-    return { comments, unavailableItemIds, failures };
+    return { comments, unavailableComments, unavailableItemIds, failures };
   }
 
   private async request<T>(
