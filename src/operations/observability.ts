@@ -297,7 +297,6 @@ export async function collectSourceAdapterBaseline(
         SELECT status, source_url, extraction_metadata
         FROM documents
         WHERE documents.story_id = drs.story_id
-          AND documents.updated_at <= drs.updated_at
         ORDER BY documents.updated_at DESC
         LIMIT 1
       ) document ON true
@@ -311,6 +310,9 @@ export async function collectSourceAdapterBaseline(
           WHEN source_url ~* '^https://(www\.)?github\.com/[^/]+/[^/]+/(blob|raw)/' OR source_url ~* '^https://raw\.githubusercontent\.com/' THEN 'github_file'
           WHEN extraction_metadata->>'sourceType' IN ('html', 'plain_text', 'markdown', 'pdf', 'image', 'audio', 'video', 'structured_data', 'feed_or_xml', 'hn_text_post')
             THEN extraction_metadata->>'sourceType'
+          WHEN extraction_metadata->>'contentType' IN ('text/html', 'application/xhtml+xml') THEN 'html'
+          WHEN extraction_metadata->>'contentType' = 'text/plain' THEN 'plain_text'
+          WHEN extraction_metadata->>'contentType' IN ('text/markdown', 'text/x-markdown') THEN 'markdown'
           ELSE 'unknown'
         END AS source_type,
         CASE

@@ -36,3 +36,8 @@ available. Such a report can set `ready` but never `roadmapReady`; HD-075 still
 requires `roadmapReady: true`. Source URLs are inspected only inside the
 aggregate query to classify public GitHub repository and file links into
 bounded labels; complete URLs are never returned.
+
+Because documents are content-addressed and updated in place when a story
+recurs, provisional historical reports use each story's latest known document
+outcome. Treat those results as workflow and candidate-selection tests, not as
+the final temporal baseline represented by `roadmapReady`.
