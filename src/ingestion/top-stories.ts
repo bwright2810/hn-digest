@@ -30,6 +30,7 @@ export interface TopStoriesIngestionResult {
 
 export interface DigestRunStore {
   createRun(requestedStoryCount: number): Promise<string>;
+  startRun?(runId: string, startedAt: Date): Promise<void>;
   saveStory(
     runId: string,
     rank: number,
@@ -57,14 +58,18 @@ export async function ingestTopStories(options: {
   readonly store: DigestRunStore;
   readonly now?: () => Date;
   readonly onRunCreated?: (runId: string) => void | Promise<void>;
+  readonly existingRunId?: string;
 }): Promise<TopStoriesIngestionResult> {
   if (!Number.isInteger(options.storyCount) || options.storyCount <= 0) {
     throw new RangeError("storyCount must be a positive integer");
   }
 
-  const runId = await options.store.createRun(options.storyCount);
-  await options.onRunCreated?.(runId);
   const now = options.now ?? (() => new Date());
+  const runId =
+    options.existingRunId ??
+    (await options.store.createRun(options.storyCount));
+  if (options.existingRunId) await options.store.startRun?.(runId, now());
+  else await options.onRunCreated?.(runId);
 
   let itemIds: readonly number[];
   try {
@@ -140,7 +145,10 @@ function isAvailableStory(item: HackerNewsItem): item is HackerNewsStory {
 type Database = ReturnType<typeof getDatabase>;
 
 export class PostgresDigestRunStore implements DigestRunStore {
-  constructor(private readonly database: Database = getDatabase()) {}
+  constructor(
+    private readonly database: Database = getDatabase(),
+    private readonly pipelineMode = false,
+  ) {}
 
   async createRun(requestedStoryCount: number): Promise<string> {
     const [run] = await this.database
@@ -169,6 +177,23 @@ export class PostgresDigestRunStore implements DigestRunStore {
       throw new Error("Failed to create digest run");
     }
     return run.id;
+  }
+
+  async startRun(runId: string, startedAt: Date): Promise<void> {
+    const updated = await this.database
+      .update(digestRuns)
+      .set({ status: "collecting", errorCode: null, updatedAt: startedAt })
+      .where(and(eq(digestRuns.id, runId), eq(digestRuns.status, "pending")))
+      .returning({ id: digestRuns.id });
+    if (updated.length === 0) {
+      const existing = await this.database.query.digestRuns.findFirst({
+        columns: { status: true },
+        where: eq(digestRuns.id, runId),
+      });
+      if (!existing || existing.status !== "collecting") {
+        throw new Error("Digest run is not available for collection");
+      }
+    }
   }
 
   async saveStory(
@@ -262,7 +287,13 @@ export class PostgresDigestRunStore implements DigestRunStore {
   ): Promise<void> {
     await this.database
       .update(digestRuns)
-      .set({ status, collectedAt, errorCode, updatedAt: collectedAt })
+      .set({
+        status:
+          this.pipelineMode && status !== "failed" ? "collecting" : status,
+        collectedAt,
+        errorCode,
+        updatedAt: collectedAt,
+      })
       .where(eq(digestRuns.id, runId));
   }
 }

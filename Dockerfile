@@ -13,6 +13,11 @@ FROM dependencies AS build
 COPY . .
 RUN pnpm build
 
+FROM base AS runtime-assets
+WORKDIR /runtime
+COPY runtime/package.json runtime/pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
+
 FROM node:24.18.0-alpine AS runtime
 ENV NODE_ENV="production"
 ENV PORT="3000"
@@ -24,6 +29,7 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/production.js ./production.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/background.js ./background.js
+COPY --from=runtime-assets --chown=nextjs:nodejs /runtime/node_modules ./node_modules
 USER nextjs
 EXPOSE 3000
 CMD ["node", "production.js"]

@@ -9,14 +9,15 @@ never commit their real values.
 
 The production image runs a small PID-1 supervisor that starts the Next.js web
 reader and a background runtime in one container. The background runtime polls
-the existing idempotent scheduler and monitors queued analysis work. SIGTERM or
+the idempotent scheduler, assembles pending runs, and processes queued analysis
+work. SIGTERM or
 SIGINT stops new polling, drains active iterations, closes PostgreSQL, and
 stops the web child within a configured grace period.
 
-Scheduled run records are enabled. Story collection, analysis-job assembly,
-and LLM submission remain disabled until the end-to-end pipeline task connects
-a real processor. The worker monitor deliberately does not claim queued jobs;
-logs identify queued work without damaging it through a placeholder processor.
+Scheduled and on-demand runs collect source material and submit bounded
+synchronous analysis requests. Stop the application before changing model,
+pricing, token, or spend-limit configuration; the queue stores the assumptions
+used for each job and reconstructs source context from PostgreSQL at claim time.
 
 ## Production topology
 
@@ -54,38 +55,44 @@ Production has no non-secret defaults. Set every variable below in Coolify as a
 runtime variable. Mark `DATABASE_URL` and `OPENAI_API_KEY` secret and exclude
 them from build arguments, image layers, deployment logs, and previews.
 
-| Variable                            | Production value or rule                                                                       |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                          | `production`                                                                                   |
-| `DATABASE_URL`                      | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
-| `OPENAI_API_KEY`                    | project-scoped API key with the smallest practical permissions and spend controls              |
-| `OPENAI_MODEL`                      | evaluated model from the roadmap decision log                                                  |
-| `OPENAI_REASONING_EFFORT`           | `low` until evaluation justifies a change                                                      |
-| `OPENAI_REQUEST_TIMEOUT_MS`         | `60000`                                                                                        |
-| `OPENAI_MAX_RETRIES`                | `2`                                                                                            |
-| `APP_URL`                           | final `https://<hn-digest-hostname>` URL                                                       |
-| `DIGEST_TIME_ZONE`                  | `America/New_York`                                                                             |
-| `DIGEST_MORNING_TIME`               | `07:00`                                                                                        |
-| `DIGEST_EVENING_TIME`               | `19:00`                                                                                        |
-| `DIGEST_STORY_COUNT`                | reviewed private-MVP count                                                                     |
-| `DIGEST_MISSED_RUN_GRACE_MS`        | `21600000`                                                                                     |
-| `ARTICLE_FETCH_TIMEOUT_MS`          | `10000`                                                                                        |
-| `ARTICLE_FETCH_MAX_BYTES`           | `2097152`                                                                                      |
-| `ARTICLE_FETCH_MAX_REDIRECTS`       | `5`                                                                                            |
-| `LLM_INSTRUCTION_TOKEN_LIMIT`       | reviewed token allowance                                                                       |
-| `LLM_ARTICLE_TOKEN_LIMIT`           | reviewed token allowance                                                                       |
-| `LLM_COMMENT_TOKEN_LIMIT`           | reviewed token allowance                                                                       |
-| `LLM_OUTPUT_TOKEN_LIMIT`            | reviewed token allowance                                                                       |
-| `LLM_DAILY_SOFT_LIMIT_USD`          | owner-approved warning threshold                                                               |
-| `LLM_DAILY_HARD_LIMIT_USD`          | owner-approved daily ceiling                                                                   |
-| `LLM_MONTHLY_SOFT_LIMIT_USD`        | owner-approved warning threshold                                                               |
-| `LLM_MONTHLY_HARD_LIMIT_USD`        | owner-approved monthly ceiling                                                                 |
-| `WORKER_FETCH_CONCURRENCY_PER_HOST` | `2`                                                                                            |
-| `WORKER_LLM_CONCURRENCY`            | `1`                                                                                            |
-| `WORKER_LEASE_MS`                   | `300000`                                                                                       |
-| `SCHEDULER_POLL_INTERVAL_MS`        | `30000`                                                                                        |
-| `WORKER_POLL_INTERVAL_MS`           | `5000`                                                                                         |
-| `RUNTIME_SHUTDOWN_GRACE_MS`         | `30000`                                                                                        |
+| Variable                                    | Production value or rule                                                                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                                   |
+| `DATABASE_URL`                              | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
+| `OPENAI_API_KEY`                            | project-scoped API key with the smallest practical permissions and spend controls              |
+| `OPENAI_MODEL`                              | evaluated model from the roadmap decision log                                                  |
+| `OPENAI_REASONING_EFFORT`                   | `low` until evaluation justifies a change                                                      |
+| `OPENAI_REQUEST_TIMEOUT_MS`                 | `60000`                                                                                        |
+| `OPENAI_MAX_RETRIES`                        | `2`                                                                                            |
+| `OPENAI_INPUT_USD_PER_MILLION_TOKENS`       | current standard-processing input price for the configured model                               |
+| `OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS` | current cached-input price for the configured model                                            |
+| `OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS` | current cache-write price for the configured model                                             |
+| `OPENAI_OUTPUT_USD_PER_MILLION_TOKENS`      | current standard-processing output price for the configured model                              |
+| `APP_URL`                                   | final `https://<hn-digest-hostname>` URL                                                       |
+| `DIGEST_TIME_ZONE`                          | `America/New_York`                                                                             |
+| `DIGEST_MORNING_TIME`                       | `07:00`                                                                                        |
+| `DIGEST_EVENING_TIME`                       | `19:00`                                                                                        |
+| `DIGEST_STORY_COUNT`                        | reviewed private-MVP count                                                                     |
+| `DIGEST_MISSED_RUN_GRACE_MS`                | `21600000`                                                                                     |
+| `ARTICLE_FETCH_TIMEOUT_MS`                  | `10000`                                                                                        |
+| `ARTICLE_FETCH_MAX_BYTES`                   | `2097152`                                                                                      |
+| `ARTICLE_FETCH_MAX_REDIRECTS`               | `5`                                                                                            |
+| `LLM_INSTRUCTION_TOKEN_LIMIT`               | reviewed token allowance                                                                       |
+| `LLM_ARTICLE_TOKEN_LIMIT`                   | reviewed token allowance                                                                       |
+| `LLM_COMMENT_TOKEN_LIMIT`                   | reviewed token allowance                                                                       |
+| `LLM_OUTPUT_TOKEN_LIMIT`                    | reviewed token allowance                                                                       |
+| `LLM_MAX_REQUEST_COST_USD`                  | owner-approved worst-case ceiling for one story request                                        |
+| `COMMENT_SELECTION_MAXIMUM`                 | `30`                                                                                           |
+| `LLM_DAILY_SOFT_LIMIT_USD`                  | owner-approved warning threshold                                                               |
+| `LLM_DAILY_HARD_LIMIT_USD`                  | owner-approved daily ceiling                                                                   |
+| `LLM_MONTHLY_SOFT_LIMIT_USD`                | owner-approved warning threshold                                                               |
+| `LLM_MONTHLY_HARD_LIMIT_USD`                | owner-approved monthly ceiling                                                                 |
+| `WORKER_FETCH_CONCURRENCY_PER_HOST`         | `2`                                                                                            |
+| `WORKER_LLM_CONCURRENCY`                    | `1`                                                                                            |
+| `WORKER_LEASE_MS`                           | `300000`                                                                                       |
+| `SCHEDULER_POLL_INTERVAL_MS`                | `30000`                                                                                        |
+| `WORKER_POLL_INTERVAL_MS`                   | `5000`                                                                                         |
+| `RUNTIME_SHUTDOWN_GRACE_MS`                 | `30000`                                                                                        |
 
 The application intentionally fails startup when any production variable is
 missing or invalid. Configuration errors identify field names and constraints,
@@ -160,9 +167,8 @@ errors only; secrets and source bodies must not appear.
 
 ## Immediate scheduling and spend shutdown
 
-LLM processing remains disabled until the pipeline processor is connected.
-After it is enabled, the emergency stop for this initial combined deployment is
-to stop the application container. This prevents new claims and model requests;
+The emergency stop for this initial combined deployment is to stop the
+application container. This prevents new claims and model requests;
 queued jobs remain in PostgreSQL, but the reader is also unavailable until the
 container restarts.
 

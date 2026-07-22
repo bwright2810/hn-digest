@@ -5,11 +5,13 @@ import {
   parseOnDemandStoryCount,
 } from "../src/digests/on-demand";
 import { HackerNewsClient } from "../src/hn/client";
+import { DigestPipeline } from "../src/pipeline/digest-pipeline";
 import {
   ActiveOnDemandRunError,
   ingestTopStories,
   PostgresDigestRunStore,
 } from "../src/ingestion/top-stories";
+import { AnalysisWorker } from "../src/worker/runner";
 
 async function main(): Promise<void> {
   const config = getConfig();
@@ -32,6 +34,23 @@ async function main(): Promise<void> {
           onRunCreated: (runId) =>
             writeJson({ event: "started", runId, storyCount }),
         });
+        const pipeline = new DigestPipeline(connection.db, config);
+        await pipeline.collectAndEnqueue(result.runId);
+        const worker = new AnalysisWorker(connection.db, {
+          workerId: `digest-cli:${process.pid}`,
+          leaseMs: config.worker.leaseMs,
+          llmConcurrency: config.worker.llmConcurrency,
+          fetchConcurrencyPerHost: config.worker.fetchConcurrencyPerHost,
+          spendLimits: config.spend,
+        });
+        while (
+          (await worker.processAvailable(
+            (claim) => pipeline.processClaimedJob(claim),
+            (claim, outcome) => pipeline.finishClaimedJob(claim, outcome),
+          )) > 0
+        ) {
+          // Drain only this bounded queue; processAvailable returns zero when idle.
+        }
         writeJson({ event: "finished", coalesced: false, ...result });
       } catch (error) {
         if (error instanceof ActiveOnDemandRunError) {

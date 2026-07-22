@@ -398,6 +398,32 @@ Acceptance criteria:
 - Unit tests cover polling, failure isolation, and graceful cancellation, and a
   production-container smoke test verifies all entrypoints start.
 
+### HD-055 — Connect the end-to-end digest pipeline
+
+Turn pending scheduled and on-demand runs into bounded analysis jobs, process
+those jobs through the synchronous OpenAI Responses API, and persist validated
+article/discussion results and usage. Reconstruct model requests from stored,
+trusted application records rather than persisting complete prompts or source
+bodies in the queue.
+
+Acceptance criteria:
+
+- Pending runs collect top stories, comments, and supported article or HN text
+  content, with per-story failures isolated from unrelated stories.
+- Deterministic article/comment selection runs before enqueueing, and queued
+  metadata contains hashes, IDs, versions, budgets, and truncation facts but no
+  complete source corpus or model prompt.
+- Each cache miss creates at most one bounded synchronous request; a cache hit
+  attaches validated prior results to the new digest story without an LLM call.
+- Per-request, daily, and monthly spend checks run before submission; actual
+  provider usage and the price assumptions used are persisted.
+- Refusals, incomplete responses, invalid citations, acquisition failures, and
+  provider failures produce explicit story/job states and cannot strand a run.
+- Run/story statuses reach complete, partial, or failed terminal states, and
+  retry-safe polling does not duplicate stories or queued jobs.
+- Integration tests exercise collection, queue assembly, cache reuse, worker
+  persistence, and terminal-state reconciliation without live HN/OpenAI calls.
+
 ## Milestone 6: Reading experience
 
 ### HD-059 — Define the visual system and responsive shell
@@ -612,6 +638,7 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Schedule digests for 7:00 AM and 7:00 PM in `America/New_York`, while storing timestamps in UTC. | Matches the owner's preferred Eastern Time schedule and handles EST/EDT transitions through an IANA time zone. |
 | 2026-07-22 | Keep the repository private initially and plan an MIT-licensed public release. | Allows development and a security review before intentionally publishing code and history. |
 | 2026-07-22 | Use configurable `gpt-5.6-luna` with low reasoning as the private-MVP baseline. | It is the current efficient high-volume model; changing the baseline or using stronger reasoning remains contingent on evaluation results. |
+| 2026-07-22 | Price the `gpt-5.6-luna` standard synchronous path at $1.00/M input, $0.10/M cached read, $1.25/M cache write, and $6.00/M output tokens through explicit production configuration. | These are the current published API rates; persisting the configured assumptions keeps historical cost calculations explainable if provider pricing changes. |
 | 2026-07-22 | Evaluate analysis changes against 30 fixed synthetic cases with a weighted six-dimension rubric. | Synthetic CC0 fixtures keep comparison repeatable and legally safe; weighting faithfulness highest prevents aggregate quality gains from obscuring grounding regressions. |
 | 2026-07-22 | Use UTC calendar windows for LLM daily/monthly budgets and persist deduplicated operational alerts. | UTC boundaries make enforcement reproducible alongside persisted timestamps; database alerts remain visible without relying on ephemeral process logs. |
 | 2026-07-22 | License the source under MIT while keeping npm publication disabled and repository visibility owner-controlled. | Public source availability does not require publishing an npm package, and the final visibility change must follow a fresh security and history review. |

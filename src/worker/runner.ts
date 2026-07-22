@@ -11,6 +11,7 @@ import { ConcurrencyGate, HostConcurrencyGate } from "./concurrency";
 import {
   claimAnalysisJob,
   finishAnalysisJobAttempt,
+  type AttemptOutcome,
   type ClaimedAnalysisJob,
 } from "./queue";
 
@@ -37,21 +38,30 @@ export class AnalysisWorker {
   }
 
   async processAvailable(
-    process: (job: ClaimedAnalysisJob) => Promise<void>,
+    process: (job: ClaimedAnalysisJob) => Promise<AttemptOutcome | void>,
+    onFinished?: (
+      job: ClaimedAnalysisJob,
+      outcome: AttemptOutcome,
+    ) => Promise<void>,
   ): Promise<number> {
     const tasks = Array.from({ length: this.options.llmConcurrency }, () =>
-      this.processOne(process),
+      this.processOne(process, onFinished),
     );
     const results = await Promise.all(tasks);
     return results.filter(Boolean).length;
   }
 
   private async processOne(
-    process: (job: ClaimedAnalysisJob) => Promise<void>,
+    process: (job: ClaimedAnalysisJob) => Promise<AttemptOutcome | void>,
+    onFinished?: (
+      job: ClaimedAnalysisJob,
+      outcome: AttemptOutcome,
+    ) => Promise<void>,
   ): Promise<boolean> {
     const claim = await claimAnalysisJob(this.db, this.options);
     if (!claim) return false;
     await this.llm.run(async () => {
+      let outcome: AttemptOutcome;
       try {
         const [job] = await this.db
           .select({ estimatedCostUsd: analysisJobs.estimatedCostUsd })
@@ -67,20 +77,21 @@ export class AnalysisWorker {
           claim.id,
         );
         if (!budget.allowed) {
-          await finishAnalysisJobAttempt(this.db, claim, {
+          outcome = {
             status: "skipped_budget",
             errorCode: budget.reason ?? "spend_hard_limit",
-          });
-          return;
+          };
+        } else {
+          outcome = (await process(claim)) ?? { status: "succeeded" };
         }
-        await process(claim);
-        await finishAnalysisJobAttempt(this.db, claim, { status: "succeeded" });
       } catch (error) {
-        await finishAnalysisJobAttempt(this.db, claim, {
+        outcome = {
           status: "failed",
           errorCode: classifyError(error),
-        });
+        };
       }
+      await finishAnalysisJobAttempt(this.db, claim, outcome);
+      await onFinished?.(claim, outcome);
     });
     return true;
   }

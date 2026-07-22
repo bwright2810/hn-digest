@@ -1,16 +1,24 @@
 import { hostname } from "node:os";
 
-import { sql } from "drizzle-orm";
-
 import { getConfig } from "../src/config/server";
 import { createDatabase } from "../src/db/client";
+import { DigestPipeline } from "../src/pipeline/digest-pipeline";
 import { runPollLoop } from "../src/runtime/poll-loop";
 import { ensureScheduledDigestRun } from "../src/scheduler/digest-scheduler";
+import { AnalysisWorker } from "../src/worker/runner";
 
 const config = getConfig();
 const connection = createDatabase(config.database.url);
 const controller = new AbortController();
 const workerId = `${hostname()}:${process.pid}`;
+const pipeline = new DigestPipeline(connection.db, config);
+const worker = new AnalysisWorker(connection.db, {
+  workerId,
+  leaseMs: config.worker.leaseMs,
+  llmConcurrency: config.worker.llmConcurrency,
+  fetchConcurrencyPerHost: config.worker.fetchConcurrencyPerHost,
+  spendLimits: config.spend,
+});
 
 function log(event: string, details: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ event, ...details }));
@@ -40,18 +48,16 @@ async function schedulerIteration() {
       runId: result.runId,
       scheduleKey: result.slot?.key,
     });
+  const runId = await pipeline.processNextRun();
+  if (runId) log("digest_run_enqueued", { runId });
 }
 
 async function workerIteration() {
-  // HD-054 deliberately does not claim jobs until the pipeline assembler and
-  // production processor are connected. This monitor makes queued work visible
-  // without corrupting it through a placeholder processor.
-  const result = await connection.db.execute<{ count: number }>(sql`
-    SELECT COUNT(*)::int AS count FROM analysis_jobs
-    WHERE status = 'queued' AND available_at <= NOW()
-  `);
-  const count = result.rows[0]?.count ?? 0;
-  if (count > 0) log("analysis_jobs_awaiting_processor", { count, workerId });
+  const processed = await worker.processAvailable(
+    (claim) => pipeline.processClaimedJob(claim),
+    (claim, outcome) => pipeline.finishClaimedJob(claim, outcome),
+  );
+  if (processed > 0) log("analysis_jobs_processed", { count: processed });
 }
 
 async function main() {

@@ -14,10 +14,16 @@ const DEVELOPMENT_DEFAULTS = {
   OPENAI_REASONING_EFFORT: "low",
   OPENAI_REQUEST_TIMEOUT_MS: "60000",
   OPENAI_MAX_RETRIES: "2",
+  OPENAI_INPUT_USD_PER_MILLION_TOKENS: "1",
+  OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: "0.1",
+  OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: "1.25",
+  OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: "6",
   LLM_INSTRUCTION_TOKEN_LIMIT: "2000",
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
   LLM_OUTPUT_TOKEN_LIMIT: "4000",
+  LLM_MAX_REQUEST_COST_USD: "0.10",
+  COMMENT_SELECTION_MAXIMUM: "30",
   LLM_DAILY_SOFT_LIMIT_USD: "2",
   LLM_DAILY_HARD_LIMIT_USD: "3",
   LLM_MONTHLY_SOFT_LIMIT_USD: "30",
@@ -86,6 +92,10 @@ const environmentSchema = z
     ]),
     OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
     OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
+    OPENAI_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
+    OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: positiveMoney,
+    OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: positiveMoney,
+    OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: positiveMoney,
     APP_URL: applicationUrl,
     DIGEST_TIME_ZONE: timeZone,
     DIGEST_MORNING_TIME: z
@@ -103,6 +113,8 @@ const environmentSchema = z
     LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
     LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
     LLM_OUTPUT_TOKEN_LIMIT: positiveInteger,
+    LLM_MAX_REQUEST_COST_USD: positiveMoney,
+    COMMENT_SELECTION_MAXIMUM: positiveInteger,
     LLM_DAILY_SOFT_LIMIT_USD: positiveMoney,
     LLM_DAILY_HARD_LIMIT_USD: positiveMoney,
     LLM_MONTHLY_SOFT_LIMIT_USD: positiveMoney,
@@ -144,6 +156,12 @@ export interface AppConfig {
       "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
     readonly timeoutMs: number;
     readonly maximumRetries: number;
+    readonly prices: {
+      readonly inputUsdPerMillionTokens: number;
+      readonly cachedReadUsdPerMillionTokens: number;
+      readonly cacheWriteUsdPerMillionTokens: number;
+      readonly outputUsdPerMillionTokens: number;
+    };
   };
   readonly schedule: {
     readonly timeZone: string;
@@ -164,6 +182,10 @@ export interface AppConfig {
     readonly article: number;
     readonly comments: number;
     readonly output: number;
+  };
+  readonly analysis: {
+    readonly maximumRequestCostUsd: number;
+    readonly maximumSelectedComments: number;
   };
   readonly worker: {
     readonly fetchConcurrencyPerHost: number;
@@ -237,6 +259,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       reasoningEffort: values.OPENAI_REASONING_EFFORT,
       timeoutMs: values.OPENAI_REQUEST_TIMEOUT_MS,
       maximumRetries: values.OPENAI_MAX_RETRIES,
+      prices: Object.freeze({
+        inputUsdPerMillionTokens: values.OPENAI_INPUT_USD_PER_MILLION_TOKENS,
+        cachedReadUsdPerMillionTokens:
+          values.OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS,
+        cacheWriteUsdPerMillionTokens:
+          values.OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS,
+        outputUsdPerMillionTokens: values.OPENAI_OUTPUT_USD_PER_MILLION_TOKENS,
+      }),
     }),
     schedule: Object.freeze({
       timeZone: values.DIGEST_TIME_ZONE,
@@ -255,6 +285,10 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       article: values.LLM_ARTICLE_TOKEN_LIMIT,
       comments: values.LLM_COMMENT_TOKEN_LIMIT,
       output: values.LLM_OUTPUT_TOKEN_LIMIT,
+    }),
+    analysis: Object.freeze({
+      maximumRequestCostUsd: values.LLM_MAX_REQUEST_COST_USD,
+      maximumSelectedComments: values.COMMENT_SELECTION_MAXIMUM,
     }),
     worker: Object.freeze({
       fetchConcurrencyPerHost: values.WORKER_FETCH_CONCURRENCY_PER_HOST,

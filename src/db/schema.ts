@@ -301,6 +301,10 @@ export const analysisJobs = pgTable(
     documentId: uuid("document_id").references(() => documents.id, {
       onDelete: "set null",
     }),
+    reusedFromAnalysisJobId: uuid("reused_from_analysis_job_id").references(
+      (): AnyPgColumn => analysisJobs.id,
+      { onDelete: "set null" },
+    ),
     cacheKey: varchar("cache_key", { length: 64 }).notNull(),
     articleContentHash: varchar("article_content_hash", { length: 64 }),
     selectedCommentHash: varchar("selected_comment_hash", {
@@ -335,7 +339,10 @@ export const analysisJobs = pgTable(
     ...timestampColumns,
   },
   (table) => [
-    uniqueIndex("analysis_jobs_cache_key_unique").on(table.cacheKey),
+    index("analysis_jobs_cache_key_idx").on(table.cacheKey),
+    uniqueIndex("analysis_jobs_digest_run_story_unique").on(
+      table.digestRunStoryId,
+    ),
     index("analysis_jobs_status_available_at_idx").on(
       table.status,
       table.availableAt,
@@ -415,7 +422,7 @@ export const articleAnalyses = pgTable(
   },
   (table) => [
     uniqueIndex("article_analyses_job_unique").on(table.analysisJobId),
-    uniqueIndex("article_analyses_cache_key_unique").on(table.cacheKey),
+    index("article_analyses_cache_key_idx").on(table.cacheKey),
     index("article_analyses_content_hash_idx").on(table.contentHash),
     index("article_analyses_versions_model_idx").on(
       table.promptVersion,
@@ -458,7 +465,7 @@ export const discussionAnalyses = pgTable(
   },
   (table) => [
     uniqueIndex("discussion_analyses_job_unique").on(table.analysisJobId),
-    uniqueIndex("discussion_analyses_cache_key_unique").on(table.cacheKey),
+    index("discussion_analyses_cache_key_idx").on(table.cacheKey),
     index("discussion_analyses_comment_hash_idx").on(table.selectedCommentHash),
     index("discussion_analyses_versions_model_idx").on(
       table.promptVersion,

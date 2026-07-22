@@ -30,12 +30,22 @@ describe("loadConfig", () => {
       reasoningEffort: "low",
       timeoutMs: 60_000,
       maximumRetries: 2,
+      prices: {
+        inputUsdPerMillionTokens: 1,
+        cachedReadUsdPerMillionTokens: 0.1,
+        cacheWriteUsdPerMillionTokens: 1.25,
+        outputUsdPerMillionTokens: 6,
+      },
     });
     expect(config.tokens).toEqual({
       instructions: 2_000,
       article: 12_000,
       comments: 8_000,
       output: 4_000,
+    });
+    expect(config.analysis).toEqual({
+      maximumRequestCostUsd: 0.1,
+      maximumSelectedComments: 30,
     });
     expect(config.worker).toEqual({
       fetchConcurrencyPerHost: 2,
@@ -65,7 +75,7 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS/s,
+      /OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS/s,
     );
   });
 

@@ -61,7 +61,8 @@ describe.skipIf(!runDatabaseTests)("HD-010 PostgreSQL schema", () => {
 
   it("has indexes for source identities, content hashes, and analysis versions", async () => {
     const expectedIndexes = [
-      "analysis_jobs_cache_key_unique",
+      "analysis_jobs_cache_key_idx",
+      "analysis_jobs_digest_run_story_unique",
       "analysis_jobs_lease_idx",
       "analysis_job_attempts_job_attempt_unique",
       "analysis_jobs_versions_model_idx",

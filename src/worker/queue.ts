@@ -15,6 +15,8 @@ export interface ClaimedAnalysisJob {
 export type AttemptOutcome =
   | { readonly status: "succeeded" }
   | { readonly status: "failed"; readonly errorCode: string }
+  | { readonly status: "refused"; readonly errorCode: string }
+  | { readonly status: "incomplete"; readonly errorCode: string }
   | { readonly status: "skipped_budget"; readonly errorCode: string }
   | {
       readonly status: "retry";
@@ -130,7 +132,7 @@ export async function finishAnalysisJobAttempt(
 
     await transaction.execute(sql`
       UPDATE analysis_job_attempts
-      SET status = ${outcome.status === "retry" || outcome.status === "skipped_budget" ? "failed" : outcome.status},
+      SET status = ${outcome.status === "retry" || outcome.status === "skipped_budget" || outcome.status === "refused" || outcome.status === "incomplete" ? "failed" : outcome.status},
           finished_at = ${now}, error_code = ${errorCode}
       WHERE analysis_job_id = ${claim.id} AND attempt = ${claim.attempt}
         AND worker_id = ${claim.workerId} AND status = 'running'
