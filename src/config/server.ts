@@ -9,6 +9,10 @@ const DEVELOPMENT_DEFAULTS = {
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
   ARTICLE_FETCH_MAX_REDIRECTS: "5",
+  OPENAI_MODEL: "gpt-5.6-luna",
+  OPENAI_REASONING_EFFORT: "low",
+  OPENAI_REQUEST_TIMEOUT_MS: "60000",
+  OPENAI_MAX_RETRIES: "2",
   LLM_INSTRUCTION_TOKEN_LIMIT: "2000",
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
@@ -57,6 +61,18 @@ const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]),
   DATABASE_URL: postgresUrl,
   OPENAI_API_KEY: z.string().min(1, "is required"),
+  OPENAI_MODEL: z.string().min(1),
+  OPENAI_REASONING_EFFORT: z.enum([
+    "none",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+  ]),
+  OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
+  OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
   APP_URL: applicationUrl,
   DIGEST_TIME_ZONE: timeZone,
   DIGEST_MORNING_TIME: z
@@ -85,6 +101,11 @@ export interface AppConfig {
   };
   readonly openai: {
     readonly apiKey: string;
+    readonly model: string;
+    readonly reasoningEffort:
+      "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+    readonly timeoutMs: number;
+    readonly maximumRetries: number;
   };
   readonly schedule: {
     readonly timeZone: string;
@@ -155,7 +176,13 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     environment: values.NODE_ENV,
     application: Object.freeze({ url: new URL(values.APP_URL) }),
     database: Object.freeze({ url: values.DATABASE_URL }),
-    openai: Object.freeze({ apiKey: values.OPENAI_API_KEY }),
+    openai: Object.freeze({
+      apiKey: values.OPENAI_API_KEY,
+      model: values.OPENAI_MODEL,
+      reasoningEffort: values.OPENAI_REASONING_EFFORT,
+      timeoutMs: values.OPENAI_REQUEST_TIMEOUT_MS,
+      maximumRetries: values.OPENAI_MAX_RETRIES,
+    }),
     schedule: Object.freeze({
       timeZone: values.DIGEST_TIME_ZONE,
       morningTime: values.DIGEST_MORNING_TIME,

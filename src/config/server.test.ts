@@ -23,6 +23,13 @@ describe("loadConfig", () => {
       maximumBytes: 2_097_152,
       maximumRedirects: 5,
     });
+    expect(config.openai).toEqual({
+      apiKey: requiredSecrets.OPENAI_API_KEY,
+      model: "gpt-5.6-luna",
+      reasoningEffort: "low",
+      timeoutMs: 60_000,
+      maximumRetries: 2,
+    });
     expect(config.tokens).toEqual({
       instructions: 2_000,
       article: 12_000,
@@ -41,7 +48,7 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT/s,
+      /OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT/s,
     );
   });
 
@@ -76,9 +83,11 @@ describe("loadConfig", () => {
         ARTICLE_FETCH_MAX_BYTES: "0",
         ARTICLE_FETCH_MAX_REDIRECTS: "-1",
         LLM_ARTICLE_TOKEN_LIMIT: "0",
+        OPENAI_REQUEST_TIMEOUT_MS: "0",
+        OPENAI_MAX_RETRIES: "-1",
       }),
     ).toThrowError(
-      /DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT/s,
+      /OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT/s,
     );
   });
 });
