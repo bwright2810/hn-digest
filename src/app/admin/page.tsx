@@ -1,6 +1,7 @@
 import { getConfig } from "../../config/server";
 import { getDatabase } from "../../db/client";
 import { collectAdminRuns, type AdminRunView } from "../../operations/admin";
+import { AdminAutoRefresh } from "./auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,16 @@ export default async function AdminPage({
 
 const adminFixtureRuns: readonly AdminRunView[] = [
   {
+    id: "fixture-active-run",
+    trigger: "on_demand",
+    status: "analyzing",
+    requestedStoryCount: 10,
+    createdAt: new Date("2026-07-22T11:10:00Z"),
+    updatedAt: new Date("2026-07-22T11:12:00Z"),
+    errorCode: null,
+    failures: [],
+  },
+  {
     id: "fixture-failed-run",
     trigger: "scheduled",
     status: "partial",
@@ -74,6 +85,9 @@ export function AdminDashboard({
   readonly started?: string;
   readonly coalesced?: string;
 }) {
+  const hasActiveRun = runs.some((run) =>
+    ["pending", "collecting", "analyzing"].includes(run.status),
+  );
   return (
     <main id="main-content" className="page admin-page" tabIndex={-1}>
       <section className="admin-heading">
@@ -101,6 +115,7 @@ export function AdminDashboard({
           {coalesced === "1" ? "Using active run" : "Run queued"}: {started}
         </p>
       ) : null}
+      <AdminAutoRefresh active={hasActiveRun} />
 
       <section className="run-review" aria-labelledby="recent-runs">
         <div className="section-heading">

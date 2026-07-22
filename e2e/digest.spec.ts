@@ -88,6 +88,11 @@ test("protects operator diagnostics with HTTP Basic authentication", async ({
     },
   });
   const page = await operator.newPage();
+  const automaticRefresh = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === "/admin" &&
+      Boolean(request.headers()["next-router-state-tree"]),
+  );
   await page.goto("/admin");
   await expect(
     page.getByRole("heading", { name: "Digest operations." }),
@@ -99,6 +104,10 @@ test("protects operator diagnostics with HTTP Basic authentication", async ({
   await expect(
     page.getByRole("button", { name: "Run digest now" }),
   ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "Status updates automatically",
+  );
+  await automaticRefresh;
   await expectNoHorizontalOverflow(page);
   await operator.close();
 });
