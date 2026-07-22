@@ -152,7 +152,11 @@ development schema.
   `node source-baseline.js [from-iso-date] [to-iso-date] [minimum-run-count]`.
   Run it as a trusted
   one-off command on the private database network; it emits no source URLs or
-  bodies and exits with status 2 while fewer than 30 qualifying runs exist.
+  bodies and exits with status 2 while fewer than the requested/default 10
+  qualifying runs exist; `extendedReady` tracks the 30-run adapter gate.
+- The zero-LLM source discovery command is `node source-discovery.js [limit]`.
+  It scans up to 500 current HN `topstories` items and emits bounded aggregate
+  URL-shape classifications without fetching linked article bodies.
 - Add all runtime variables from the table above. Do not configure them as
   Docker build arguments.
 - Set the health check to HTTP `GET /api/health` on port 3000. Use a 30-second

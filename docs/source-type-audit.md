@@ -44,3 +44,13 @@ the extended temporal baseline represented by `extendedReady`.
 
 The first production review is recorded in
 `docs/source-adapter-baseline-provisional.md`.
+
+For a broad, zero-LLM-cost candidate scan, run `pnpm source:discover [limit]`
+with a limit from 1 through 500. It walks the current HN `topstories` ranking,
+fetches only HN item metadata, and classifies URL shapes for GitHub
+repositories/files, PDFs, feeds, JSON, images, audio, video, text posts, and
+other web pages. Output contains aggregate counts, the number meeting the
+10-comment digest gate, median rank/comment depth, and at most five
+representative HN item IDs per class—never source URLs or article bodies. This
+discovery scan can identify fixtures and candidates, but does not by itself
+prove that fetching or extraction will succeed.
