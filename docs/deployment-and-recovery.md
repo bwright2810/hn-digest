@@ -142,6 +142,9 @@ development schema.
 - Set Coolify's post-deployment command to `node migrate.js`. The bundled
   forward-only runner reads `/app/drizzle`, is safe to repeat, and executes in
   the newly deployed container on the private database network.
+- The production image also bundles the operator CLI as `node digest.js run`
+  and `node digest.js status <run-id>` for one-off execution in the application
+  container.
 - Add all runtime variables from the table above. Do not configure them as
   Docker build arguments.
 - Set the health check to HTTP `GET /api/health` on port 3000. Use a 30-second

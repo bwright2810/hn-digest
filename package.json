@@ -19,7 +19,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && pnpm build:runtime",
-    "build:runtime": "esbuild scripts/production.ts scripts/background.ts scripts/migrate.ts --bundle --platform=node --format=cjs --target=node24 --outdir=.next/runtime --external:jsdom",
+    "build:runtime": "esbuild scripts/production.ts scripts/background.ts scripts/migrate.ts scripts/digest.ts --bundle --platform=node --format=cjs --target=node24 --outdir=.next/runtime --external:jsdom",
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
