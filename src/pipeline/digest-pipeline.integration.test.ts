@@ -81,7 +81,8 @@ describeDatabase("DigestPipeline", () => {
             cacheWriteTokens: 0,
             reasoningTokens: 50,
           },
-          output,
+          output:
+            providerCalls === 1 ? analysisOutput(commentId + 999) : output,
         };
       },
     } as unknown as OpenAIAnalysisClient;
@@ -132,6 +133,20 @@ describeDatabase("DigestPipeline", () => {
     expect(providerCalls).toBe(1);
     expect(
       (
+        await connection.db.query.analysisJobs.findFirst({
+          where: eq(analysisJobs.id, queued!.analysis_jobs.id),
+        })
+      )?.status,
+    ).toBe("queued");
+    expect(
+      await worker.processAvailable(
+        (claim) => pipeline.processClaimedJob(claim),
+        (claim, outcome) => pipeline.finishClaimedJob(claim, outcome),
+      ),
+    ).toBe(1);
+    expect(providerCalls).toBe(2);
+    expect(
+      (
         await connection.db.query.digestRuns.findFirst({
           where: eq(digestRuns.id, firstRunId),
         })
@@ -142,7 +157,7 @@ describeDatabase("DigestPipeline", () => {
         .select()
         .from(llmUsage)
         .where(eq(llmUsage.analysisJobId, queued!.analysis_jobs.id)),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
 
     const secondRunId = await createPendingRun();
     await pipeline.collectAndEnqueue(secondRunId);
@@ -159,7 +174,7 @@ describeDatabase("DigestPipeline", () => {
       .where(eq(digestRunStories.digestRunId, secondRunId));
     expect(reused[0]?.status).toBe("succeeded");
     expect(reused[0]?.reusedFrom).toBeTruthy();
-    expect(providerCalls).toBe(1);
+    expect(providerCalls).toBe(2);
     expect(
       (
         await connection.db.query.digestRuns.findFirst({

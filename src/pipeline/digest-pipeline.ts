@@ -8,6 +8,10 @@ import {
   resolveAnalysisCache,
 } from "../analysis/cache";
 import {
+  instructionsForCitationAttempt,
+  InvalidCommentCitationError,
+} from "../analysis/citations";
+import {
   ANALYSIS_PROMPT,
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
@@ -216,7 +220,14 @@ export class DigestPipeline {
       where: eq(discussionAnalyses.analysisJobId, claim.id),
     });
     if (alreadyPersisted) return { status: "succeeded" };
-    const request = await this.reconstructRequest(claim.id);
+    const reconstructed = await this.reconstructRequest(claim.id);
+    const request = {
+      ...reconstructed,
+      instructions: instructionsForCitationAttempt(
+        reconstructed.instructions,
+        claim.attempt,
+      ),
+    };
     const outcome = await this.openaiClient.analyze(request);
     await this.recordUsage(claim, outcome);
 
@@ -238,6 +249,7 @@ export class DigestPipeline {
     claim: ClaimedAnalysisJob,
     outcome: AttemptOutcome,
   ): Promise<void> {
+    if (outcome.status === "retry") return;
     const [job] = await this.db
       .select({
         digestRunStoryId: analysisJobs.digestRunStoryId,
@@ -754,8 +766,7 @@ function validateCitations(
   allowed: ReadonlySet<number>,
 ) {
   for (const id of citedCommentIds(output)) {
-    if (!allowed.has(id))
-      throw new Error("Analysis cited an unselected comment");
+    if (!allowed.has(id)) throw new InvalidCommentCitationError();
   }
 }
 

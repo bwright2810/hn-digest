@@ -413,8 +413,9 @@ Acceptance criteria:
 - Deterministic article/comment selection runs before enqueueing, and queued
   metadata contains hashes, IDs, versions, budgets, and truncation facts but no
   complete source corpus or model prompt.
-- Each cache miss creates at most one bounded synchronous request; a cache hit
-  attaches validated prior results to the new digest story without an LLM call.
+- Each cache miss creates one bounded synchronous request and may make one
+  additional correction attempt only when comment-citation validation fails; a
+  cache hit attaches validated prior results without an LLM call.
 - Per-request, daily, and monthly spend checks run before submission; actual
   provider usage and the price assumptions used are persisted.
 - Refusals, incomplete responses, invalid citations, acquisition failures, and
@@ -675,3 +676,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Add a private HTTP Basic-protected operator page alongside the CLI. | The private owner needs mobile/desktop access to failure diagnostics and bounded on-demand runs without introducing accounts or exposing an anonymous spend trigger. |
 | 2026-07-22 | Rank digest stories directly from HN `topstories` without topical filtering. | The MVP should preserve Hacker News's current leading-story order; personalization and semantic topic ranking remain outside scope. |
 | 2026-07-22 | Require at least 10 HN comments by default before selecting a story. | Very new stories often lack enough discussion to support useful synthesis; a configurable threshold keeps the gate tunable. |
+| 2026-07-22 | Allow one spend-checked correction attempt when model output cites an HN comment outside the selected context. | A bounded retry can recover an otherwise useful analysis while preserving evidence validation; each attempt is separately authorized and metered, and a second invalid response fails permanently. |

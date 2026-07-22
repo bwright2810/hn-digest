@@ -2,6 +2,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import type * as schema from "../db/schema";
 import { analysisJobs } from "../db/schema";
+import {
+  InvalidCommentCitationError,
+  MAX_CITATION_ATTEMPTS,
+} from "../analysis/citations";
 import { classifyOperationalError } from "../operations/error-classification";
 import {
   authorizeLlmSubmission,
@@ -86,14 +90,31 @@ export class AnalysisWorker {
           outcome = (await process(claim)) ?? { status: "succeeded" };
         }
       } catch (error) {
-        outcome = {
-          status: "failed",
-          errorCode: classifyOperationalError(error, "unexpected_worker_error"),
-        };
+        outcome = workerErrorOutcome(error, claim.attempt);
       }
       await finishAnalysisJobAttempt(this.db, claim, outcome);
       await onFinished?.(claim, outcome);
     });
     return true;
   }
+}
+
+export function workerErrorOutcome(
+  error: unknown,
+  attempt: number,
+  now = new Date(),
+): AttemptOutcome {
+  if (error instanceof InvalidCommentCitationError) {
+    return attempt < MAX_CITATION_ATTEMPTS
+      ? {
+          status: "retry",
+          errorCode: "invalid_comment_citation",
+          availableAt: now,
+        }
+      : { status: "failed", errorCode: "invalid_comment_citation" };
+  }
+  return {
+    status: "failed",
+    errorCode: classifyOperationalError(error, "unexpected_worker_error"),
+  };
 }
