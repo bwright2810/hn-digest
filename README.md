@@ -26,6 +26,20 @@ and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,
 `ARTICLE_FETCH_MAX_BYTES`, and `ARTICLE_FETCH_MAX_REDIRECTS`. Every redirect is
 resolved and checked against public IP ranges before it is requested.
 
+## Visual system
+
+The interface uses a restrained editorial system defined in
+`src/app/styles.css`. Shared custom properties cover paper and ink colors, an
+orange provenance accent, a serif display face, a system sans-serif utility
+face, spacing, reading measure, and interaction timing. Reusable shell
+primitives include the site header and footer, page intro, eyebrow labels, and
+status notice.
+
+Layouts support a 320-pixel viewport and expand to a 76-rem reading canvas. New
+interface work should preserve semantic landmarks, the skip link, visible
+keyboard focus, sufficient contrast, and reduced-motion behavior while using
+the existing tokens before adding one-off values.
+
 ## Scheduling
 
 Scheduled runs use the configured IANA time zone and local morning/evening

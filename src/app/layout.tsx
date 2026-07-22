@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "HN Digest",
+  title: {
+    default: "HN Digest",
+    template: "%s — HN Digest",
+  },
   description: "Source-grounded Hacker News article and discussion digests.",
 };
 
@@ -13,7 +17,29 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        <div className="site-shell">
+          <header className="site-header">
+            <Link className="wordmark" href="/" aria-label="HN Digest home">
+              <span className="wordmark__mark" aria-hidden="true">
+                Y
+              </span>
+              <span>HN Digest</span>
+            </Link>
+            <p className="site-header__description">
+              Articles distilled. Discussion preserved.
+            </p>
+          </header>
+          {children}
+          <footer className="site-footer">
+            <p>A focused view of what Hacker News is reading and saying.</p>
+            <a href="https://news.ycombinator.com/">Visit Hacker News</a>
+          </footer>
+        </div>
+      </body>
     </html>
   );
 }
