@@ -143,12 +143,18 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
           </AnalysisSection>
           <section
             className="takeaway"
-            aria-labelledby={`takeaway-${story.id}`}
+            aria-labelledby={`takeaway-label-${story.id}`}
           >
-            <p className="section-label">The takeaway</p>
-            <h3 id={`takeaway-${story.id}`}>
-              {analysis.combinedTakeaway.summary}
+            <h3 className="section-label" id={`takeaway-label-${story.id}`}>
+              The takeaway
             </h3>
+            <div className="takeaway__body">
+              {takeawayParagraphs(analysis.combinedTakeaway.summary).map(
+                (paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ),
+              )}
+            </div>
           </section>
         </div>
       ) : (
@@ -156,6 +162,34 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
       )}
     </article>
   );
+}
+
+export function takeawayParagraphs(summary: string): readonly string[] {
+  const explicitParagraphs = summary
+    .split(/\n\s*\n/gu)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  if (explicitParagraphs.length > 1) return explicitParagraphs;
+
+  const sentences = summary.trim().match(/[^.!?]+(?:[.!?]+|$)/gu) ?? [];
+  if (sentences.length < 3 || summary.length < 280) return [summary.trim()];
+
+  const targetLength = Math.ceil(
+    summary.length / Math.min(3, sentences.length),
+  );
+  const paragraphs: string[] = [];
+  let current = "";
+  for (const sentence of sentences) {
+    const next = current ? `${current} ${sentence.trim()}` : sentence.trim();
+    if (current && current.length >= targetLength) {
+      paragraphs.push(current);
+      current = sentence.trim();
+    } else {
+      current = next;
+    }
+  }
+  if (current) paragraphs.push(current);
+  return paragraphs;
 }
 
 function AnalysisSection({

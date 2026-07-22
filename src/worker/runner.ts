@@ -2,6 +2,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import type * as schema from "../db/schema";
 import { analysisJobs } from "../db/schema";
+import { classifyOperationalError } from "../operations/error-classification";
 import {
   authorizeLlmSubmission,
   type SpendLimits,
@@ -87,7 +88,7 @@ export class AnalysisWorker {
       } catch (error) {
         outcome = {
           status: "failed",
-          errorCode: classifyError(error),
+          errorCode: classifyOperationalError(error, "unexpected_worker_error"),
         };
       }
       await finishAnalysisJobAttempt(this.db, claim, outcome);
@@ -95,11 +96,4 @@ export class AnalysisWorker {
     });
     return true;
   }
-}
-
-function classifyError(error: unknown): string {
-  if (error instanceof Error && error.name) {
-    return error.name.slice(0, 100);
-  }
-  return "unknown_worker_error";
 }

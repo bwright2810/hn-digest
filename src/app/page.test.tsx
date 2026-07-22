@@ -7,6 +7,7 @@ import {
 } from "../analysis/contract";
 import type { DigestRunView } from "../digests/reader";
 import { DigestPage } from "./page";
+import { takeawayParagraphs } from "./page";
 
 const run: DigestRunView = {
   id: "run-1",
@@ -83,6 +84,17 @@ const run: DigestRunView = {
 };
 
 describe("DigestPage", () => {
+  it("splits a long takeaway into readable paragraphs", () => {
+    const summary = [
+      "The article establishes a useful premise with several concrete examples.",
+      "The discussion supports that premise while questioning the operational cost.",
+      "Those objections matter because the evidence only covers a narrow deployment.",
+      "The most defensible conclusion is therefore conditional rather than universal.",
+    ].join(" ");
+
+    expect(takeawayParagraphs(summary)).toHaveLength(2);
+  });
+
   it("renders ranked analyses with original, discussion, and comment evidence links", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 

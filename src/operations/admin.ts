@@ -20,6 +20,7 @@ export interface AdminFailureView {
   readonly jobStatus: string | null;
   readonly jobErrorCode: string | null;
   readonly attemptStatus: string | null;
+  readonly attempt: number | null;
   readonly attemptErrorCode: string | null;
 }
 
@@ -55,6 +56,7 @@ export async function collectAdminRuns(
       jobStatus: analysisJobs.status,
       jobErrorCode: analysisJobs.errorCode,
       attemptStatus: analysisJobAttempts.status,
+      attempt: analysisJobAttempts.attempt,
       attemptErrorCode: analysisJobAttempts.errorCode,
     })
     .from(digestRunStories)
@@ -104,6 +106,7 @@ export async function collectAdminRuns(
         jobStatus: row.jobStatus,
         jobErrorCode: row.jobErrorCode,
         attemptStatus: row.attemptStatus,
+        attempt: row.attempt,
         attemptErrorCode: row.attemptErrorCode,
       })),
   }));

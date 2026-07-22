@@ -65,7 +65,7 @@ test("defaults to dark mode, persists the theme choice, and uses desktop width",
 
   if (testInfo.project.name === "desktop") {
     const width = await page
-      .locator(".takeaway h3:visible")
+      .locator(".takeaway__body:visible")
       .evaluate((element) => element.getBoundingClientRect().width);
     expect(width).toBeGreaterThan(700);
   }
@@ -93,6 +93,9 @@ test("protects operator diagnostics with HTTP Basic authentication", async ({
     page.getByRole("heading", { name: "Digest operations." }),
   ).toBeVisible();
   await expect(page.getByText("invalid_citation").first()).toBeVisible();
+  await expect(
+    page.getByText(/referenced comment evidence/).first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Run digest now" }),
   ).toBeVisible();

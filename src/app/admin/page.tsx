@@ -56,6 +56,7 @@ const adminFixtureRuns: readonly AdminRunView[] = [
         jobStatus: "failed",
         jobErrorCode: "invalid_citation",
         attemptStatus: "failed",
+        attempt: 1,
         attemptErrorCode: "invalid_citation",
       },
     ],
@@ -146,14 +147,24 @@ export function AdminDashboard({
                                 {failure.storyRank}. {failure.storyTitle}
                               </strong>
                               <code>
-                                {[
-                                  failure.storyFailureCode,
-                                  failure.jobErrorCode,
-                                  failure.attemptErrorCode,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ") || failure.storyStatus}
+                                Story:{" "}
+                                {failure.storyFailureCode ??
+                                  failure.storyStatus}
+                                {failure.jobErrorCode
+                                  ? ` · Job: ${failure.jobErrorCode}`
+                                  : ""}
+                                {failure.attemptErrorCode
+                                  ? ` · Attempt ${failure.attempt ?? "?"}: ${failure.attemptErrorCode}`
+                                  : ""}
                               </code>
+                              <span className="failure-explanation">
+                                {explainFailure(
+                                  failure.attemptErrorCode ??
+                                    failure.jobErrorCode ??
+                                    failure.storyFailureCode ??
+                                    failure.storyStatus,
+                                )}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -168,4 +179,32 @@ export function AdminDashboard({
       </section>
     </main>
   );
+}
+
+export function explainFailure(code: string): string {
+  if (code === "Error") {
+    return "Legacy generic error; this run predates detailed failure classification.";
+  }
+  if (code === "invalid_citation" || code === "invalid_comment_citation") {
+    return "Model output referenced comment evidence that was not selected for analysis.";
+  }
+  if (code === "postgres_23505") {
+    return "Database uniqueness constraint conflict while saving the analysis.";
+  }
+  if (code === "postgres_23503") {
+    return "Database relationship constraint failed while saving the analysis.";
+  }
+  if (code === "postgres_23502") {
+    return "A required database value was missing while saving the analysis.";
+  }
+  if (code.startsWith("postgres_")) {
+    return `PostgreSQL operation failed with SQLSTATE ${code.slice("postgres_".length).toUpperCase()}.`;
+  }
+  if (code.startsWith("openai_")) {
+    return `OpenAI request failed with provider code ${code.slice("openai_".length)}.`;
+  }
+  if (code === "unexpected_worker_error") {
+    return "Unexpected internal worker failure; no source content or secret was retained.";
+  }
+  return code.replaceAll("_", " ");
 }
