@@ -87,6 +87,17 @@ workflow, emergency spend shutdown, off-server backup policy, tested restore
 procedure, rollback strategy, and failure runbook are documented in
 [`docs/deployment-and-recovery.md`](./docs/deployment-and-recovery.md).
 
+## Contributing and security
+
+Development contributions are welcome; read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+for setup, scope, testing, and pull-request guidance. Report suspected
+vulnerabilities privately by following [`SECURITY.md`](./SECURITY.md).
+
+The repository's intentional-publication safeguards and final owner-controlled
+visibility steps are recorded in
+[`docs/public-release.md`](./docs/public-release.md). Source code is available
+under the [`MIT License`](./LICENSE); npm publication remains disabled.
+
 ## Validation
 
 ```sh

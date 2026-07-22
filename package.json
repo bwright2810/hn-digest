@@ -2,7 +2,16 @@
   "name": "hn-digest",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Source-grounded Hacker News article and discussion digests.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bwright2810/hn-digest.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bwright2810/hn-digest/issues"
+  },
+  "homepage": "https://github.com/bwright2810/hn-digest#readme",
   "engines": {
     "node": ">=24.18.0 <25"
   },
