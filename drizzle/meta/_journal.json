@@ -22,6 +22,13 @@
       "when": 1784690646075,
       "tag": "0002_high_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784691624792,
+      "tag": "0003_slow_eternals",
+      "breakpoints": true
     }
   ]
 }

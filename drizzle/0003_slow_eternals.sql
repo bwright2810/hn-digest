@@ -1,0 +1,3 @@
+ALTER TABLE "llm_usage" DROP CONSTRAINT "llm_usage_token_counts_nonnegative";--> statement-breakpoint
+ALTER TABLE "llm_usage" ADD COLUMN "reasoning_tokens" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "llm_usage" ADD CONSTRAINT "llm_usage_token_counts_nonnegative" CHECK ("llm_usage"."input_tokens" >= 0 and "llm_usage"."output_tokens" >= 0 and "llm_usage"."cached_read_tokens" >= 0 and "llm_usage"."cache_write_tokens" >= 0 and "llm_usage"."reasoning_tokens" >= 0);

@@ -440,6 +440,7 @@ export const llmUsage = pgTable(
     outputTokens: integer("output_tokens").notNull(),
     cachedReadTokens: integer("cached_read_tokens").default(0).notNull(),
     cacheWriteTokens: integer("cache_write_tokens").default(0).notNull(),
+    reasoningTokens: integer("reasoning_tokens").default(0).notNull(),
     priceAssumptions: jsonb("price_assumptions")
       .$type<Record<string, unknown>>()
       .notNull(),
@@ -468,7 +469,7 @@ export const llmUsage = pgTable(
     check("llm_usage_attempt_positive", sql`${table.attempt} > 0`),
     check(
       "llm_usage_token_counts_nonnegative",
-      sql`${table.inputTokens} >= 0 and ${table.outputTokens} >= 0 and ${table.cachedReadTokens} >= 0 and ${table.cacheWriteTokens} >= 0`,
+      sql`${table.inputTokens} >= 0 and ${table.outputTokens} >= 0 and ${table.cachedReadTokens} >= 0 and ${table.cacheWriteTokens} >= 0 and ${table.reasoningTokens} >= 0`,
     ),
     check(
       "llm_usage_estimated_cost_nonnegative",
