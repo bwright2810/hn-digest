@@ -8,7 +8,7 @@ notable parts of the HN discussion, and uses an LLM to produce a sophisticated
 article summary, discussion synthesis, insightful-comment highlights, and a
 combined takeaway.
 
-The repository is in its planning stage. Read `ROADMAP.md` before making
+The repository is under implementation. Read `ROADMAP.md` before making
 architectural or implementation changes. Use its stable `HD-###` task IDs in
 plans, commits, and pull requests where applicable.
 
@@ -18,6 +18,12 @@ plans, commits, and pull requests where applicable.
   `git@github.com:bwright2810/hn-digest.git`.
 - `ROADMAP.md` is the current source of truth for scope, milestones, acceptance
   criteria, open decisions, and the decision log.
+- HD-001 established the application scaffold. The repository pins Node.js
+  24.18.0 in `.nvmrc` and pnpm 10.15.1 in `package.json`.
+- HD-002 established typed server configuration in `src/config/server.ts` and
+  startup validation through `src/instrumentation.ts`. Database URLs and OpenAI
+  keys are always required. Non-secret defaults apply only outside production;
+  production requires every documented variable explicitly.
 - The agreed baseline is TypeScript on Node.js LTS, pnpm, Next.js, PostgreSQL
   with Drizzle ORM, Zod, Vitest, headless Playwright, ESLint, Prettier, CSS
   Modules/custom properties, the Hacker News Firebase API, Readability-style
@@ -172,17 +178,29 @@ Articles, URLs, HN posts, and comments are untrusted input.
 - Before starting work, identify the relevant `HD-###` task and read its
   dependencies and acceptance criteria in `ROADMAP.md`.
 - Keep changes scoped to one task or a small coherent group of tasks.
+- When a roadmap task is complete and its required checks pass, commit the
+  scoped changes with the relevant `HD-###` ID and push the commit to the
+  configured upstream branch before starting the next task.
 - Record material architectural decisions in the `ROADMAP.md` decision log.
 - Preserve user changes and unrelated work in a dirty worktree.
 - Add or update automated tests with functional changes.
 - UI changes are incomplete until relevant headless Playwright checks have run.
   When the UI intentionally changes, update assertions or visual references and
   explain the intended change rather than broadly weakening tests.
-- Run the repository's documented formatting, linting, type-checking, and test
-  commands before declaring work complete. These commands do not exist yet;
-  document them here when HD-001 establishes the toolchain.
+- Run the repository's documented formatting, linting, type-checking, test, and
+  production-build commands before declaring work complete.
 - Do not start services with ad hoc background shell processes in the Sprite
   environment. Follow the workspace Sprite service instructions.
+- In this Sprite, Docker is installed and configured with the `overlay2`
+  storage driver. Because Sprite has no systemd, only the Docker daemon is
+  registered as a Sprite service (`docker`); do not register the HN Digest
+  application as a persistent Sprite service for ordinary development.
+- Sprite's namespace policy currently blocks Docker health-check `exec`
+  operations and creation of additional bridge-network namespaces. A container
+  may therefore appear unhealthy even when its process is accepting
+  connections. Containerized application smoke tests in this workspace must
+  use host networking. Treat this as a Sprite limitation: do not weaken the
+  committed health check or production networking to accommodate it.
 - Production services are managed through Coolify. Keep PostgreSQL private to
   the Coolify network with no public 5432 mapping, let Traefik terminate HTTPS,
   and inject secrets through Coolify rather than image layers or committed
@@ -198,16 +216,48 @@ Articles, URLs, HN posts, and comments are untrusted input.
 
 ## Commands
 
-No application commands exist yet. HD-001 must use `pnpm` and define and
-document at least:
+Activate the pinned toolchain and install dependencies:
 
-- dependency installation;
-- local development;
-- production build;
-- formatting and linting;
-- type-checking;
-- unit/integration tests; and
-- database migration commands once persistence is introduced.
+```sh
+source /.sprite/languages/node/nvm/nvm.sh
+nvm use
+corepack enable
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+```
 
-Update this section as soon as those commands become real. Never invent a
-successful validation result for a command that has not been configured or run.
+Run the application and its health check:
+
+```sh
+pnpm dev
+curl --fail http://127.0.0.1:3000/api/health
+```
+
+Run all currently configured validation commands before completing a change:
+
+```sh
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Use `pnpm format` to apply formatting. Build the production container with
+`sudo docker build --tag hn-digest:local .` in this Sprite.
+
+Start local PostgreSQL only with credentials supplied through the environment;
+never place real credentials in the Compose file or command history:
+
+```sh
+POSTGRES_USER=<local-user> POSTGRES_PASSWORD=<local-password> \
+  sudo -E docker compose up -d postgres
+```
+
+Database migration commands do not exist yet; add them when HD-010 introduces
+persistence. Never invent a successful validation result for a command that has
+not been configured or run.
+
+Configuration errors may identify variable names and validation constraints,
+but must never include supplied values. Do not serialize the server
+configuration object into routes, client components, logs, or error responses.
