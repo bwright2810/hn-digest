@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Building Reliable Data Pipelines — Example Journal</title>
+    <meta property="og:title" content="Building Reliable Data Pipelines" />
+    <meta name="author" content="Ada Example" />
+    <meta property="article:published_time" content="2026-07-20T14:30:00Z" />
+  </head>
+  <body>
+    <header><nav>Home Products Subscribe Account</nav></header>
+    <main>
+      <article>
+        <h1>Building Reliable Data Pipelines</h1>
+        <p class="byline">By Ada Example</p>
+        <p>
+          Reliable pipelines begin with explicit boundaries. Each input should
+          be validated before it reaches storage, and each stage should produce
+          an observable result that another stage can safely retry.
+        </p>
+        <h2>Prefer deterministic stages</h2>
+        <p>
+          Deterministic collection and normalization make failures easier to
+          reproduce. Stable identifiers prevent duplicate work, while content
+          hashes distinguish an unchanged document from a meaningful revision.
+        </p>
+        <p>
+          Bounded concurrency protects both the upstream service and the local
+          worker. Timeouts, response limits, and classified errors turn network
+          uncertainty into data the application can reason about.
+        </p>
+        <h2>Keep evidence attached</h2>
+        <p>
+          A useful summary remains connected to its evidence. Source URLs,
+          timestamps, and discussion identifiers should survive every
+          transformation rather than being reconstructed at the end.
+        </p>
+        <blockquote>
+          Reliability is the product of explicit limits and recoverable state.
+        </blockquote>
+        <h3>Conclusion</h3>
+        <p>
+          The practical result is a pipeline that can stop, explain why it
+          stopped, and continue without corrupting earlier work.
+        </p>
+      </article>
+    </main>
+    <aside>Trending links and unrelated promotional material</aside>
+    <footer>Copyright Example Journal</footer>
+    <script>
+      throw new Error("fixture scripts must never run");
+    </script>
+  </body>
+</html>
