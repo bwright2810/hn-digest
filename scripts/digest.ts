@@ -29,6 +29,7 @@ async function main(): Promise<void> {
       try {
         const result = await ingestTopStories({
           storyCount,
+          minimumCommentCount: config.stories.minimumCommentCount,
           client: new HackerNewsClient(),
           store: new PostgresDigestRunStore(connection.db),
           onRunCreated: (runId) =>

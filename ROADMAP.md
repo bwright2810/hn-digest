@@ -424,6 +424,35 @@ Acceptance criteria:
 - Integration tests exercise collection, queue assembly, cache reuse, worker
   persistence, and terminal-state reconciliation without live HN/OpenAI calls.
 
+### HD-056 — Add authenticated operator controls
+
+Provide a private, single-operator web surface for starting bounded on-demand
+runs and reviewing recent run, story, job, and validation failures. Protect the
+surface with deployment-supplied HTTP Basic credentials; this is operational
+access, not a general user-account system.
+
+Acceptance criteria:
+
+- Anonymous requests cannot view operational data or create LLM work.
+- The operator can enqueue one to the configured maximum story count; an
+  already-active on-demand run is coalesced and linked instead of duplicated.
+- Recent runs expose terminal and active states, story-level failure codes, and
+  job/attempt failure classifications without source bodies, prompts, or secrets.
+- The production credential is injected at runtime and is never logged or
+  returned by an application route.
+
+### HD-057 — Gate digest stories by discussion depth
+
+Scan Hacker News's ranked `topstories` feed in order and include only available
+stories meeting a configurable minimum comment count.
+
+Acceptance criteria:
+
+- Filtering preserves the relative HN rank of qualifying stories.
+- The collector scans beyond the first requested IDs to fill the run when
+  possible, while retaining bounded API requests.
+- A shortfall is explicit when too few ranked stories meet the threshold.
+
 ## Milestone 6: Reading experience
 
 ### HD-059 — Define the visual system and responsive shell
@@ -643,3 +672,6 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Use UTC calendar windows for LLM daily/monthly budgets and persist deduplicated operational alerts. | UTC boundaries make enforcement reproducible alongside persisted timestamps; database alerts remain visible without relying on ephemeral process logs. |
 | 2026-07-22 | License the source under MIT while keeping npm publication disabled and repository visibility owner-controlled. | Public source availability does not require publishing an npm package, and the final visibility change must follow a fresh security and history review. |
 | 2026-07-22 | Expose on-demand runs through a bounded shell CLI and coalesce active runs in PostgreSQL. | Authenticated shell access avoids a new public operator endpoint, while a partial unique index prevents concurrent commands from duplicating collection or LLM spend. |
+| 2026-07-22 | Add a private HTTP Basic-protected operator page alongside the CLI. | The private owner needs mobile/desktop access to failure diagnostics and bounded on-demand runs without introducing accounts or exposing an anonymous spend trigger. |
+| 2026-07-22 | Rank digest stories directly from HN `topstories` without topical filtering. | The MVP should preserve Hacker News's current leading-story order; personalization and semantic topic ranking remain outside scope. |
+| 2026-07-22 | Require at least 10 HN comments by default before selecting a story. | Very new stories often lack enough discussion to support useful synthesis; a configurable threshold keeps the gate tunable. |

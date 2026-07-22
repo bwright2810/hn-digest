@@ -90,6 +90,7 @@ describeDatabase("DigestPipeline", () => {
       DATABASE_URL: databaseUrl!,
       OPENAI_API_KEY: "test-only",
       DIGEST_STORY_COUNT: "1",
+      DIGEST_MINIMUM_COMMENT_COUNT: "1",
     });
     const pipeline = new DigestPipeline(connection.db, config, {
       hnClient,

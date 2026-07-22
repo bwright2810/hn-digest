@@ -54,7 +54,7 @@ describe("ingestTopStories", () => {
     });
 
     expect(onRunCreated).toHaveBeenCalledWith("run-1");
-    expect(client.getItems).toHaveBeenCalledWith([100, 200]);
+    expect(client.getItems).toHaveBeenCalledWith([100, 200, 300]);
     expect(runStore.saveStory).toHaveBeenNthCalledWith(
       1,
       "run-1",
@@ -80,6 +80,41 @@ describe("ingestTopStories", () => {
       status: "complete",
       collectedStoryCount: 2,
       failures: [],
+    });
+  });
+
+  it("skips thin discussions and scans farther down the ranked feed", async () => {
+    const runStore = store();
+    const tooNew = story({ id: 100, descendants: 3, title: "Too new" });
+    const client = {
+      getTopStoryIds: vi.fn().mockResolvedValue([100, 200, 300]),
+      getItems: vi.fn().mockResolvedValue([tooNew, firstStory, secondStory]),
+    };
+
+    const result = await ingestTopStories({
+      storyCount: 2,
+      minimumCommentCount: 10,
+      client,
+      store: runStore,
+    });
+
+    expect(runStore.saveStory).toHaveBeenNthCalledWith(
+      1,
+      "run-1",
+      1,
+      firstStory,
+      expect.any(Date),
+    );
+    expect(runStore.saveStory).toHaveBeenNthCalledWith(
+      2,
+      "run-1",
+      2,
+      secondStory,
+      expect.any(Date),
+    );
+    expect(result).toMatchObject({
+      status: "complete",
+      collectedStoryCount: 2,
     });
   });
 

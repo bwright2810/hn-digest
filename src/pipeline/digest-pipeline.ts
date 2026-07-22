@@ -162,6 +162,7 @@ export class DigestPipeline {
       try {
         await ingestTopStories({
           storyCount: run.requestedStoryCount,
+          minimumCommentCount: this.config.stories.minimumCommentCount,
           existingRunId: runId,
           client: this.hnClient,
           store: new PostgresDigestRunStore(this.db, true),

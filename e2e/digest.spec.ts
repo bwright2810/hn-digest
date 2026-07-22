@@ -38,6 +38,53 @@ test("reads the latest digest and preserves source provenance", async ({
   await expectNoHorizontalOverflow(page);
 });
 
+test("defaults to dark mode, persists the theme choice, and uses desktop width", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/?fixture=complete");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Toggle color theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  if (testInfo.project.name === "desktop") {
+    const width = await page
+      .locator(".takeaway h3:visible")
+      .evaluate((element) => element.getBoundingClientRect().width);
+    expect(width).toBeGreaterThan(700);
+  }
+  await expectNoHorizontalOverflow(page);
+});
+
+test("protects operator diagnostics with HTTP Basic authentication", async ({
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  const anonymous = await browser.newContext();
+  const anonymousResponse = await anonymous.request.get("/admin");
+  expect(anonymousResponse.status()).toBe(401);
+  await anonymous.close();
+
+  const operator = await browser.newContext({
+    httpCredentials: {
+      username: "admin",
+      password: "playwright-admin-password",
+    },
+  });
+  const page = await operator.newPage();
+  await page.goto("/admin");
+  await expect(
+    page.getByRole("heading", { name: "Digest operations." }),
+  ).toBeVisible();
+  await expect(page.getByText("invalid_citation").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Run digest now" }),
+  ).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await operator.close();
+});
+
 test("supports keyboard navigation to the reading content", async ({
   page,
 }) => {

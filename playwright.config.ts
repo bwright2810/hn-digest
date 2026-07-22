@@ -17,6 +17,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: "postgresql://fixture:fixture@127.0.0.1:5432/fixture",
       OPENAI_API_KEY: "playwright-placeholder",
+      ADMIN_PASSWORD: "playwright-admin-password",
       PLAYWRIGHT_FIXTURES: "1",
       NEXT_TELEMETRY_DISABLED: "1",
     },

@@ -52,7 +52,8 @@ packages to production. Playwright stays in CI or a dedicated test system.
 ## Required configuration
 
 Production has no non-secret defaults. Set every variable below in Coolify as a
-runtime variable. Mark `DATABASE_URL` and `OPENAI_API_KEY` secret and exclude
+runtime variable. Mark `DATABASE_URL`, `OPENAI_API_KEY`, and `ADMIN_PASSWORD`
+secret and exclude
 them from build arguments, image layers, deployment logs, and previews.
 
 | Variable                                    | Production value or rule                                                                       |
@@ -60,6 +61,7 @@ them from build arguments, image layers, deployment logs, and previews.
 | `NODE_ENV`                                  | `production`                                                                                   |
 | `DATABASE_URL`                              | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
 | `OPENAI_API_KEY`                            | project-scoped API key with the smallest practical permissions and spend controls              |
+| `ADMIN_PASSWORD`                            | unique random value of at least 16 characters for the `/admin` HTTP Basic prompt               |
 | `OPENAI_MODEL`                              | evaluated model from the roadmap decision log                                                  |
 | `OPENAI_REASONING_EFFORT`                   | `low` until evaluation justifies a change                                                      |
 | `OPENAI_REQUEST_TIMEOUT_MS`                 | `60000`                                                                                        |
@@ -73,6 +75,7 @@ them from build arguments, image layers, deployment logs, and previews.
 | `DIGEST_MORNING_TIME`                       | `07:00`                                                                                        |
 | `DIGEST_EVENING_TIME`                       | `19:00`                                                                                        |
 | `DIGEST_STORY_COUNT`                        | reviewed private-MVP count                                                                     |
+| `DIGEST_MINIMUM_COMMENT_COUNT`              | `10`; minimum HN discussion size before a story is selected                                    |
 | `DIGEST_MISSED_RUN_GRACE_MS`                | `21600000`                                                                                     |
 | `ARTICLE_FETCH_TIMEOUT_MS`                  | `10000`                                                                                        |
 | `ARTICLE_FETCH_MAX_BYTES`                   | `2097152`                                                                                      |

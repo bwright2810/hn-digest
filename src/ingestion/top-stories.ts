@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { and, desc, eq, inArray } from "drizzle-orm";
 
+import { getConfig } from "../config/server";
 import { getDatabase } from "../db/client";
 import {
   digestRuns,
@@ -54,6 +55,7 @@ interface TopStoriesClient {
 
 export async function ingestTopStories(options: {
   readonly storyCount: number;
+  readonly minimumCommentCount?: number;
   readonly client: TopStoriesClient;
   readonly store: DigestRunStore;
   readonly now?: () => Date;
@@ -63,6 +65,10 @@ export async function ingestTopStories(options: {
   if (!Number.isInteger(options.storyCount) || options.storyCount <= 0) {
     throw new RangeError("storyCount must be a positive integer");
   }
+  const minimumCommentCount = options.minimumCommentCount ?? 0;
+  if (!Number.isInteger(minimumCommentCount) || minimumCommentCount < 0) {
+    throw new RangeError("minimumCommentCount must be a nonnegative integer");
+  }
 
   const now = options.now ?? (() => new Date());
   const runId =
@@ -71,38 +77,54 @@ export async function ingestTopStories(options: {
   if (options.existingRunId) await options.store.startRun?.(runId, now());
   else await options.onRunCreated?.(runId);
 
-  let itemIds: readonly number[];
+  let topStoryIds: readonly number[];
   try {
-    itemIds = (await options.client.getTopStoryIds()).slice(
-      0,
-      options.storyCount,
-    );
+    topStoryIds = await options.client.getTopStoryIds();
   } catch (error) {
     await options.store.finishRun(runId, "failed", now(), "TOP_STORIES_FETCH");
     throw new TopStoriesIngestionError(runId, error);
   }
 
-  const results = await options.client.getItems(itemIds);
   const failures: IngestionFailure[] = [];
   let collectedStoryCount = 0;
+  const scanLimit = Math.min(
+    topStoryIds.length,
+    Math.max(options.storyCount * 10, 50),
+  );
+  const batchSize = 20;
 
-  for (let index = 0; index < itemIds.length; index += 1) {
-    const itemId = itemIds[index];
-    const item = results[index];
+  for (
+    let offset = 0;
+    offset < scanLimit && collectedStoryCount < options.storyCount;
+    offset += batchSize
+  ) {
+    const itemIds = topStoryIds.slice(
+      offset,
+      Math.min(offset + batchSize, scanLimit),
+    );
+    const results = await options.client.getItems(itemIds);
+    for (
+      let index = 0;
+      index < itemIds.length && collectedStoryCount < options.storyCount;
+      index += 1
+    ) {
+      const itemId = itemIds[index];
+      const item = results[index];
 
-    if (item === null) {
-      failures.push({ itemId, kind: "unavailable" });
-    } else if ("error" in item) {
-      failures.push({ itemId, kind: "fetch", detail: item.error.kind });
-    } else if (!isAvailableStory(item)) {
-      failures.push({ itemId, kind: "not-story" });
-    } else {
-      await options.store.saveStory(runId, index + 1, item, now());
-      collectedStoryCount += 1;
+      if (item === null) {
+        failures.push({ itemId, kind: "unavailable" });
+      } else if ("error" in item) {
+        failures.push({ itemId, kind: "fetch", detail: item.error.kind });
+      } else if (!isAvailableStory(item)) {
+        failures.push({ itemId, kind: "not-story" });
+      } else if ((item.descendants ?? 0) >= minimumCommentCount) {
+        collectedStoryCount += 1;
+        await options.store.saveStory(runId, collectedStoryCount, item, now());
+      }
     }
   }
 
-  const hasShortfall = itemIds.length < options.storyCount;
+  const hasShortfall = collectedStoryCount < options.storyCount;
   const status =
     failures.length === 0 && !hasShortfall ? "complete" : "partial";
   await options.store.finishRun(
@@ -299,9 +321,11 @@ export class PostgresDigestRunStore implements DigestRunStore {
 }
 
 export function createTopStoriesIngestion() {
+  const config = getConfig();
   return (storyCount: number) =>
     ingestTopStories({
       storyCount,
+      minimumCommentCount: config.stories.minimumCommentCount,
       client: new HackerNewsClient(),
       store: new PostgresDigestRunStore(),
     });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import "./styles.css";
+import { ThemeToggle } from "./theme-toggle";
 
 export const metadata: Metadata = {
   title: {
@@ -16,7 +17,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(localStorage.getItem('hn-digest-theme')==='light')document.documentElement.dataset.theme='light'}catch{}",
+          }}
+        />
+      </head>
       <body>
         <a className="skip-link" href="#main-content">
           Skip to content
@@ -29,9 +38,10 @@ export default function RootLayout({
               </span>
               <span>HN Digest</span>
             </Link>
-            <p className="site-header__description">
-              Articles distilled. Discussion preserved.
-            </p>
+            <div className="site-actions">
+              <Link href="/admin">Admin</Link>
+              <ThemeToggle />
+            </div>
           </header>
           {children}
           <footer className="site-footer">

@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 const DEVELOPMENT_DEFAULTS = {
+  ADMIN_PASSWORD: "development-only-admin-password",
   APP_URL: "http://localhost:3000",
   DIGEST_TIME_ZONE: "America/New_York",
   DIGEST_MORNING_TIME: "07:00",
   DIGEST_EVENING_TIME: "19:00",
   DIGEST_STORY_COUNT: "5",
+  DIGEST_MINIMUM_COMMENT_COUNT: "10",
   DIGEST_MISSED_RUN_GRACE_MS: "21600000",
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
@@ -80,6 +82,7 @@ const environmentSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]),
     DATABASE_URL: postgresUrl,
     OPENAI_API_KEY: z.string().min(1, "is required"),
+    ADMIN_PASSWORD: z.string().min(16, "must contain at least 16 characters"),
     OPENAI_MODEL: z.string().min(1),
     OPENAI_REASONING_EFFORT: z.enum([
       "none",
@@ -105,6 +108,7 @@ const environmentSchema = z
       .string()
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
     DIGEST_STORY_COUNT: positiveInteger,
+    DIGEST_MINIMUM_COMMENT_COUNT: z.coerce.number().int().nonnegative(),
     DIGEST_MISSED_RUN_GRACE_MS: positiveInteger,
     ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
     ARTICLE_FETCH_MAX_BYTES: positiveInteger,
@@ -145,6 +149,7 @@ export interface AppConfig {
   readonly environment: "development" | "test" | "production";
   readonly application: {
     readonly url: URL;
+    readonly adminPassword: string;
   };
   readonly database: {
     readonly url: string;
@@ -171,6 +176,7 @@ export interface AppConfig {
   };
   readonly stories: {
     readonly perRun: number;
+    readonly minimumCommentCount: number;
   };
   readonly articleFetch: {
     readonly timeoutMs: number;
@@ -251,7 +257,10 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
 
   return Object.freeze({
     environment: values.NODE_ENV,
-    application: Object.freeze({ url: new URL(values.APP_URL) }),
+    application: Object.freeze({
+      url: new URL(values.APP_URL),
+      adminPassword: values.ADMIN_PASSWORD,
+    }),
     database: Object.freeze({ url: values.DATABASE_URL }),
     openai: Object.freeze({
       apiKey: values.OPENAI_API_KEY,
@@ -274,7 +283,10 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       eveningTime: values.DIGEST_EVENING_TIME,
       missedRunGraceMs: values.DIGEST_MISSED_RUN_GRACE_MS,
     }),
-    stories: Object.freeze({ perRun: values.DIGEST_STORY_COUNT }),
+    stories: Object.freeze({
+      perRun: values.DIGEST_STORY_COUNT,
+      minimumCommentCount: values.DIGEST_MINIMUM_COMMENT_COUNT,
+    }),
     articleFetch: Object.freeze({
       timeoutMs: values.ARTICLE_FETCH_TIMEOUT_MS,
       maximumBytes: values.ARTICLE_FETCH_MAX_BYTES,
