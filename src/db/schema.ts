@@ -294,6 +294,10 @@ export const analysisJobs = pgTable(
     reasoningConfig: jsonb("reasoning_config")
       .$type<Record<string, unknown>>()
       .notNull(),
+    contextMetadata: jsonb("context_metadata")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
     status: analysisJobStatus("status").default("queued").notNull(),
     estimatedInputTokens: integer("estimated_input_tokens").notNull(),
     maximumOutputTokens: integer("maximum_output_tokens").notNull(),

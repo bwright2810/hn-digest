@@ -1,0 +1,1 @@
+ALTER TABLE "analysis_jobs" ADD COLUMN "context_metadata" jsonb DEFAULT '{}'::jsonb NOT NULL;
