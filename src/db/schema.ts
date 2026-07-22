@@ -98,6 +98,11 @@ export const digestRuns = pgTable(
     uniqueIndex("digest_runs_schedule_key_unique")
       .on(table.scheduleKey)
       .where(sql`${table.scheduleKey} is not null`),
+    uniqueIndex("digest_runs_active_on_demand_unique")
+      .on(table.trigger)
+      .where(
+        sql`${table.trigger} = 'on_demand' and ${table.status} in ('pending', 'collecting', 'analyzing')`,
+      ),
     index("digest_runs_scheduled_for_idx").on(table.scheduledFor),
     index("digest_runs_status_created_at_idx").on(
       table.status,

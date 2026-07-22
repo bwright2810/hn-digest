@@ -38,6 +38,7 @@ function store() {
 describe("ingestTopStories", () => {
   it("persists the requested top stories in their original rank order", async () => {
     const runStore = store();
+    const onRunCreated = vi.fn();
     const client = {
       getTopStoryIds: vi.fn().mockResolvedValue([100, 200, 300]),
       getItems: vi.fn().mockResolvedValue([firstStory, secondStory]),
@@ -49,8 +50,10 @@ describe("ingestTopStories", () => {
       client,
       store: runStore,
       now: () => collectedAt,
+      onRunCreated,
     });
 
+    expect(onRunCreated).toHaveBeenCalledWith("run-1");
     expect(client.getItems).toHaveBeenCalledWith([100, 200]);
     expect(runStore.saveStory).toHaveBeenNthCalledWith(
       1,

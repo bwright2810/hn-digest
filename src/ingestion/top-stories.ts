@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { getDatabase } from "../db/client";
 import {
@@ -56,12 +56,14 @@ export async function ingestTopStories(options: {
   readonly client: TopStoriesClient;
   readonly store: DigestRunStore;
   readonly now?: () => Date;
+  readonly onRunCreated?: (runId: string) => void | Promise<void>;
 }): Promise<TopStoriesIngestionResult> {
   if (!Number.isInteger(options.storyCount) || options.storyCount <= 0) {
     throw new RangeError("storyCount must be a positive integer");
   }
 
   const runId = await options.store.createRun(options.storyCount);
+  await options.onRunCreated?.(runId);
   const now = options.now ?? (() => new Date());
 
   let itemIds: readonly number[];
@@ -124,6 +126,13 @@ export class TopStoriesIngestionError extends Error {
   }
 }
 
+export class ActiveOnDemandRunError extends Error {
+  constructor(readonly runId: string) {
+    super("An on-demand digest run is already active");
+    this.name = "ActiveOnDemandRunError";
+  }
+}
+
 function isAvailableStory(item: HackerNewsItem): item is HackerNewsStory {
   return item.type === "story" && !item.deleted && !item.dead;
 }
@@ -141,9 +150,24 @@ export class PostgresDigestRunStore implements DigestRunStore {
         requestedStoryCount,
         status: "collecting",
       })
+      .onConflictDoNothing()
       .returning({ id: digestRuns.id });
 
-    if (!run) throw new Error("Failed to create digest run");
+    if (!run) {
+      const [active] = await this.database
+        .select({ id: digestRuns.id })
+        .from(digestRuns)
+        .where(
+          and(
+            eq(digestRuns.trigger, "on_demand"),
+            inArray(digestRuns.status, ["pending", "collecting", "analyzing"]),
+          ),
+        )
+        .orderBy(desc(digestRuns.createdAt))
+        .limit(1);
+      if (active) throw new ActiveOnDemandRunError(active.id);
+      throw new Error("Failed to create digest run");
+    }
     return run.id;
   }
 

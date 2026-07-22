@@ -10,8 +10,10 @@ The application currently exposes only the read-only digest page and
 `GET /api/health`, whose fixed response is `{ "status": "ok" }`. There is no
 HTTP route for triggering runs, inspecting configuration, reading files,
 viewing prompts or source documents, managing jobs, or deleting data. Scheduled
-work and workers are internal processes. Consequently there is no operator HTTP
-authentication surface in the private MVP.
+work and workers are internal processes. On-demand collection is available only
+through the bounded `digest:run` CLI to an operator with authenticated shell
+access. Consequently there is no operator HTTP authentication surface in the
+private MVP.
 
 Do not add an operator or on-demand route without authentication and
 authorization appropriate to the deployment. A reverse-proxy network

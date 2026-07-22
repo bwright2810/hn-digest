@@ -37,7 +37,11 @@ describe.skipIf(!runDatabaseTests)("HD-042 usage persistence", () => {
       .returning();
     const [run] = await database.db
       .insert(digestRuns)
-      .values({ trigger: "on_demand", requestedStoryCount: 1 })
+      .values({
+        trigger: "on_demand",
+        requestedStoryCount: 1,
+        status: "complete",
+      })
       .returning();
     const [snapshot] = await database.db
       .insert(storySnapshots)

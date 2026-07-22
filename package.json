@@ -30,7 +30,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:rollback": "tsx scripts/db/rollback.ts",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "digest:run": "tsx scripts/digest.ts run",
+    "digest:status": "tsx scripts/digest.ts status"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

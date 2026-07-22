@@ -38,7 +38,11 @@ describe.skipIf(!runDatabaseTests)("HD-050 PostgreSQL worker queue", () => {
       .returning();
     const [run] = await database.db
       .insert(digestRuns)
-      .values({ trigger: "on_demand", requestedStoryCount: 1 })
+      .values({
+        trigger: "on_demand",
+        requestedStoryCount: 1,
+        status: "complete",
+      })
       .returning();
     const [snapshot] = await database.db
       .insert(storySnapshots)

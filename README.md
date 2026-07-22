@@ -53,6 +53,22 @@ within `DIGEST_MISSED_RUN_GRACE_MS` (six hours by default). It does not backfill
 older slots, preventing a long outage from unexpectedly triggering a burst of
 collection and LLM spend.
 
+## On-demand runs
+
+Operators with shell access can start a bounded run and inspect its progress:
+
+```sh
+pnpm digest:run 3
+pnpm digest:status <run-id>
+```
+
+The count defaults to `DIGEST_STORY_COUNT` and cannot exceed that configured
+maximum. PostgreSQL admits only one active on-demand run; concurrent commands
+return the existing run ID instead of duplicating collection or LLM spend. No
+anonymous HTTP run endpoint is exposed. The run command prints a JSON `started`
+event as soon as the run is admitted and a `finished` event after collection,
+so another shell can inspect the run ID while work is in progress.
+
 ## Analysis evaluation
 
 Prompt, model, reasoning, selection, and token-budget changes are assessed

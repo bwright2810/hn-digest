@@ -28,7 +28,6 @@ describe.skipIf(!runDatabaseTests)("HD-012 top-story persistence", () => {
 
   it("updates a story without changing an earlier run's snapshot", async () => {
     const firstRunId = await store.createRun(1);
-    const secondRunId = await store.createRun(1);
     const collectedAt = new Date("2026-07-22T12:00:00Z");
     const baseStory = {
       by: "alice",
@@ -42,11 +41,19 @@ describe.skipIf(!runDatabaseTests)("HD-012 top-story persistence", () => {
     };
 
     await store.saveStory(firstRunId, 1, baseStory, collectedAt);
+    await store.finishRun(firstRunId, "complete", collectedAt, null);
+    const secondRunId = await store.createRun(1);
     await store.saveStory(
       secondRunId,
       1,
       { ...baseStory, descendants: 15, score: 125, title: "Updated title" },
       new Date("2026-07-22T13:00:00Z"),
+    );
+    await store.finishRun(
+      secondRunId,
+      "complete",
+      new Date("2026-07-22T13:00:00Z"),
+      null,
     );
 
     const storedStories = await connection.db.select().from(stories);
