@@ -6,6 +6,7 @@ const DEVELOPMENT_DEFAULTS = {
   DIGEST_MORNING_TIME: "07:00",
   DIGEST_EVENING_TIME: "19:00",
   DIGEST_STORY_COUNT: "5",
+  DIGEST_MISSED_RUN_GRACE_MS: "21600000",
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
   ARTICLE_FETCH_MAX_REDIRECTS: "5",
@@ -85,6 +86,7 @@ const environmentSchema = z.object({
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
   DIGEST_STORY_COUNT: positiveInteger,
+  DIGEST_MISSED_RUN_GRACE_MS: positiveInteger,
   ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
   ARTICLE_FETCH_MAX_BYTES: positiveInteger,
   ARTICLE_FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative(),
@@ -117,6 +119,7 @@ export interface AppConfig {
     readonly timeZone: string;
     readonly morningTime: string;
     readonly eveningTime: string;
+    readonly missedRunGraceMs: number;
   };
   readonly stories: {
     readonly perRun: number;
@@ -198,6 +201,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       timeZone: values.DIGEST_TIME_ZONE,
       morningTime: values.DIGEST_MORNING_TIME,
       eveningTime: values.DIGEST_EVENING_TIME,
+      missedRunGraceMs: values.DIGEST_MISSED_RUN_GRACE_MS,
     }),
     stories: Object.freeze({ perRun: values.DIGEST_STORY_COUNT }),
     articleFetch: Object.freeze({

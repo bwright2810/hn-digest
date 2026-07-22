@@ -26,6 +26,19 @@ and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,
 `ARTICLE_FETCH_MAX_BYTES`, and `ARTICLE_FETCH_MAX_REDIRECTS`. Every redirect is
 resolved and checked against public IP ranges before it is requested.
 
+## Scheduling
+
+Scheduled runs use the configured IANA time zone and local morning/evening
+times; timestamps are stored in UTC. The production defaults are 7:00 AM and
+7:00 PM in `America/New_York`, so UTC execution times shift automatically with
+EST and EDT.
+
+Each local slot has a unique key, making repeated scheduler ticks and restarts
+idempotent. After downtime, the scheduler creates only the latest missed slot
+within `DIGEST_MISSED_RUN_GRACE_MS` (six hours by default). It does not backfill
+older slots, preventing a long outage from unexpectedly triggering a burst of
+collection and LLM spend.
+
 ## Validation
 
 ```sh
