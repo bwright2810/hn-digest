@@ -5,6 +5,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
 import {
+  analysisCacheLookups,
   analysisJobs,
   articleAnalyses,
   digestRunStories,
@@ -139,6 +140,11 @@ export async function resolveAnalysisCache(
   ]);
 
   const previousComponents = previous[0] ?? null;
+  await db.insert(analysisCacheLookups).values({
+    storyId,
+    cacheKey: keys.analysis,
+    hit: job !== undefined,
+  });
   return {
     keys,
     analysisJobId: job?.id ?? null,

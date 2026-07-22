@@ -1,6 +1,12 @@
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import type * as schema from "../db/schema";
+import { analysisJobs } from "../db/schema";
+import {
+  authorizeLlmSubmission,
+  type SpendLimits,
+} from "../operations/observability";
+import { eq } from "drizzle-orm";
 import { ConcurrencyGate, HostConcurrencyGate } from "./concurrency";
 import {
   claimAnalysisJob,
@@ -15,6 +21,7 @@ export interface WorkerOptions {
   readonly leaseMs: number;
   readonly llmConcurrency: number;
   readonly fetchConcurrencyPerHost: number;
+  readonly spendLimits: SpendLimits;
 }
 
 export class AnalysisWorker {
@@ -46,6 +53,26 @@ export class AnalysisWorker {
     if (!claim) return false;
     await this.llm.run(async () => {
       try {
+        const [job] = await this.db
+          .select({ estimatedCostUsd: analysisJobs.estimatedCostUsd })
+          .from(analysisJobs)
+          .where(eq(analysisJobs.id, claim.id))
+          .limit(1);
+        if (!job) throw new Error("Claimed analysis job no longer exists");
+        const budget = await authorizeLlmSubmission(
+          this.db,
+          Number(job.estimatedCostUsd),
+          this.options.spendLimits,
+          new Date(),
+          claim.id,
+        );
+        if (!budget.allowed) {
+          await finishAnalysisJobAttempt(this.db, claim, {
+            status: "skipped_budget",
+            errorCode: budget.reason ?? "spend_hard_limit",
+          });
+          return;
+        }
         await process(claim);
         await finishAnalysisJobAttempt(this.db, claim, { status: "succeeded" });
       } catch (error) {

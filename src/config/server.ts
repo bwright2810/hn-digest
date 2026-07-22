@@ -18,12 +18,17 @@ const DEVELOPMENT_DEFAULTS = {
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
   LLM_OUTPUT_TOKEN_LIMIT: "4000",
+  LLM_DAILY_SOFT_LIMIT_USD: "2",
+  LLM_DAILY_HARD_LIMIT_USD: "3",
+  LLM_MONTHLY_SOFT_LIMIT_USD: "30",
+  LLM_MONTHLY_HARD_LIMIT_USD: "40",
   WORKER_FETCH_CONCURRENCY_PER_HOST: "2",
   WORKER_LLM_CONCURRENCY: "1",
   WORKER_LEASE_MS: "300000",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
+const positiveMoney = z.coerce.number().positive().finite();
 
 const timeZone = z.string().refine(
   (value) => {
@@ -61,43 +66,62 @@ const applicationUrl = z.string().refine(
   { message: "must be an HTTP or HTTPS URL" },
 );
 
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]),
-  DATABASE_URL: postgresUrl,
-  OPENAI_API_KEY: z.string().min(1, "is required"),
-  OPENAI_MODEL: z.string().min(1),
-  OPENAI_REASONING_EFFORT: z.enum([
-    "none",
-    "minimal",
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ]),
-  OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
-  OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
-  APP_URL: applicationUrl,
-  DIGEST_TIME_ZONE: timeZone,
-  DIGEST_MORNING_TIME: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
-  DIGEST_EVENING_TIME: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
-  DIGEST_STORY_COUNT: positiveInteger,
-  DIGEST_MISSED_RUN_GRACE_MS: positiveInteger,
-  ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
-  ARTICLE_FETCH_MAX_BYTES: positiveInteger,
-  ARTICLE_FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative(),
-  LLM_INSTRUCTION_TOKEN_LIMIT: positiveInteger,
-  LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
-  LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
-  LLM_OUTPUT_TOKEN_LIMIT: positiveInteger,
-  WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
-  WORKER_LLM_CONCURRENCY: positiveInteger,
-  WORKER_LEASE_MS: positiveInteger,
-});
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    DATABASE_URL: postgresUrl,
+    OPENAI_API_KEY: z.string().min(1, "is required"),
+    OPENAI_MODEL: z.string().min(1),
+    OPENAI_REASONING_EFFORT: z.enum([
+      "none",
+      "minimal",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]),
+    OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
+    OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
+    APP_URL: applicationUrl,
+    DIGEST_TIME_ZONE: timeZone,
+    DIGEST_MORNING_TIME: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
+    DIGEST_EVENING_TIME: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
+    DIGEST_STORY_COUNT: positiveInteger,
+    DIGEST_MISSED_RUN_GRACE_MS: positiveInteger,
+    ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
+    ARTICLE_FETCH_MAX_BYTES: positiveInteger,
+    ARTICLE_FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative(),
+    LLM_INSTRUCTION_TOKEN_LIMIT: positiveInteger,
+    LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
+    LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
+    LLM_OUTPUT_TOKEN_LIMIT: positiveInteger,
+    LLM_DAILY_SOFT_LIMIT_USD: positiveMoney,
+    LLM_DAILY_HARD_LIMIT_USD: positiveMoney,
+    LLM_MONTHLY_SOFT_LIMIT_USD: positiveMoney,
+    LLM_MONTHLY_HARD_LIMIT_USD: positiveMoney,
+    WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
+    WORKER_LLM_CONCURRENCY: positiveInteger,
+    WORKER_LEASE_MS: positiveInteger,
+  })
+  .superRefine((values, context) => {
+    for (const [softKey, hardKey] of [
+      ["LLM_DAILY_SOFT_LIMIT_USD", "LLM_DAILY_HARD_LIMIT_USD"],
+      ["LLM_MONTHLY_SOFT_LIMIT_USD", "LLM_MONTHLY_HARD_LIMIT_USD"],
+    ] as const) {
+      if (values[softKey] > values[hardKey]) {
+        context.addIssue({
+          code: "custom",
+          path: [softKey],
+          message: `must not exceed ${hardKey}`,
+        });
+      }
+    }
+  });
 
 export interface AppConfig {
   readonly environment: "development" | "test" | "production";
@@ -139,6 +163,12 @@ export interface AppConfig {
     readonly fetchConcurrencyPerHost: number;
     readonly llmConcurrency: number;
     readonly leaseMs: number;
+  };
+  readonly spend: {
+    readonly dailySoftLimitUsd: number;
+    readonly dailyHardLimitUsd: number;
+    readonly monthlySoftLimitUsd: number;
+    readonly monthlyHardLimitUsd: number;
   };
 }
 
@@ -219,6 +249,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       fetchConcurrencyPerHost: values.WORKER_FETCH_CONCURRENCY_PER_HOST,
       llmConcurrency: values.WORKER_LLM_CONCURRENCY,
       leaseMs: values.WORKER_LEASE_MS,
+    }),
+    spend: Object.freeze({
+      dailySoftLimitUsd: values.LLM_DAILY_SOFT_LIMIT_USD,
+      dailyHardLimitUsd: values.LLM_DAILY_HARD_LIMIT_USD,
+      monthlySoftLimitUsd: values.LLM_MONTHLY_SOFT_LIMIT_USD,
+      monthlyHardLimitUsd: values.LLM_MONTHLY_HARD_LIMIT_USD,
     }),
   });
 }

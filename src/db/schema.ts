@@ -75,6 +75,12 @@ export const analysisJobAttemptStatus = pgEnum("analysis_job_attempt_status", [
   "abandoned",
 ]);
 
+export const operationalAlertKind = pgEnum("operational_alert_kind", [
+  "daily_spend_soft_limit",
+  "monthly_spend_soft_limit",
+  "scheduled_run_failed",
+]);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {
@@ -515,5 +521,53 @@ export const llmUsage = pgTable(
       "llm_usage_actual_cost_nonnegative",
       sql`${table.actualCostUsd} is null or ${table.actualCostUsd} >= 0`,
     ),
+  ],
+);
+
+export const analysisCacheLookups = pgTable(
+  "analysis_cache_lookups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    storyId: bigint("story_id", { mode: "number" })
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    cacheKey: varchar("cache_key", { length: 64 }).notNull(),
+    hit: boolean("hit").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("analysis_cache_lookups_created_at_idx").on(table.createdAt),
+    index("analysis_cache_lookups_hit_created_at_idx").on(
+      table.hit,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const operationalAlerts = pgTable(
+  "operational_alerts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kind: operationalAlertKind("kind").notNull(),
+    deduplicationKey: varchar("deduplication_key", { length: 200 }).notNull(),
+    message: text("message").notNull(),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("operational_alerts_deduplication_key_unique").on(
+      table.deduplicationKey,
+    ),
+    index("operational_alerts_unacknowledged_idx")
+      .on(table.createdAt)
+      .where(sql`${table.acknowledgedAt} is null`),
   ],
 );

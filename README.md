@@ -61,6 +61,19 @@ against the fixed synthetic evaluation set and weighted rubric documented in
 versioned, require no live network or model calls, and contain no copied source
 articles.
 
+## Operations and spend controls
+
+HD-071 records cache lookups and deduplicated operational alerts in PostgreSQL.
+The operations snapshot aggregates digest duration and failures, article fetch
+outcomes, queue depth, LLM failures, cache hit rate, token usage, and spend over
+a requested window. Daily and monthly spend windows use UTC calendar boundaries.
+
+Configure `LLM_DAILY_SOFT_LIMIT_USD`, `LLM_DAILY_HARD_LIMIT_USD`,
+`LLM_MONTHLY_SOFT_LIMIT_USD`, and `LLM_MONTHLY_HARD_LIMIT_USD`. Soft limits
+create alert records. Before invoking the LLM, workers atomically compare actual
+spend plus concurrent reservations with the hard limits; denied jobs are marked
+`skipped_budget`. Story collection and the digest reader remain available.
+
 ## Validation
 
 ```sh

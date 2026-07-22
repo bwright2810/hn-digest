@@ -42,6 +42,12 @@ describe("loadConfig", () => {
       llmConcurrency: 1,
       leaseMs: 300_000,
     });
+    expect(config.spend).toEqual({
+      dailySoftLimitUsd: 2,
+      dailyHardLimitUsd: 3,
+      monthlySoftLimitUsd: 30,
+      monthlyHardLimitUsd: 40,
+    });
   });
 
   it("requires secrets in every environment", () => {
@@ -91,9 +97,21 @@ describe("loadConfig", () => {
         LLM_ARTICLE_TOKEN_LIMIT: "0",
         OPENAI_REQUEST_TIMEOUT_MS: "0",
         OPENAI_MAX_RETRIES: "-1",
+        LLM_DAILY_SOFT_LIMIT_USD: "0",
       }),
     ).toThrowError(
-      /OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT/s,
+      /OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT.*LLM_DAILY_SOFT_LIMIT_USD/s,
     );
+  });
+
+  it("requires spend soft limits not to exceed hard limits", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "development",
+        ...requiredSecrets,
+        LLM_DAILY_SOFT_LIMIT_USD: "4",
+        LLM_DAILY_HARD_LIMIT_USD: "3",
+      }),
+    ).toThrowError(/LLM_DAILY_SOFT_LIMIT_USD.*LLM_DAILY_HARD_LIMIT_USD/s);
   });
 });
