@@ -18,7 +18,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hn_digest_test
       NEXT_TELEMETRY_DISABLED: "1"
+      RUN_DATABASE_TESTS: "1"
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: hn_digest_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hn_digest_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Check out repository
@@ -46,8 +63,17 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
+      - name: Check migrations
+        run: pnpm db:check
+
+      - name: Migrate test database
+        run: pnpm db:migrate
+
       - name: Test
         run: pnpm test
+
+      - name: Verify migration rollback and reapplication
+        run: CONFIRM_DATABASE_ROLLBACK=1 pnpm db:rollback && pnpm db:migrate
 
       - name: Build
         run: pnpm build

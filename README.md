@@ -41,4 +41,17 @@ The Compose file requires local credentials instead of committing defaults:
 POSTGRES_USER=hn_digest POSTGRES_PASSWORD='choose-a-local-password' docker compose up -d postgres
 ```
 
-PostgreSQL binds only to the local loopback interface. HD-002 will add application configuration and a documented example environment file.
+PostgreSQL binds only to the local loopback interface. Set the matching `DATABASE_URL` in `.env.local` before running application or migration commands.
+
+## Database migrations
+
+Set `DATABASE_URL` in `.env.local`, then use the checked-in Drizzle migrations:
+
+```sh
+pnpm db:generate
+pnpm db:check
+pnpm db:migrate
+CONFIRM_DATABASE_ROLLBACK=1 pnpm db:rollback
+```
+
+`db:rollback` currently removes the complete HD-010 development schema and Drizzle migration journal. It requires the explicit confirmation variable above and refuses to run when `NODE_ENV=production`. Production rollback must follow a reviewed, version-specific recovery plan.

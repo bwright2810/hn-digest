@@ -28,6 +28,10 @@ plans, commits, and pull requests where applicable.
   `main`. It installs from the frozen lockfile and runs formatting, linting,
   type-checking, tests, and the production build with a lockfile-keyed pnpm
   store cache.
+- HD-010 established the initial PostgreSQL schema in `src/db/schema.ts`,
+  generated forward migrations under `drizzle/`, and a development-only full
+  rollback script. CI exercises migrations and database constraints against an
+  isolated PostgreSQL 17 service.
 - The agreed baseline is TypeScript on Node.js LTS, pnpm, Next.js, PostgreSQL
   with Drizzle ORM, Zod, Vitest, headless Playwright, ESLint, Prettier, CSS
   Modules/custom properties, the Hacker News Firebase API, Readability-style
@@ -258,9 +262,11 @@ POSTGRES_USER=<local-user> POSTGRES_PASSWORD=<local-password> \
   sudo -E docker compose up -d postgres
 ```
 
-Database migration commands do not exist yet; add them when HD-010 introduces
-persistence. Never invent a successful validation result for a command that has
-not been configured or run.
+Use `pnpm db:generate`, `pnpm db:check`, `pnpm db:migrate`, and
+`CONFIRM_DATABASE_ROLLBACK=1 pnpm db:rollback` for schema changes. The rollback
+command currently removes the complete development schema and refuses to run
+when `NODE_ENV=production`; do not run it against production. Never invent a
+successful validation result for a command that has not been configured or run.
 
 Configuration errors may identify variable names and validation constraints,
 but must never include supplied values. Do not serialize the server
