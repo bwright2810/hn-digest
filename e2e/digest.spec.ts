@@ -15,7 +15,12 @@ async function expectNoHorizontalOverflow(
 test("reads the latest digest and preserves source provenance", async ({
   page,
 }) => {
-  await page.goto("/?fixture=complete");
+  const response = await page.goto("/?fixture=complete");
+
+  expect(response?.headers()["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
+  expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Today on Hacker News.",

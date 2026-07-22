@@ -43,6 +43,25 @@ describe("HackerNewsClient", () => {
     });
   });
 
+  it("rejects source URLs with executable or non-web schemes", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      jsonResponse({
+        by: "attacker",
+        id: 100,
+        time: 1_720_000_000,
+        title: "Unsafe link",
+        type: "story",
+        url: "javascript:alert(document.domain)",
+      }),
+    );
+    const client = new HackerNewsClient({ fetch, retries: 0 });
+
+    await expect(client.getItem(100)).rejects.toMatchObject({
+      kind: "invalid-response",
+      itemId: 100,
+    });
+  });
+
   it("classifies malformed JSON as an invalid response without retrying", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       new Response("not JSON", {

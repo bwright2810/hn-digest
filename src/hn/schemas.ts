@@ -2,6 +2,13 @@ import { z } from "zod";
 
 const itemId = z.number().int().positive();
 const unixTimestamp = z.number().int().nonnegative();
+const publicWebUrl = z.url().refine(
+  (value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  },
+  { message: "must use HTTP or HTTPS" },
+);
 
 const itemBase = z.object({
   id: itemId,
@@ -18,7 +25,7 @@ const storyItem = itemBase.extend({
   kids: z.array(itemId).optional(),
   score: z.number().int().optional(),
   text: z.string().optional(),
-  url: z.url().optional(),
+  url: publicWebUrl.optional(),
 });
 
 const commentItem = itemBase.extend({
@@ -37,7 +44,7 @@ const jobItem = itemBase.extend({
   title: z.string(),
   score: z.number().int().optional(),
   text: z.string().optional(),
-  url: z.url().optional(),
+  url: publicWebUrl.optional(),
 });
 
 const pollItem = itemBase.extend({

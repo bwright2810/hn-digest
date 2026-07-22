@@ -74,6 +74,12 @@ create alert records. Before invoking the LLM, workers atomically compare actual
 spend plus concurrent reservations with the hard limits; denied jobs are marked
 `skipped_budget`. Story collection and the digest reader remain available.
 
+## Security and privacy
+
+The HD-072 threat review, trust boundaries, operator-access decision, secret and
+logging rules, and current retention/deletion behavior are documented in
+[`docs/security-and-privacy.md`](./docs/security-and-privacy.md).
+
 ## Validation
 
 ```sh
