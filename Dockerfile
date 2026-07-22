@@ -22,6 +22,8 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/production.js ./production.js
+COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/background.js ./background.js
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "production.js"]

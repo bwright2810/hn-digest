@@ -25,6 +25,9 @@ const DEVELOPMENT_DEFAULTS = {
   WORKER_FETCH_CONCURRENCY_PER_HOST: "2",
   WORKER_LLM_CONCURRENCY: "1",
   WORKER_LEASE_MS: "300000",
+  SCHEDULER_POLL_INTERVAL_MS: "30000",
+  WORKER_POLL_INTERVAL_MS: "5000",
+  RUNTIME_SHUTDOWN_GRACE_MS: "30000",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
@@ -107,6 +110,9 @@ const environmentSchema = z
     WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
     WORKER_LLM_CONCURRENCY: positiveInteger,
     WORKER_LEASE_MS: positiveInteger,
+    SCHEDULER_POLL_INTERVAL_MS: positiveInteger,
+    WORKER_POLL_INTERVAL_MS: positiveInteger,
+    RUNTIME_SHUTDOWN_GRACE_MS: positiveInteger,
   })
   .superRefine((values, context) => {
     for (const [softKey, hardKey] of [
@@ -163,6 +169,11 @@ export interface AppConfig {
     readonly fetchConcurrencyPerHost: number;
     readonly llmConcurrency: number;
     readonly leaseMs: number;
+    readonly pollIntervalMs: number;
+  };
+  readonly runtime: {
+    readonly schedulerPollIntervalMs: number;
+    readonly shutdownGraceMs: number;
   };
   readonly spend: {
     readonly dailySoftLimitUsd: number;
@@ -249,6 +260,11 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       fetchConcurrencyPerHost: values.WORKER_FETCH_CONCURRENCY_PER_HOST,
       llmConcurrency: values.WORKER_LLM_CONCURRENCY,
       leaseMs: values.WORKER_LEASE_MS,
+      pollIntervalMs: values.WORKER_POLL_INTERVAL_MS,
+    }),
+    runtime: Object.freeze({
+      schedulerPollIntervalMs: values.SCHEDULER_POLL_INTERVAL_MS,
+      shutdownGraceMs: values.RUNTIME_SHUTDOWN_GRACE_MS,
     }),
     spend: Object.freeze({
       dailySoftLimitUsd: values.LLM_DAILY_SOFT_LIMIT_USD,

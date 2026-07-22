@@ -7,19 +7,16 @@ never commit their real values.
 
 ## Current process boundary
 
-The production image currently starts one process: the Next.js web reader on
-port 3000. The health endpoint is `GET /api/health`. Scheduler and worker logic
-exists as separately tested modules, but the repository does not yet provide
-supervised production entrypoints that poll them. Do not invent a container
-command for those modules and do not represent scheduled or LLM processing as
-enabled in this deployment.
+The production image runs a small PID-1 supervisor that starts the Next.js web
+reader and a background runtime in one container. The background runtime polls
+the existing idempotent scheduler and monitors queued analysis work. SIGTERM or
+SIGINT stops new polling, drains active iterations, closes PostgreSQL, and
+stops the web child within a configured grace period.
 
-This means the current image safely deploys the reader while collection,
-scheduling, and LLM submission remain disabled. Before enabling those
-activities, add explicit executable entrypoints, graceful shutdown, polling
-intervals, and process supervision in a roadmap-scoped implementation task.
-Keep web and background processes in one application/container initially due
-to host memory limits, but retain their logical separation.
+Scheduled run records are enabled. Story collection, analysis-job assembly,
+and LLM submission remain disabled until the end-to-end pipeline task connects
+a real processor. The worker monitor deliberately does not claim queued jobs;
+logs identify queued work without damaging it through a placeholder processor.
 
 ## Production topology
 
@@ -41,10 +38,10 @@ port mapping for the application container.
 
 Initial resource ceilings for the constrained 2-vCPU/1.9-GiB host are:
 
-| Resource              | CPU limit | Memory limit | Operational default                                                     |
-| --------------------- | --------: | -----------: | ----------------------------------------------------------------------- |
-| HN Digest application |     1 CPU |      512 MiB | one web process; later one LLM request and two fetches per host at most |
-| HN Digest PostgreSQL  |   0.5 CPU |      512 MiB | dedicated volume; default connection pool only                          |
+| Resource              | CPU limit | Memory limit | Operational default                                                                        |
+| --------------------- | --------: | -----------: | ------------------------------------------------------------------------------------------ |
+| HN Digest application |     1 CPU |      512 MiB | one web and one background process; later one LLM request and two fetches per host at most |
+| HN Digest PostgreSQL  |   0.5 CPU |      512 MiB | dedicated volume; default connection pool only                                             |
 
 Leave capacity for Coolify, Traefik, Docker, and existing workloads. Inspect
 actual container memory and swap after deployment and during a digest run.
@@ -86,6 +83,9 @@ them from build arguments, image layers, deployment logs, and previews.
 | `WORKER_FETCH_CONCURRENCY_PER_HOST` | `2`                                                                                            |
 | `WORKER_LLM_CONCURRENCY`            | `1`                                                                                            |
 | `WORKER_LEASE_MS`                   | `300000`                                                                                       |
+| `SCHEDULER_POLL_INTERVAL_MS`        | `30000`                                                                                        |
+| `WORKER_POLL_INTERVAL_MS`           | `5000`                                                                                         |
+| `RUNTIME_SHUTDOWN_GRACE_MS`         | `30000`                                                                                        |
 
 The application intentionally fails startup when any production variable is
 missing or invalid. Configuration errors identify field names and constraints,
@@ -130,7 +130,8 @@ development schema.
 - Select Dockerfile deployment from the private Git repository and pin the
   production branch to `main`.
 - Use the repository-root `Dockerfile`; its default runtime starts
-  `node server.js`, listens on port 3000, and runs as an unprivileged user.
+  `node production.js`, supervises web/background children, listens on port
+  3000, and runs as an unprivileged user.
 - Add all runtime variables from the table above. Do not configure them as
   Docker build arguments.
 - Set the health check to HTTP `GET /api/health` on port 3000. Use a 30-second
@@ -159,12 +160,11 @@ errors only; secrets and source bodies must not appear.
 
 ## Immediate scheduling and spend shutdown
 
-In the current deployment, scheduling and LLM processing are disabled because
-no background entrypoint runs. Once that entrypoint exists, the emergency stop
-is to scale/stop the background process (or stop the single combined
-application if it cannot yet be separated). This prevents new claims and model
-requests immediately; queued jobs remain in PostgreSQL and the reader remains
-available only if web and worker can be controlled separately.
+LLM processing remains disabled until the pipeline processor is connected.
+After it is enabled, the emergency stop for this initial combined deployment is
+to stop the application container. This prevents new claims and model requests;
+queued jobs remain in PostgreSQL, but the reader is also unavailable until the
+container restarts.
 
 Also set the OpenAI project budget/rate limit as an independent provider-side
 ceiling and revoke the project key if requests continue unexpectedly. Key
@@ -261,18 +261,18 @@ migration level, backup identity, timestamps, and verification results.
 
 ## Common failure recovery
 
-| Symptom                            | Check                                                                              | Recovery                                                                                                                                               |
-| ---------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Application fails at startup       | Coolify runtime variables and classified configuration error                       | Add/correct the named variable as a runtime secret/value; never paste its value into logs                                                              |
-| Health check fails after deploy    | container logs, port 3000, memory limit, database DNS/connectivity                 | restore private-network attachment, correct health target, or roll back the application image                                                          |
-| Database connection fails          | dedicated resource status, private hostname, credential rotation, connection count | keep 5432 private; rotate/update `DATABASE_URL` atomically and redeploy                                                                                |
-| Migration fails                    | migration output, PostgreSQL version, pre-migration backup                         | stop promotion; prefer a reviewed forward fix or restore into a new resource                                                                           |
-| Scheduled run missing              | background process status, time zone, grace window, failed-run alerts              | current image has no scheduler entrypoint; after one exists, restart only after checking that idempotent slot handling will not create unintended work |
-| Queue stops moving                 | worker process, leases, queue depth, hard-budget alerts                            | keep LLM stopped until budget is checked; expired leases are reclaimable by the worker implementation                                                  |
-| Spend alert or unexpected requests | actual usage, reservations, provider dashboard, last request IDs                   | stop background processing immediately; revoke the project key if requests continue                                                                    |
-| Article fetch failures spike       | classified failure codes, DNS/network policy, target content types                 | do not weaken SSRF rules; leave stories discussion-only and investigate by failure class                                                               |
-| Backup missing or restore fails    | object checksum, destination credentials, PostgreSQL major version, restore logs   | treat recovery readiness as failed; fix the backup path and complete a new isolated restore test                                                       |
-| Host memory pressure               | Docker/Coolify metrics, swap, app and DB container usage                           | stop background work first, retain concurrency 1/2, roll back memory-heavy changes, and avoid running Playwright                                       |
+| Symptom                            | Check                                                                              | Recovery                                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Application fails at startup       | Coolify runtime variables and classified configuration error                       | Add/correct the named variable as a runtime secret/value; never paste its value into logs                        |
+| Health check fails after deploy    | container logs, port 3000, memory limit, database DNS/connectivity                 | restore private-network attachment, correct health target, or roll back the application image                    |
+| Database connection fails          | dedicated resource status, private hostname, credential rotation, connection count | keep 5432 private; rotate/update `DATABASE_URL` atomically and redeploy                                          |
+| Migration fails                    | migration output, PostgreSQL version, pre-migration backup                         | stop promotion; prefer a reviewed forward fix or restore into a new resource                                     |
+| Scheduled run missing              | background process status, time zone, grace window, failed-run alerts              | correct configuration or connectivity, then restart; the unique schedule key makes slot creation idempotent      |
+| Queue stops moving                 | worker process, leases, queue depth, hard-budget alerts                            | keep LLM stopped until budget is checked; expired leases are reclaimable by the worker implementation            |
+| Spend alert or unexpected requests | actual usage, reservations, provider dashboard, last request IDs                   | stop background processing immediately; revoke the project key if requests continue                              |
+| Article fetch failures spike       | classified failure codes, DNS/network policy, target content types                 | do not weaken SSRF rules; leave stories discussion-only and investigate by failure class                         |
+| Backup missing or restore fails    | object checksum, destination credentials, PostgreSQL major version, restore logs   | treat recovery readiness as failed; fix the backup path and complete a new isolated restore test                 |
+| Host memory pressure               | Docker/Coolify metrics, swap, app and DB container usage                           | stop background work first, retain concurrency 1/2, roll back memory-heavy changes, and avoid running Playwright |
 
 ## Release checklist
 

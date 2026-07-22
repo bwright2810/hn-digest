@@ -369,6 +369,35 @@ Acceptance criteria:
 - The caller receives a run ID and can inspect progress.
 - The endpoint cannot be used anonymously to create unbounded LLM spend.
 
+### HD-054 — Add production process entrypoints
+
+Run the Next.js web process and the PostgreSQL-backed scheduler and
+worker-readiness loops from one production container, while keeping them as
+separate logical modules.
+The runtime must stop cleanly, poll conservatively on the memory-constrained
+host, and isolate recoverable background-loop failures from the web process.
+
+This task starts the existing scheduler and worker machinery. End-to-end
+assembly of collected stories into analysis jobs is a separate pipeline task;
+HD-054 must not fabricate model requests or persist complete prompt payloads as
+a shortcut.
+
+Acceptance criteria:
+
+- One container starts the web server, scheduler loop, and worker-readiness
+  loop; queued jobs remain unclaimed until a real pipeline processor exists.
+- SIGTERM and SIGINT stop polling, drain current iterations, close PostgreSQL,
+  and terminate the web child process within a bounded grace period.
+- Poll intervals are typed configuration and production requires explicit
+  values.
+- Schedule polling uses the configured named time zone and existing unique
+  schedule key, so restarts cannot create duplicate scheduled runs.
+- Recoverable scheduler or worker iteration failures are classified and logged
+  without silently terminating the web process; startup/configuration failures
+  still fail the container.
+- Unit tests cover polling, failure isolation, and graceful cancellation, and a
+  production-container smoke test verifies all entrypoints start.
+
 ## Milestone 6: Reading experience
 
 ### HD-059 — Define the visual system and responsive shell
