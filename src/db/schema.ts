@@ -68,6 +68,13 @@ export const analysisJobStatus = pgEnum("analysis_job_status", [
   "incomplete",
 ]);
 
+export const analysisJobAttemptStatus = pgEnum("analysis_job_attempt_status", [
+  "running",
+  "succeeded",
+  "failed",
+  "abandoned",
+]);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {
@@ -312,6 +319,8 @@ export const analysisJobs = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     errorCode: varchar("error_code", { length: 100 }),
+    leaseOwner: varchar("lease_owner", { length: 160 }),
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
     ...timestampColumns,
   },
   (table) => [
@@ -321,6 +330,7 @@ export const analysisJobs = pgTable(
       table.availableAt,
     ),
     index("analysis_jobs_digest_run_story_idx").on(table.digestRunStoryId),
+    index("analysis_jobs_lease_idx").on(table.status, table.leasedUntil),
     index("analysis_jobs_versions_model_idx").on(
       table.promptVersion,
       table.schemaVersion,
@@ -342,6 +352,32 @@ export const analysisJobs = pgTable(
       "analysis_jobs_attempt_count_nonnegative",
       sql`${table.attemptCount} >= 0`,
     ),
+  ],
+);
+
+export const analysisJobAttempts = pgTable(
+  "analysis_job_attempts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    analysisJobId: uuid("analysis_job_id")
+      .notNull()
+      .references(() => analysisJobs.id, { onDelete: "cascade" }),
+    attempt: integer("attempt").notNull(),
+    workerId: varchar("worker_id", { length: 160 }).notNull(),
+    status: analysisJobAttemptStatus("status").default("running").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    errorCode: varchar("error_code", { length: 100 }),
+  },
+  (table) => [
+    uniqueIndex("analysis_job_attempts_job_attempt_unique").on(
+      table.analysisJobId,
+      table.attempt,
+    ),
+    index("analysis_job_attempts_status_idx").on(table.status, table.startedAt),
+    check("analysis_job_attempts_attempt_positive", sql`${table.attempt} > 0`),
   ],
 );
 

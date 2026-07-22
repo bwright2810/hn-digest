@@ -17,6 +17,9 @@ const DEVELOPMENT_DEFAULTS = {
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
   LLM_OUTPUT_TOKEN_LIMIT: "4000",
+  WORKER_FETCH_CONCURRENCY_PER_HOST: "2",
+  WORKER_LLM_CONCURRENCY: "1",
+  WORKER_LEASE_MS: "300000",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
@@ -89,6 +92,9 @@ const environmentSchema = z.object({
   LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
   LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
   LLM_OUTPUT_TOKEN_LIMIT: positiveInteger,
+  WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
+  WORKER_LLM_CONCURRENCY: positiveInteger,
+  WORKER_LEASE_MS: positiveInteger,
 });
 
 export interface AppConfig {
@@ -125,6 +131,11 @@ export interface AppConfig {
     readonly article: number;
     readonly comments: number;
     readonly output: number;
+  };
+  readonly worker: {
+    readonly fetchConcurrencyPerHost: number;
+    readonly llmConcurrency: number;
+    readonly leaseMs: number;
   };
 }
 
@@ -199,6 +210,11 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       article: values.LLM_ARTICLE_TOKEN_LIMIT,
       comments: values.LLM_COMMENT_TOKEN_LIMIT,
       output: values.LLM_OUTPUT_TOKEN_LIMIT,
+    }),
+    worker: Object.freeze({
+      fetchConcurrencyPerHost: values.WORKER_FETCH_CONCURRENCY_PER_HOST,
+      llmConcurrency: values.WORKER_LLM_CONCURRENCY,
+      leaseMs: values.WORKER_LEASE_MS,
     }),
   });
 }

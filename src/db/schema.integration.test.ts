@@ -38,13 +38,14 @@ describe.skipIf(!runDatabaseTests)("HD-010 PostgreSQL schema", () => {
       WHERE table_schema = 'public'
         AND table_name IN (
           'stories', 'story_snapshots', 'comments', 'documents', 'digest_runs',
-          'digest_run_stories', 'analysis_jobs', 'article_analyses',
+          'digest_run_stories', 'analysis_jobs', 'analysis_job_attempts', 'article_analyses',
           'discussion_analyses', 'llm_usage'
         )
       ORDER BY table_name
     `);
 
     expect(result.rows.map((row) => row.table_name)).toEqual([
+      "analysis_job_attempts",
       "analysis_jobs",
       "article_analyses",
       "comments",
@@ -61,6 +62,8 @@ describe.skipIf(!runDatabaseTests)("HD-010 PostgreSQL schema", () => {
   it("has indexes for source identities, content hashes, and analysis versions", async () => {
     const expectedIndexes = [
       "analysis_jobs_cache_key_unique",
+      "analysis_jobs_lease_idx",
+      "analysis_job_attempts_job_attempt_unique",
       "analysis_jobs_versions_model_idx",
       "article_analyses_content_hash_idx",
       "comments_content_hash_idx",

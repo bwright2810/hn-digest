@@ -36,6 +36,11 @@ describe("loadConfig", () => {
       comments: 8_000,
       output: 4_000,
     });
+    expect(config.worker).toEqual({
+      fetchConcurrencyPerHost: 2,
+      llmConcurrency: 1,
+      leaseMs: 300_000,
+    });
   });
 
   it("requires secrets in every environment", () => {
@@ -48,7 +53,7 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT/s,
+      /OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS/s,
     );
   });
 
