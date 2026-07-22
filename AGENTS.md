@@ -24,6 +24,10 @@ plans, commits, and pull requests where applicable.
   startup validation through `src/instrumentation.ts`. Database URLs and OpenAI
   keys are always required. Non-secret defaults apply only outside production;
   production requires every documented variable explicitly.
+- HD-003 established `.github/workflows/ci.yml` for pull requests and pushes to
+  `main`. It installs from the frozen lockfile and runs formatting, linting,
+  type-checking, tests, and the production build with a lockfile-keyed pnpm
+  store cache.
 - The agreed baseline is TypeScript on Node.js LTS, pnpm, Next.js, PostgreSQL
   with Drizzle ORM, Zod, Vitest, headless Playwright, ESLint, Prettier, CSS
   Modules/custom properties, the Hacker News Firebase API, Readability-style
