@@ -41,3 +41,6 @@ Because documents are content-addressed and updated in place when a story
 recurs, provisional historical reports use each story's latest known document
 outcome. Treat those results as workflow and candidate-selection tests, not as
 the final temporal baseline represented by `roadmapReady`.
+
+The first provisional production review is recorded in
+`docs/source-adapter-baseline-provisional.md`.
