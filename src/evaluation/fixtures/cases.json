@@ -1,0 +1,1014 @@
+[
+  {
+    "id": "eval-01",
+    "category": "technical",
+    "title": "A queue benchmark under bursty load",
+    "articleStatus": "available",
+    "articleText": "A synthetic benchmark compares two queue designs under bursts of 1,000 jobs. Queue A lowers median latency by 18%, while Queue B has lower p99 latency and uses 12% less memory. The test ran on one eight-core host for twenty minutes and did not simulate worker crashes.",
+    "comments": [
+      {
+        "hnItemId": 101,
+        "parentHnItemId": 1,
+        "text": "The p99 result matters more for our alerting workload than the median."
+      },
+      {
+        "hnItemId": 102,
+        "parentHnItemId": 1,
+        "text": "Without crash recovery this says little about operational behavior."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "Queue A improves median latency",
+        "Queue B improves p99 and memory"
+      ],
+      "mustQualify": [
+        "single-host short benchmark",
+        "crash recovery was not tested"
+      ],
+      "discussionEvidenceIds": [101, 102],
+      "mustNotClaim": ["Queue A is universally faster"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-02",
+    "category": "technical",
+    "title": "Replacing polling with database notifications",
+    "articleStatus": "available",
+    "articleText": "A small service replaced five-second polling with database notifications. Idle query volume fell 92%, but reconnect logic missed three notifications during a forced failover. A reconciliation poll every minute repaired the omissions within sixty seconds.",
+    "comments": [
+      {
+        "hnItemId": 201,
+        "parentHnItemId": 2,
+        "text": "The reconciliation poll means this is a hybrid, not a pure notification design."
+      },
+      {
+        "hnItemId": 202,
+        "parentHnItemId": 2,
+        "text": "A minute of stale state may be acceptable for dashboards but not authorization."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "idle query volume fell",
+        "reconciliation repairs missed notifications"
+      ],
+      "mustQualify": [
+        "failover caused omissions",
+        "suitability depends on staleness tolerance"
+      ],
+      "discussionEvidenceIds": [201, 202],
+      "mustNotClaim": ["notifications guarantee delivery"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-03",
+    "category": "technical",
+    "title": "A compact parser with explicit error recovery",
+    "articleStatus": "truncated",
+    "articleText": "The parser uses a table-driven state machine and returns typed recovery points. On the included corpus it accepts all valid samples and reports line-level errors for malformed samples. [The supplied article ends before the performance and corpus-construction sections.]",
+    "comments": [
+      {
+        "hnItemId": 301,
+        "parentHnItemId": 3,
+        "text": "The recovery API is clearer than exceptions for editor integrations."
+      },
+      {
+        "hnItemId": 302,
+        "parentHnItemId": 3,
+        "text": "We cannot judge speed because that section is missing."
+      }
+    ],
+    "expectations": {
+      "mustCover": ["table-driven parser", "typed recovery points"],
+      "mustQualify": ["article is truncated", "performance cannot be assessed"],
+      "discussionEvidenceIds": [301, 302],
+      "mustNotClaim": ["the parser is faster than alternatives"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-04",
+    "category": "technical",
+    "title": "Measuring cache invalidation delay",
+    "articleStatus": "available",
+    "articleText": "An experiment measures invalidation propagation across three regions. Ninety-nine percent complete within 420 milliseconds; the slowest observed event takes 4.8 seconds during a network impairment. Results cover 50,000 synthetic keys and exclude values larger than 64 kilobytes.",
+    "comments": [
+      {
+        "hnItemId": 401,
+        "parentHnItemId": 4,
+        "text": "The maximum matters if stale reads can trigger payments."
+      },
+      {
+        "hnItemId": 402,
+        "parentHnItemId": 4,
+        "text": "Synthetic keys may not reproduce hot-key contention."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "99% propagate within 420 milliseconds",
+        "network impairment produced a 4.8-second outlier"
+      ],
+      "mustQualify": ["synthetic keys", "large values excluded"],
+      "discussionEvidenceIds": [401, 402],
+      "mustNotClaim": ["all invalidations complete under 420 milliseconds"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-05",
+    "category": "technical",
+    "title": "Static checks for configuration drift",
+    "articleStatus": "available",
+    "articleText": "A linter compares declared configuration with deployed manifests and caught eleven stale flags in one repository. It cannot inspect values injected at runtime, so the authors pair it with a startup validator. No controlled comparison measured incident reduction.",
+    "comments": [
+      {
+        "hnItemId": 501,
+        "parentHnItemId": 5,
+        "text": "Catching stale declarations before review is still useful even without an incident study."
+      },
+      {
+        "hnItemId": 502,
+        "parentHnItemId": 5,
+        "text": "Runtime injection is exactly where our worst drift occurs."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "linter found stale flags",
+        "startup validation covers a blind spot"
+      ],
+      "mustQualify": ["no measured incident reduction"],
+      "discussionEvidenceIds": [501, 502],
+      "mustNotClaim": ["the linter prevents configuration incidents"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-06",
+    "category": "opinion",
+    "title": "Maintenance should be a product feature",
+    "articleStatus": "available",
+    "articleText": "The author argues that maintenance work should appear in product planning because reliability affects users. The essay cites two personal project failures but offers no survey or controlled data. It proposes reserving one week per quarter for dependency upgrades and recovery drills.",
+    "comments": [
+      {
+        "hnItemId": 601,
+        "parentHnItemId": 6,
+        "text": "A fixed week is arbitrary; teams with regulated dependencies need continuous work."
+      },
+      {
+        "hnItemId": 602,
+        "parentHnItemId": 6,
+        "text": "Making the cost visible in planning is the stronger idea."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "maintenance belongs in product planning",
+        "quarterly maintenance proposal"
+      ],
+      "mustQualify": ["anecdotal evidence", "cadence is prescriptive"],
+      "discussionEvidenceIds": [601, 602],
+      "mustNotClaim": ["quarterly maintenance is proven optimal"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-07",
+    "category": "opinion",
+    "title": "Default settings are part of the interface",
+    "articleStatus": "available",
+    "articleText": "An essay claims defaults deserve the same design scrutiny as visible controls because most users never change them. Examples include backup retention and notification frequency. The piece acknowledges that one default cannot suit every risk profile and recommends explaining consequences near the setting.",
+    "comments": [
+      {
+        "hnItemId": 701,
+        "parentHnItemId": 7,
+        "text": "Defaults also become de facto policy inside large organizations."
+      },
+      {
+        "hnItemId": 702,
+        "parentHnItemId": 7,
+        "text": "Too much warning text can make the interface unusable."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "defaults shape most user outcomes",
+        "explain consequences"
+      ],
+      "mustQualify": ["risk profiles differ", "explanation has usability cost"],
+      "discussionEvidenceIds": [701, 702],
+      "mustNotClaim": ["users never change defaults"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-08",
+    "category": "opinion",
+    "title": "Small tools benefit from boring formats",
+    "articleStatus": "available",
+    "articleText": "The writer prefers line-oriented text formats for small internal tools because they are inspectable and compose well. They concede that nested data and schema evolution often justify structured formats. The argument is based on maintenance experience rather than comparative research.",
+    "comments": [
+      {
+        "hnItemId": 801,
+        "parentHnItemId": 8,
+        "text": "Line formats become painful once fields need escaping."
+      },
+      {
+        "hnItemId": 802,
+        "parentHnItemId": 8,
+        "text": "For append-only event logs, inspectability has saved us repeatedly."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "line-oriented formats favor inspectability and composition",
+        "structured formats suit nesting and evolution"
+      ],
+      "mustQualify": ["experience-based argument"],
+      "discussionEvidenceIds": [801, 802],
+      "mustNotClaim": ["text formats are always simpler"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-09",
+    "category": "opinion",
+    "title": "Postmortems should include successful defenses",
+    "articleStatus": "available",
+    "articleText": "The essay argues that incident reviews overfocus on failed controls and should record defenses that limited damage. It suggests naming the observable signal, responder action, and prevented consequence. The author warns against turning this into praise that suppresses criticism.",
+    "comments": [
+      {
+        "hnItemId": 901,
+        "parentHnItemId": 9,
+        "text": "Successful controls are useful evidence for future investment."
+      },
+      {
+        "hnItemId": 902,
+        "parentHnItemId": 9,
+        "text": "Teams may speculate about prevented harm that cannot be measured."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "record defenses that limited incidents",
+        "document signal, action, and consequence"
+      ],
+      "mustQualify": [
+        "avoid suppressing criticism",
+        "counterfactual harm may be uncertain"
+      ],
+      "discussionEvidenceIds": [901, 902],
+      "mustNotClaim": ["successful defenses can always be quantified"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-10",
+    "category": "text-post",
+    "title": "Ask HN: How do small teams test restores?",
+    "articleStatus": "text-post",
+    "articleText": "We have daily encrypted backups but have never restored the full service. With two engineers and limited staging capacity, what is the smallest useful restore drill?",
+    "comments": [
+      {
+        "hnItemId": 1001,
+        "parentHnItemId": 10,
+        "text": "Restore one random table monthly and the full system quarterly."
+      },
+      {
+        "hnItemId": 1002,
+        "parentHnItemId": 10,
+        "text": "First define recovery time and recovery point objectives; otherwise the drill has no pass condition."
+      },
+      {
+        "hnItemId": 1003,
+        "parentHnItemId": 1001,
+        "text": "Table restores can miss roles, extensions, and application ordering."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "request seeks a minimal restore drill",
+        "define recovery objectives",
+        "partial and full restores test different risks"
+      ],
+      "mustQualify": ["no external article"],
+      "discussionEvidenceIds": [1001, 1002, 1003],
+      "mustNotClaim": ["monthly table restores prove full recoverability"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-11",
+    "category": "text-post",
+    "title": "Show HN: A local-first reading queue",
+    "articleStatus": "text-post",
+    "articleText": "I built a reading queue that stores plain files and syncs through a folder provider. It supports tags and full-text search. Conflict resolution currently keeps both copies, and mobile editing is read-only.",
+    "comments": [
+      {
+        "hnItemId": 1101,
+        "parentHnItemId": 11,
+        "text": "Keeping both copies is safe but gets noisy when devices reconnect."
+      },
+      {
+        "hnItemId": 1102,
+        "parentHnItemId": 11,
+        "text": "Plain files make export and recovery unusually clear."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "plain-file local-first queue",
+        "conflicts keep both copies",
+        "mobile editing is read-only"
+      ],
+      "mustQualify": ["author description is not independent validation"],
+      "discussionEvidenceIds": [1101, 1102],
+      "mustNotClaim": ["sync is conflict-free"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-12",
+    "category": "text-post",
+    "title": "Tell HN: Lessons from a quiet migration",
+    "articleStatus": "text-post",
+    "articleText": "We moved a low-traffic service between regions using dual writes for six hours. A timestamp rounding difference caused 14 false mismatches, but no user-visible data was lost. This is one team's account, not a general migration recipe.",
+    "comments": [
+      {
+        "hnItemId": 1201,
+        "parentHnItemId": 12,
+        "text": "Comparing canonical serialized values would have avoided rounding noise."
+      },
+      {
+        "hnItemId": 1202,
+        "parentHnItemId": 12,
+        "text": "Six hours may not reveal weekly jobs or delayed messages."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "dual-write regional migration",
+        "rounding caused false mismatches",
+        "no observed user data loss"
+      ],
+      "mustQualify": ["single low-traffic service", "six-hour window"],
+      "discussionEvidenceIds": [1201, 1202],
+      "mustNotClaim": ["the migration proved zero data loss"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-13",
+    "category": "text-post",
+    "title": "Ask HN: When do you remove a feature flag?",
+    "articleStatus": "text-post",
+    "articleText": "Our team has 180 feature flags, including some older than two years. We want a removal rule that does not delete operational kill switches. How do others distinguish temporary rollout flags from durable controls?",
+    "comments": [
+      {
+        "hnItemId": 1301,
+        "parentHnItemId": 13,
+        "text": "Require an owner and expiry date for rollout flags, and classify kill switches separately."
+      },
+      {
+        "hnItemId": 1302,
+        "parentHnItemId": 13,
+        "text": "Age alone is unsafe because rarely used emergency controls may be old."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "distinguish rollout flags from kill switches",
+        "ownership and expiry proposal"
+      ],
+      "mustQualify": ["age alone is insufficient"],
+      "discussionEvidenceIds": [1301, 1302],
+      "mustNotClaim": ["all flags older than two years should be removed"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-14",
+    "category": "inaccessible",
+    "title": "A report behind an access wall",
+    "articleStatus": "inaccessible",
+    "articleText": "",
+    "comments": [
+      {
+        "hnItemId": 1401,
+        "parentHnItemId": 14,
+        "text": "The abstract says the survey included 240 respondents, but it does not show the questions."
+      },
+      {
+        "hnItemId": 1402,
+        "parentHnItemId": 14,
+        "text": "I have access; the sample is self-selected from one conference mailing list."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "article could not be inspected",
+        "discussion reports a 240-person self-selected survey"
+      ],
+      "mustQualify": ["commenter descriptions are not article evidence"],
+      "discussionEvidenceIds": [1401, 1402],
+      "mustNotClaim": ["the report proves its conclusion"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-15",
+    "category": "inaccessible",
+    "title": "Removed project announcement",
+    "articleStatus": "inaccessible",
+    "articleText": "",
+    "comments": [
+      {
+        "hnItemId": 1501,
+        "parentHnItemId": 15,
+        "text": "The page described a hosted cron monitor with a free tier."
+      },
+      {
+        "hnItemId": 1502,
+        "parentHnItemId": 15,
+        "text": "The author removed it after discovering notification delays."
+      },
+      {
+        "hnItemId": 1503,
+        "parentHnItemId": 15,
+        "text": "I never used it, but the screenshots looked polished."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "source is unavailable",
+        "comments describe a cron monitor and alleged delays"
+      ],
+      "mustQualify": ["all product details are commenter claims"],
+      "discussionEvidenceIds": [1501, 1502],
+      "mustNotClaim": [
+        "the service had confirmed notification failures",
+        "screenshots demonstrate quality"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-16",
+    "category": "inaccessible",
+    "title": "Unsupported audio interview",
+    "articleStatus": "inaccessible",
+    "articleText": "",
+    "comments": [
+      {
+        "hnItemId": 1601,
+        "parentHnItemId": 16,
+        "text": "The guest argues that code review should focus on interfaces rather than style."
+      },
+      {
+        "hnItemId": 1602,
+        "parentHnItemId": 16,
+        "text": "At 38 minutes they qualify that advice for safety-critical code."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "audio source was not extracted",
+        "commenters report an interface-focused review argument"
+      ],
+      "mustQualify": [
+        "summary is discussion-only",
+        "reported qualification cannot be verified"
+      ],
+      "discussionEvidenceIds": [1601, 1602],
+      "mustNotClaim": ["the interview transcript states"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-17",
+    "category": "inaccessible",
+    "title": "PDF without extracted text",
+    "articleStatus": "inaccessible",
+    "articleText": "",
+    "comments": [
+      {
+        "hnItemId": 1701,
+        "parentHnItemId": 17,
+        "text": "The chart appears to compare absolute counts, not rates."
+      },
+      {
+        "hnItemId": 1702,
+        "parentHnItemId": 17,
+        "text": "The appendix reportedly changes the result after normalizing by population."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "PDF content is unavailable",
+        "comments dispute count-versus-rate interpretation"
+      ],
+      "mustQualify": ["chart and appendix claims are unverified"],
+      "discussionEvidenceIds": [1701, 1702],
+      "mustNotClaim": ["normalization reverses the result as fact"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-18",
+    "category": "long-discussion",
+    "title": "A proposal for typed database identifiers",
+    "articleStatus": "available",
+    "articleText": "A proposal wraps database identifiers in distinct application types to prevent mixing user, order, and account IDs. The sample compiler catches two injected mistakes. The approach adds conversion code at serialization boundaries and has not been measured in a large codebase.",
+    "comments": [
+      {
+        "hnItemId": 1801,
+        "parentHnItemId": 18,
+        "text": "We eliminated a class of cross-entity lookup bugs with this pattern."
+      },
+      {
+        "hnItemId": 1802,
+        "parentHnItemId": 1801,
+        "text": "Generated API clients can preserve the types across boundaries."
+      },
+      {
+        "hnItemId": 1803,
+        "parentHnItemId": 18,
+        "text": "The wrappers became ceremony in analytics code that joins many entities."
+      },
+      {
+        "hnItemId": 1804,
+        "parentHnItemId": 1803,
+        "text": "That may justify an explicit untyped boundary rather than abandoning the domain model."
+      },
+      {
+        "hnItemId": 1805,
+        "parentHnItemId": 18,
+        "text": "Database foreign keys already catch some, but not all, mixups."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "types prevent identifier mixups",
+        "serialization conversions add cost",
+        "discussion distinguishes application and database safeguards"
+      ],
+      "mustQualify": ["small injected test", "analytics ergonomics differ"],
+      "discussionEvidenceIds": [1801, 1802, 1803, 1804, 1805],
+      "mustNotClaim": ["typed IDs eliminate all lookup bugs"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-19",
+    "category": "long-discussion",
+    "title": "Server rendering for an internal dashboard",
+    "articleStatus": "available",
+    "articleText": "A team moved an internal dashboard from client rendering to server rendering. Median first content appeared 600 milliseconds sooner on the corporate network. Filtering became a full navigation until they added a small client-side component. The study covers 35 regular users.",
+    "comments": [
+      {
+        "hnItemId": 1901,
+        "parentHnItemId": 19,
+        "text": "The smaller JavaScript bundle improves updates on managed laptops."
+      },
+      {
+        "hnItemId": 1902,
+        "parentHnItemId": 19,
+        "text": "Full navigations harm rapid exploratory filtering."
+      },
+      {
+        "hnItemId": 1903,
+        "parentHnItemId": 1902,
+        "text": "The hybrid filter component seems to address that exact issue."
+      },
+      {
+        "hnItemId": 1904,
+        "parentHnItemId": 19,
+        "text": "Corporate network latency may not generalize to remote staff."
+      },
+      {
+        "hnItemId": 1905,
+        "parentHnItemId": 19,
+        "text": "Thirty-five users are enough for local UX feedback, not a universal benchmark."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "server rendering improved initial display",
+        "hybrid component restored filtering interaction",
+        "smaller client bundle is a discussion benefit"
+      ],
+      "mustQualify": ["35 internal users", "network-specific result"],
+      "discussionEvidenceIds": [1901, 1902, 1903, 1904, 1905],
+      "mustNotClaim": ["server rendering is faster for all dashboards"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-20",
+    "category": "long-discussion",
+    "title": "Operational limits for a tiny search index",
+    "articleStatus": "available",
+    "articleText": "A tiny search index stores immutable segments and merges them during idle periods. It indexes ten million short records on one machine, but update visibility can lag ninety seconds during merges. The author recommends it for catalogs, not collaborative editing.",
+    "comments": [
+      {
+        "hnItemId": 2001,
+        "parentHnItemId": 20,
+        "text": "Immutable segments make backup snapshots straightforward."
+      },
+      {
+        "hnItemId": 2002,
+        "parentHnItemId": 20,
+        "text": "Ninety seconds is unacceptable for support-ticket search."
+      },
+      {
+        "hnItemId": 2003,
+        "parentHnItemId": 2002,
+        "text": "Ticket systems could query recent writes separately."
+      },
+      {
+        "hnItemId": 2004,
+        "parentHnItemId": 20,
+        "text": "The single-machine test says nothing about failover."
+      },
+      {
+        "hnItemId": 2005,
+        "parentHnItemId": 20,
+        "text": "For a mostly static catalog the simplicity is compelling."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "immutable segment design",
+        "ten-million-record demonstration",
+        "visibility lag limits use cases",
+        "discussion proposes a recent-write overlay"
+      ],
+      "mustQualify": ["single machine", "failover untested"],
+      "discussionEvidenceIds": [2001, 2002, 2003, 2004, 2005],
+      "mustNotClaim": ["the index supports real-time updates"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-21",
+    "category": "long-discussion",
+    "title": "A year without on-call pages",
+    "articleStatus": "available",
+    "articleText": "A small team reports a year without after-hours pages after deleting three low-value services and tightening alerts. Two daytime incidents still caused customer-visible outages. The authors attribute improvement to lower system count and better alert thresholds, but cannot isolate either factor.",
+    "comments": [
+      {
+        "hnItemId": 2101,
+        "parentHnItemId": 21,
+        "text": "Deleting services is reliability work, not merely simplification."
+      },
+      {
+        "hnItemId": 2102,
+        "parentHnItemId": 21,
+        "text": "No pages can also mean alerts are too quiet."
+      },
+      {
+        "hnItemId": 2103,
+        "parentHnItemId": 2102,
+        "text": "The two detected daytime outages argue against total blindness, but not selective gaps."
+      },
+      {
+        "hnItemId": 2104,
+        "parentHnItemId": 21,
+        "text": "Team size and traffic volume are missing."
+      },
+      {
+        "hnItemId": 2105,
+        "parentHnItemId": 21,
+        "text": "The inability to separate the two changes is stated honestly."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "after-hours pages stopped",
+        "services were removed and alerts changed",
+        "daytime outages remained"
+      ],
+      "mustQualify": [
+        "causal factors cannot be isolated",
+        "missing scale context"
+      ],
+      "discussionEvidenceIds": [2101, 2102, 2103, 2104, 2105],
+      "mustNotClaim": ["the team had no incidents for a year"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-22",
+    "category": "weak-discussion",
+    "title": "A guide to monotonic identifiers",
+    "articleStatus": "available",
+    "articleText": "The guide explains that monotonic identifiers can improve index locality but may reveal creation order. It compares random, time-ordered, and database-sequence IDs conceptually and recommends choosing based on threat model and storage behavior.",
+    "comments": [
+      { "hnItemId": 2201, "parentHnItemId": 22, "text": "Nice overview." }
+    ],
+    "expectations": {
+      "mustCover": [
+        "index locality and information leakage trade off",
+        "choice depends on threat model and storage"
+      ],
+      "mustQualify": ["discussion contains no substantive synthesis evidence"],
+      "discussionEvidenceIds": [],
+      "mustNotClaim": ["commenters reached a technical consensus"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-23",
+    "category": "weak-discussion",
+    "title": "Notes on accessible error messages",
+    "articleStatus": "available",
+    "articleText": "A design note recommends placing validation errors beside fields, summarizing them at the top, and moving focus to the summary after submission. It cites common accessibility guidance but reports no user study.",
+    "comments": [],
+    "expectations": {
+      "mustCover": [
+        "field-level and summary errors",
+        "focus moves to the summary"
+      ],
+      "mustQualify": ["no discussion", "no user study"],
+      "discussionEvidenceIds": [],
+      "mustNotClaim": ["users validated the design"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-24",
+    "category": "weak-discussion",
+    "title": "A release checklist for command-line tools",
+    "articleStatus": "available",
+    "articleText": "The checklist covers versioning, changelog entries, reproducible archives, upgrade notes, and rollback instructions. It is presented as a starting point rather than evidence that every project needs every step.",
+    "comments": [
+      { "hnItemId": 2401, "parentHnItemId": 24, "text": "Bookmarked." },
+      { "hnItemId": 2402, "parentHnItemId": 24, "text": "Thanks for sharing." }
+    ],
+    "expectations": {
+      "mustCover": [
+        "checklist spans packaging, upgrades, and rollback",
+        "presented as adaptable"
+      ],
+      "mustQualify": ["comments add no substantive evidence"],
+      "discussionEvidenceIds": [],
+      "mustNotClaim": ["discussion endorses each checklist item"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-25",
+    "category": "weak-discussion",
+    "title": "Visualizing a build dependency graph",
+    "articleStatus": "truncated",
+    "articleText": "A tool renders build dependencies and highlights repeated compilation paths. The example identifies one shared library compiled four times. [Installation, limitations, and larger-project results were not supplied.]",
+    "comments": [
+      {
+        "hnItemId": 2501,
+        "parentHnItemId": 25,
+        "text": "Does it work on Windows?"
+      }
+    ],
+    "expectations": {
+      "mustCover": ["visualizes dependencies and repeated compilation"],
+      "mustQualify": [
+        "article truncated",
+        "platform support unanswered",
+        "discussion is only a question"
+      ],
+      "discussionEvidenceIds": [2501],
+      "mustNotClaim": [
+        "the tool supports Windows",
+        "the tool scales to large projects"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-26",
+    "category": "controversial",
+    "title": "Should production logs omit all request bodies?",
+    "articleStatus": "available",
+    "articleText": "The author argues production systems should never log request bodies because redaction fails and retention expands exposure. They recommend structured event fields and short-lived, explicitly authorized diagnostic capture. The essay does not address regulated audit records in detail.",
+    "comments": [
+      {
+        "hnItemId": 2601,
+        "parentHnItemId": 26,
+        "text": "A blanket ban made a payment dispute impossible to reconstruct."
+      },
+      {
+        "hnItemId": 2602,
+        "parentHnItemId": 26,
+        "text": "That is an argument for narrow audit events, not copying arbitrary bodies."
+      },
+      {
+        "hnItemId": 2603,
+        "parentHnItemId": 26,
+        "text": "Diagnostic capture tends to become permanent unless expiry is automatic."
+      },
+      {
+        "hnItemId": 2604,
+        "parentHnItemId": 26,
+        "text": "Some legal regimes require records but not necessarily raw payloads."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "privacy case against body logging",
+        "structured events and temporary capture alternative",
+        "auditability objection"
+      ],
+      "mustQualify": [
+        "regulated records are underexplored",
+        "legal claims vary by context"
+      ],
+      "discussionEvidenceIds": [2601, 2602, 2603, 2604],
+      "mustNotClaim": [
+        "law requires raw request bodies",
+        "request bodies are never operationally useful"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-27",
+    "category": "controversial",
+    "title": "Mandatory office days and engineering output",
+    "articleStatus": "available",
+    "articleText": "A company reports that project cycle time fell 9% after introducing two office days per week. During the same quarter it reduced team dependencies and canceled two delayed projects. Employee survey response fell from 78% to 51%, and no causal analysis separates the changes.",
+    "comments": [
+      {
+        "hnItemId": 2701,
+        "parentHnItemId": 27,
+        "text": "Canceling delayed projects mechanically improves the cycle-time sample."
+      },
+      {
+        "hnItemId": 2702,
+        "parentHnItemId": 27,
+        "text": "In-person design sessions helped our new hires."
+      },
+      {
+        "hnItemId": 2703,
+        "parentHnItemId": 27,
+        "text": "Commuting pushed two experienced people to leave our team."
+      },
+      {
+        "hnItemId": 2704,
+        "parentHnItemId": 27,
+        "text": "The lower survey response may hide dissatisfaction or simply survey fatigue."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "reported 9% cycle-time change",
+        "multiple simultaneous confounders",
+        "discussion reports benefits and costs"
+      ],
+      "mustQualify": [
+        "no causal attribution",
+        "survey nonresponse is ambiguous"
+      ],
+      "discussionEvidenceIds": [2701, 2702, 2703, 2704],
+      "mustNotClaim": [
+        "office days caused higher output",
+        "employees opposed the policy as a fact"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-28",
+    "category": "controversial",
+    "title": "AI review comments on every pull request",
+    "articleStatus": "available",
+    "articleText": "A team enabled automated review comments on every pull request. Review turnaround fell from 14 to 11 hours, while developers marked 37% of automated comments unhelpful. The rollout also added a rotating human reviewer. The authors recommend a narrower trial focused on security-sensitive changes.",
+    "comments": [
+      {
+        "hnItemId": 2801,
+        "parentHnItemId": 28,
+        "text": "The rotating reviewer is a major confounder."
+      },
+      {
+        "hnItemId": 2802,
+        "parentHnItemId": 28,
+        "text": "Even noisy comments can teach new contributors local conventions."
+      },
+      {
+        "hnItemId": 2803,
+        "parentHnItemId": 28,
+        "text": "Noise trains people to dismiss both useful and useless warnings."
+      },
+      {
+        "hnItemId": 2804,
+        "parentHnItemId": 28,
+        "text": "Security-only use should be evaluated separately rather than inferred from this rollout."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "turnaround improved while many comments were unhelpful",
+        "human reviewer confounds outcome",
+        "authors recommend narrower testing"
+      ],
+      "mustQualify": [
+        "benefit and alert-fatigue claims are commenter experiences"
+      ],
+      "discussionEvidenceIds": [2801, 2802, 2803, 2804],
+      "mustNotClaim": [
+        "automated review caused faster turnaround",
+        "security-focused review is proven effective"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-29",
+    "category": "controversial",
+    "title": "Usage-based pricing for developer tools",
+    "articleStatus": "available",
+    "articleText": "The essay favors usage pricing because small customers pay less and heavy users fund capacity. It acknowledges that variable bills complicate procurement and may discourage experimentation. The examples are hypothetical and omit support costs.",
+    "comments": [
+      {
+        "hnItemId": 2901,
+        "parentHnItemId": 29,
+        "text": "Predictability matters more than average cost for our procurement process."
+      },
+      {
+        "hnItemId": 2902,
+        "parentHnItemId": 29,
+        "text": "A capped usage tier preserves experimentation without unlimited provider risk."
+      },
+      {
+        "hnItemId": 2903,
+        "parentHnItemId": 29,
+        "text": "Seat pricing penalizes occasional collaborators."
+      },
+      {
+        "hnItemId": 2904,
+        "parentHnItemId": 29,
+        "text": "Support load may correlate with accounts rather than usage."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "usage pricing aligns some costs",
+        "bill uncertainty can suppress use",
+        "discussion proposes caps and alternative cost drivers"
+      ],
+      "mustQualify": ["examples are hypothetical", "support cost omitted"],
+      "discussionEvidenceIds": [2901, 2902, 2903, 2904],
+      "mustNotClaim": ["usage pricing is cheaper for every customer"]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  },
+  {
+    "id": "eval-30",
+    "category": "controversial",
+    "title": "Deleting inactive free accounts",
+    "articleStatus": "available",
+    "articleText": "A storage service proposes deleting free accounts after eighteen months of inactivity, with notices at 90, 30, and 7 days. The policy would exclude accounts under legal hold but does not define how deceased users or inaccessible email addresses are handled. The motivation is cost and reduced retained personal data.",
+    "comments": [
+      {
+        "hnItemId": 3001,
+        "parentHnItemId": 30,
+        "text": "Deletion reduces breach impact, not only storage cost."
+      },
+      {
+        "hnItemId": 3002,
+        "parentHnItemId": 30,
+        "text": "Email-only notice fails exactly when an account is abandoned."
+      },
+      {
+        "hnItemId": 3003,
+        "parentHnItemId": 30,
+        "text": "Indefinite free storage is not a reasonable expectation."
+      },
+      {
+        "hnItemId": 3004,
+        "parentHnItemId": 30,
+        "text": "An export grace period would make deletion less destructive."
+      }
+    ],
+    "expectations": {
+      "mustCover": [
+        "eighteen-month deletion proposal and notice schedule",
+        "cost and privacy motivations",
+        "discussion raises notice and export concerns"
+      ],
+      "mustQualify": [
+        "edge cases are undefined",
+        "policy values are contested"
+      ],
+      "discussionEvidenceIds": [3001, 3002, 3003, 3004],
+      "mustNotClaim": [
+        "inactive users consent to deletion",
+        "email notices will reach all users"
+      ]
+    },
+    "provenance": { "kind": "synthetic", "license": "CC0-1.0" }
+  }
+]

@@ -53,6 +53,14 @@ within `DIGEST_MISSED_RUN_GRACE_MS` (six hours by default). It does not backfill
 older slots, preventing a long outage from unexpectedly triggering a burst of
 collection and LLM spend.
 
+## Analysis evaluation
+
+Prompt, model, reasoning, selection, and token-budget changes are assessed
+against the fixed synthetic evaluation set and weighted rubric documented in
+[`docs/evaluation.md`](./docs/evaluation.md). The evaluation fixtures are
+versioned, require no live network or model calls, and contain no copied source
+articles.
+
 ## Validation
 
 ```sh
