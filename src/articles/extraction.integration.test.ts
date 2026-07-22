@@ -71,6 +71,8 @@ describe.skipIf(!runDatabaseTests)("HD-021 extraction persistence", () => {
         wordCount: 3,
         characterCount: 27,
         confidenceReasons: [],
+        adapterId: "html-v1",
+        evidenceLocations: [],
       },
     });
 
@@ -95,6 +97,8 @@ describe.skipIf(!runDatabaseTests)("HD-021 extraction persistence", () => {
           wordCount: 3,
           characterCount: 27,
           confidenceReasons: [],
+          adapterId: "html-v1",
+          evidenceLocations: [],
           extractedAt: "2026-07-22T12:01:00.000Z",
         },
       },
@@ -116,6 +120,8 @@ describe.skipIf(!runDatabaseTests)("HD-021 extraction persistence", () => {
         wordCount: 0,
         characterCount: 0,
         confidenceReasons: ["normalized_article_was_empty"],
+        adapterId: "html-v1",
+        evidenceLocations: [],
       },
     });
     const [empty] = await connection.db

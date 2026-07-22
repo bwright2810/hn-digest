@@ -24,6 +24,8 @@ const extraction: ArticleExtraction = {
   wordCount: 2,
   characterCount: 12,
   confidenceReasons: [],
+  adapterId: "html-v1",
+  evidenceLocations: [{ kind: "heading", heading: "Evidence", level: 2 }],
 };
 
 describe("extractArticle", () => {

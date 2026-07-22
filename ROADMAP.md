@@ -473,6 +473,56 @@ Acceptance criteria:
 - Unsupported sources continue to produce an explicit discussion-only result
   rather than failing the entire story.
 
+### HD-075 — Establish the source-adapter baseline
+
+Collect aggregate source-acquisition outcomes over at least 30 digest runs and
+rank unsupported formats using the scoring factors in
+`docs/discussion-only-source-support-plan.md`. Do not retain source bodies or
+complete URLs in the baseline.
+
+Acceptance criteria:
+
+- The reviewed baseline includes outcome counts, coarse source/content types,
+  median discussion depth and rank, expected recovery, effort, risk, and
+  evidence fidelity.
+- A format is selected only when observed in the baseline or reviewed fixtures
+  and expected to recover useful context for at least 20% of its occurrences.
+- Every selected format receives a stable roadmap task and rollout threshold.
+
+### HD-076 — Add the source-document adapter foundation
+
+Route existing HTML, plain-text, and Markdown extraction through a
+deterministic MIME-aware registry and preserve bounded format-appropriate
+evidence locations in extraction metadata.
+
+Acceptance criteria:
+
+- Adapter IDs are stable and unique, selection order is deterministic, and an
+  unmatched input produces an explicit unsupported result.
+- Extraction results preserve adapter identity, structured failure reasons,
+  stable content hashes, and heading or line-range evidence locations.
+- Existing fetch limits, SSRF checks, persistence behavior, and
+  discussion-only fallback remain intact.
+
+### HD-077 — Add bounded public GitHub source support [gated]
+
+Implement repository README and curated source-file extraction only if HD-075
+selects GitHub sources. Do not clone or traverse repositories. This task must
+use bounded requests and preserve repository-relative paths and line/heading
+evidence.
+
+### HD-078 — Add bounded RSS and Atom support [gated]
+
+Implement hardened RSS/Atom parsing and deterministic entry selection only if
+HD-075 selects feeds. Generic XML, sitemaps, recursive crawling, DTDs, external
+entities, XInclude, and parser network access remain unsupported.
+
+### HD-079 — Add bounded JSON Feed support [gated]
+
+Implement a named, versioned JSON Feed adapter only if HD-075 selects it.
+Arbitrary JSON and unknown schemas remain unsupported, and embedded URLs must
+not be followed.
+
 ## Milestone 6: Reading experience
 
 ### HD-059 — Define the visual system and responsive shell
@@ -697,3 +747,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Require at least 10 HN comments by default before selecting a story. | Very new stories often lack enough discussion to support useful synthesis; a configurable threshold keeps the gate tunable. |
 | 2026-07-22 | Allow one spend-checked correction attempt when model output cites an HN comment outside the selected context. | A bounded retry can recover an otherwise useful analysis while preserving evidence validation; each attempt is separately authorized and metered, and a second invalid response fails permanently. |
 | 2026-07-22 | Add bounded plain-text and Markdown extraction while keeping PDF and media sources discussion-only. | These text formats fit the existing SSRF and extraction-quality model; document and media parsing would add substantially different security and resource requirements. |
+| 2026-07-22 | Introduce HD-075 through HD-079 for discussion-only source reduction, implementing only the shared adapter foundation before production measurements select additional formats. | Stable gated tasks preserve the plan's measurement requirement and avoid authorizing GitHub, feed, JSON Feed, PDF, OCR, or media work from intuition alone. |

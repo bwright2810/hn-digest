@@ -3,6 +3,11 @@ import { createHash } from "node:crypto";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 
+import {
+  SourceDocumentAdapterRegistry,
+  type EvidenceLocation,
+} from "./adapters";
+
 export type ArticleExtractionStatus = "extracted" | "low_confidence" | "empty";
 
 export interface ArticleHeading {
@@ -21,6 +26,8 @@ export interface ArticleExtraction {
   readonly wordCount: number;
   readonly characterCount: number;
   readonly confidenceReasons: readonly string[];
+  readonly adapterId: string;
+  readonly evidenceLocations: readonly EvidenceLocation[];
 }
 
 export interface ArticleExtractorOptions {
@@ -31,6 +38,7 @@ export interface ArticleExtractorOptions {
 export class ArticleExtractor {
   private readonly minimumCharacterCount: number;
   private readonly minimumParagraphCount: number;
+  private readonly registry: SourceDocumentAdapterRegistry;
 
   constructor(options: ArticleExtractorOptions = {}) {
     this.minimumCharacterCount = requireNonnegativeInteger(
@@ -41,6 +49,26 @@ export class ArticleExtractor {
       options.minimumParagraphCount ?? 2,
       "minimumParagraphCount",
     );
+    this.registry = new SourceDocumentAdapterRegistry([
+      {
+        id: "html-v1",
+        contentTypes: new Set(["text/html", "application/xhtml+xml"]),
+        matches: () => true,
+        extract: ({ body, sourceUrl }) => this.extractHtml(body, sourceUrl),
+      },
+      {
+        id: "plain-text-v1",
+        contentTypes: new Set(["text/plain"]),
+        matches: () => true,
+        extract: ({ body }) => this.extractText(body, false, "plain-text-v1"),
+      },
+      {
+        id: "markdown-v1",
+        contentTypes: new Set(["text/markdown", "text/x-markdown"]),
+        matches: () => true,
+        extract: ({ body }) => this.extractText(body, true, "markdown-v1"),
+      },
+    ]);
   }
 
   extract(
@@ -48,12 +76,14 @@ export class ArticleExtractor {
     sourceUrl: string | URL,
     contentType = "text/html",
   ): ArticleExtraction {
-    if (
-      ["text/plain", "text/markdown", "text/x-markdown"].includes(contentType)
-    ) {
-      return this.extractText(content, contentType !== "text/plain");
-    }
-    return this.extractHtml(content, sourceUrl);
+    const result = this.registry.extract({
+      body: content,
+      sourceUrl: new URL(sourceUrl),
+      contentType,
+    });
+    return result.status === "handled"
+      ? result.extraction
+      : emptyExtraction("unsupported_source_adapter", "unsupported");
   }
 
   private extractHtml(
@@ -101,6 +131,8 @@ export class ArticleExtractor {
         byline: normalizeNullable(parsed.byline),
         publishedAt,
         headings,
+        adapterId: "html-v1",
+        evidenceLocations: headingEvidence(headings),
       };
     }
 
@@ -124,12 +156,15 @@ export class ArticleExtractor {
       wordCount: text.split(/\s+/u).length,
       characterCount: text.length,
       confidenceReasons,
+      adapterId: "html-v1",
+      evidenceLocations: headingEvidence(headings),
     };
   }
 
   private extractText(
     content: string | Uint8Array,
     markdown: boolean,
+    adapterId: string,
   ): ArticleExtraction {
     let decoded: string;
     try {
@@ -138,11 +173,13 @@ export class ArticleExtractor {
           ? content
           : new TextDecoder("utf-8", { fatal: true }).decode(content);
     } catch {
-      return emptyExtraction("invalid_utf8_text");
+      return emptyExtraction("invalid_utf8_text", adapterId);
     }
-    if (decoded.includes("\0")) return emptyExtraction("binary_text_content");
+    if (decoded.includes("\0"))
+      return emptyExtraction("binary_text_content", adapterId);
     const text = normalizeDocumentText(decoded);
-    if (!text) return emptyExtraction("normalized_article_was_empty");
+    if (!text)
+      return emptyExtraction("normalized_article_was_empty", adapterId);
 
     const blocks = text.split(/\n\s*\n/gu).filter(Boolean);
     const headings = markdown
@@ -173,6 +210,10 @@ export class ArticleExtractor {
       wordCount: text.split(/\s+/u).length,
       characterCount: text.length,
       confidenceReasons,
+      adapterId,
+      evidenceLocations: markdown
+        ? headingEvidence(headings)
+        : lineEvidence(text),
     };
   }
 }
@@ -226,7 +267,10 @@ function findPublicationTime(document: Document): Date | null {
   return null;
 }
 
-function emptyExtraction(reason: string): ArticleExtraction {
+function emptyExtraction(
+  reason: string,
+  adapterId = "html-v1",
+): ArticleExtraction {
   return {
     status: "empty",
     title: null,
@@ -238,7 +282,25 @@ function emptyExtraction(reason: string): ArticleExtraction {
     wordCount: 0,
     characterCount: 0,
     confidenceReasons: [reason],
+    adapterId,
+    evidenceLocations: [],
   };
+}
+
+function headingEvidence(
+  headings: readonly ArticleHeading[],
+): EvidenceLocation[] {
+  return headings.map(({ level, text }) => ({
+    kind: "heading",
+    heading: text,
+    level,
+  }));
+}
+
+function lineEvidence(text: string): EvidenceLocation[] {
+  return [
+    { kind: "line_range", startLine: 1, endLine: text.split("\n").length },
+  ];
 }
 
 function requireNonnegativeInteger(value: number, name: string): number {

@@ -12,6 +12,11 @@ implementation begins, add selected work to `ROADMAP.md` under new stable
 `HD-###` task IDs and record any change to the PDF, OCR, media-transcription, or
 model-call decisions in the decision log.
 
+Implementation tracking: HD-075 owns the production baseline, HD-076 owns the
+shared adapter and evidence-location foundation, and HD-077 through HD-079 are
+the gated GitHub, RSS/Atom, and JSON Feed workstreams. No additional format is
+selected until HD-075 passes. PDF, OCR, and media processing remain deferred.
+
 ## Goals
 
 - Prioritize formats using production frequency and expected analysis value.

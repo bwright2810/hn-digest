@@ -36,6 +36,14 @@ describe("ArticleExtractor", () => {
       { level: 2, text: "Keep evidence attached" },
       { level: 3, text: "Conclusion" },
     ]);
+    expect(result).toMatchObject({
+      adapterId: "html-v1",
+      evidenceLocations: [
+        { kind: "heading", heading: "Prefer deterministic stages", level: 2 },
+        { kind: "heading", heading: "Keep evidence attached", level: 2 },
+        { kind: "heading", heading: "Conclusion", level: 3 },
+      ],
+    });
     expect(result.text).toContain("## Prefer deterministic stages");
     expect(result.text).toContain("Reliability is the product");
     expect(result.text).not.toContain("Trending links");
@@ -88,6 +96,8 @@ describe("ArticleExtractor", () => {
       wordCount: 0,
       characterCount: 0,
       confidenceReasons: ["normalized_article_was_empty"],
+      adapterId: "html-v1",
+      evidenceLocations: [],
     });
   });
 
@@ -102,6 +112,10 @@ describe("ArticleExtractor", () => {
       status: "extracted",
       title: null,
       headings: [],
+      adapterId: "plain-text-v1",
+      evidenceLocations: [
+        { kind: "line_range", startLine: 1, endLine: expect.any(Number) },
+      ],
       contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       confidenceReasons: [],
     });
@@ -123,6 +137,31 @@ describe("ArticleExtractor", () => {
         { level: 2, text: "Preserve evidence" },
         { level: 2, text: "Fail explicitly" },
       ],
+      adapterId: "markdown-v1",
+      evidenceLocations: [
+        {
+          kind: "heading",
+          heading: "Designing Bounded Collectors",
+          level: 1,
+        },
+        { kind: "heading", heading: "Preserve evidence", level: 2 },
+        { kind: "heading", heading: "Fail explicitly", level: 2 },
+      ],
+    });
+  });
+
+  it("returns an explicit empty result for an unregistered content type", () => {
+    expect(
+      new ArticleExtractor().extract(
+        "%PDF fixture",
+        "https://example.com/document.pdf",
+        "application/pdf",
+      ),
+    ).toMatchObject({
+      status: "empty",
+      adapterId: "unsupported",
+      confidenceReasons: ["unsupported_source_adapter"],
+      evidenceLocations: [],
     });
   });
 

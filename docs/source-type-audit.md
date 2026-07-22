@@ -15,3 +15,10 @@ Operational source metrics group documents by coarse source type, content type,
 and outcome. They never include a source or canonical URL. The outcome classes
 are `access_restriction`, `unsupported_content_type`, `fetch_failure`,
 `extraction_failure`, `low_confidence`, and `extracted`.
+
+HD-076 routes the currently approved HTML, plain-text, and Markdown formats
+through stable `html-v1`, `plain-text-v1`, and `markdown-v1` adapters. The
+normalized extraction metadata records the adapter ID and bounded heading or
+line-range evidence locations. HD-075 must collect the 30-run production
+baseline before HD-077 (GitHub), HD-078 (RSS/Atom), or HD-079 (JSON Feed) can be
+selected. PDF, OCR, and media processing remain deferred.

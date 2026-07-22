@@ -92,6 +92,8 @@ export class PostgresArticleExtractionStore implements ArticleExtractionStore {
             wordCount: extraction.wordCount,
             characterCount: extraction.characterCount,
             confidenceReasons: extraction.confidenceReasons,
+            adapterId: extraction.adapterId,
+            evidenceLocations: extraction.evidenceLocations,
             extractedAt: record.extractedAt.toISOString(),
           },
         },
