@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@next/env": "16.2.11",
+    "@playwright/test": "^1.61.1",
     "@types/html-to-text": "^9.0.4",
     "@types/jsdom": "^28.0.3",
     "@types/node": "^26.1.1",

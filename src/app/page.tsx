@@ -13,7 +13,21 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ fixture?: string }>;
+}) {
+  if (
+    process.env.PLAYWRIGHT_FIXTURES === "1" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    const { e2eDigestScenario } = await import("./e2e-fixtures");
+    const { fixture } = await searchParams;
+    const view = await e2eDigestScenario(fixture);
+    return <DigestPage {...view} />;
+  }
+
   let run: DigestRunView | null = null;
   let unavailable = false;
   try {
