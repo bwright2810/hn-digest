@@ -1,0 +1,9 @@
+{
+  "by": "bob",
+  "id": 101,
+  "kids": [104],
+  "parent": 100,
+  "text": "A useful comment",
+  "time": 1720000010,
+  "type": "comment"
+}
