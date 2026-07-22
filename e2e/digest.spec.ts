@@ -38,6 +38,24 @@ test("reads the latest digest and preserves source provenance", async ({
   await expectNoHorizontalOverflow(page);
 });
 
+test("does not prefetch the Basic-authenticated admin page", async ({
+  page,
+}) => {
+  const adminRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/admin"))
+      adminRequests.push(request.url());
+  });
+
+  await page.goto("/?fixture=complete");
+  await page.waitForTimeout(750);
+  expect(adminRequests).toEqual([]);
+  await expect(page.getByRole("link", { name: "Admin" })).toHaveAttribute(
+    "href",
+    "/admin",
+  );
+});
+
 test("defaults to dark mode, persists the theme choice, and uses desktop width", async ({
   page,
 }, testInfo) => {

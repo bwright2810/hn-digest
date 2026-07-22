@@ -39,7 +39,9 @@ export default function RootLayout({
               <span>HN Digest</span>
             </Link>
             <div className="site-actions">
-              <Link href="/admin">Admin</Link>
+              {/* A framework-prefetched protected URL triggers the browser's
+                  HTTP Basic prompt while readers are still on the home page. */}
+              <a href="/admin">Admin</a>
               <ThemeToggle />
             </div>
           </header>
