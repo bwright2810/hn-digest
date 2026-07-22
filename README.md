@@ -80,6 +80,13 @@ The HD-072 threat review, trust boundaries, operator-access decision, secret and
 logging rules, and current retention/deletion behavior are documented in
 [`docs/security-and-privacy.md`](./docs/security-and-privacy.md).
 
+## Deployment and recovery
+
+The Coolify deployment topology, complete runtime configuration, migration
+workflow, emergency spend shutdown, off-server backup policy, tested restore
+procedure, rollback strategy, and failure runbook are documented in
+[`docs/deployment-and-recovery.md`](./docs/deployment-and-recovery.md).
+
 ## Validation
 
 ```sh
