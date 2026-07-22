@@ -11,6 +11,7 @@ import {
 } from "../db/schema";
 import { HackerNewsClient, type ItemFailure } from "../hn/client";
 import type { HackerNewsItem, HackerNewsStory } from "../hn/schemas";
+import { normalizeHackerNewsText } from "./comments";
 
 export type IngestionFailureKind = "fetch" | "unavailable" | "not-story";
 
@@ -152,6 +153,8 @@ export class PostgresDigestRunStore implements DigestRunStore {
     story: HackerNewsStory,
     collectedAt: Date,
   ): Promise<void> {
+    const normalizedText = normalizeHackerNewsText(story.text);
+    const textHash = normalizedText === null ? null : hashText(normalizedText);
     await this.database.transaction(async (transaction) => {
       const [storedStory] = await transaction
         .insert(stories)
@@ -160,6 +163,8 @@ export class PostgresDigestRunStore implements DigestRunStore {
           type: story.type,
           title: story.title,
           url: story.url ?? null,
+          text: normalizedText,
+          textHash,
           author: story.by,
           hnCreatedAt: new Date(story.time * 1_000),
           latestScore: story.score ?? 0,
@@ -171,6 +176,8 @@ export class PostgresDigestRunStore implements DigestRunStore {
             type: story.type,
             title: story.title,
             url: story.url ?? null,
+            text: normalizedText,
+            textHash,
             author: story.by,
             hnCreatedAt: new Date(story.time * 1_000),
             latestScore: story.score ?? 0,
@@ -190,6 +197,8 @@ export class PostgresDigestRunStore implements DigestRunStore {
         commentCount: story.descendants ?? 0,
         title: story.title,
         url: story.url ?? null,
+        text: normalizedText,
+        textHash,
         author: story.by,
         hnCreatedAt: new Date(story.time * 1_000),
         collectedAt,
@@ -253,8 +262,13 @@ function storyMetadataHash(story: HackerNewsStory): string {
         hnItemId: story.id,
         score: story.score ?? 0,
         title: story.title,
+        text: normalizeHackerNewsText(story.text),
         url: story.url ?? null,
       }),
     )
     .digest("hex");
+}
+
+function hashText(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
 }

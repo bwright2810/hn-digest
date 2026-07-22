@@ -14,15 +14,16 @@ import {
 export type ArticleAcquisitionOutcome =
   | { readonly status: "fetched"; readonly result: ArticleFetchResult }
   | {
-      readonly status: "failed";
+      readonly status: "failed" | "unsupported" | "access_restricted";
       readonly failureCode: ArticleFetchFailureCode;
+      readonly discussionOnly: true;
     };
 
 export interface ArticleFetchRecord {
   readonly storyId: number;
   readonly sourceUrl: string;
   readonly canonicalUrl: string | null;
-  readonly status: "pending" | "failed";
+  readonly status: "pending" | "failed" | "unsupported" | "access_restricted";
   readonly fetchedAt: Date;
   readonly metadata: Readonly<Record<string, string | number | null>>;
 }
@@ -58,11 +59,12 @@ export async function acquireArticle(options: {
               cause: error,
             },
           );
+    const status = documentStatusForFailure(failure);
     await options.store.recordFetch({
       storyId: options.storyId,
       sourceUrl: options.sourceUrl,
       canonicalUrl: null,
-      status: "failed",
+      status,
       fetchedAt,
       metadata: {
         fetchStatus: "failed",
@@ -70,7 +72,11 @@ export async function acquireArticle(options: {
         ...failure.metadata,
       },
     });
-    return { status: "failed", failureCode: failure.code };
+    return {
+      status,
+      failureCode: failure.code,
+      discussionOnly: true,
+    };
   }
 
   await options.store.recordFetch({
@@ -88,6 +94,19 @@ export async function acquireArticle(options: {
     },
   });
   return { status: "fetched", result };
+}
+
+function documentStatusForFailure(
+  failure: ArticleFetchError,
+): "failed" | "unsupported" | "access_restricted" {
+  if (failure.code === "unsupported_content_type") return "unsupported";
+  if (
+    failure.code === "http_status" &&
+    [401, 403, 451].includes(failure.metadata.status as number)
+  ) {
+    return "access_restricted";
+  }
+  return "failed";
 }
 
 type Database = ReturnType<typeof getDatabase>;

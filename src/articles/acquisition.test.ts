@@ -67,7 +67,11 @@ describe("acquireArticle", () => {
       now: () => fetchedAt,
     });
 
-    expect(outcome).toEqual({ status: "failed", failureCode: "http_status" });
+    expect(outcome).toEqual({
+      status: "failed",
+      failureCode: "http_status",
+      discussionOnly: true,
+    });
     expect(fetchStore.recordFetch).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "failed",
@@ -77,6 +81,47 @@ describe("acquireArticle", () => {
           status: 503,
         },
       }),
+    );
+  });
+
+  it.each([
+    {
+      code: "unsupported_content_type" as const,
+      metadata: { contentType: "application/pdf" },
+      status: "unsupported" as const,
+    },
+    {
+      code: "http_status" as const,
+      metadata: { status: 403 },
+      status: "access_restricted" as const,
+    },
+  ])("records $status sources as discussion-only", async (fixture) => {
+    const fetchStore = store();
+    const outcome = await acquireArticle({
+      storyId: 42,
+      sourceUrl: result.sourceUrl,
+      fetcher: {
+        fetch: vi
+          .fn()
+          .mockRejectedValue(
+            new ArticleFetchError(
+              fixture.code,
+              "unavailable",
+              fixture.metadata as unknown as Record<string, string | number>,
+            ),
+          ),
+      },
+      store: fetchStore,
+      now: () => fetchedAt,
+    });
+
+    expect(outcome).toEqual({
+      status: fixture.status,
+      failureCode: fixture.code,
+      discussionOnly: true,
+    });
+    expect(fetchStore.recordFetch).toHaveBeenCalledWith(
+      expect.objectContaining({ status: fixture.status }),
     );
   });
 

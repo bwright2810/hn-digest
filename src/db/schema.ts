@@ -107,6 +107,8 @@ export const stories = pgTable(
     type: varchar("type", { length: 32 }).default("story").notNull(),
     title: text("title").notNull(),
     url: text("url"),
+    text: text("text"),
+    textHash: varchar("text_hash", { length: 64 }),
     author: text("author"),
     hnCreatedAt: timestamp("hn_created_at", { withTimezone: true }).notNull(),
     latestScore: integer("latest_score"),
@@ -138,6 +140,8 @@ export const storySnapshots = pgTable(
     commentCount: integer("comment_count").notNull(),
     title: text("title").notNull(),
     url: text("url"),
+    text: text("text"),
+    textHash: varchar("text_hash", { length: 64 }),
     author: text("author"),
     hnCreatedAt: timestamp("hn_created_at", { withTimezone: true }).notNull(),
     collectedAt: timestamp("collected_at", { withTimezone: true })
