@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { evaluateSpendBudget, utcPeriodStarts } from "./observability";
+import {
+  collectOperationalSnapshot,
+  evaluateSpendBudget,
+  utcPeriodStarts,
+} from "./observability";
 
 const limits = {
   dailySoftLimitUsd: 2,
@@ -39,5 +43,49 @@ describe("HD-071 spend controls", () => {
       dayStart: new Date("2026-07-23T00:00:00.000Z"),
       monthStart: new Date("2026-07-01T00:00:00.000Z"),
     });
+  });
+});
+
+describe("HD-058 source acquisition metrics", () => {
+  it("returns only coarse source dimensions and classified outcomes", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{}] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            source_type: "pdf",
+            content_type: "application/pdf",
+            outcome: "unsupported_content_type",
+            count: 7,
+          },
+          {
+            source_type: "html",
+            content_type: "text/html",
+            outcome: "extraction_failure",
+            count: 2,
+          },
+        ],
+      });
+    const snapshot = await collectOperationalSnapshot({ execute } as never, {
+      from: new Date("2026-07-21T00:00:00Z"),
+      now: new Date("2026-07-22T00:00:00Z"),
+    });
+
+    expect(snapshot.sourceAcquisition).toEqual([
+      {
+        sourceType: "pdf",
+        contentType: "application/pdf",
+        outcome: "unsupported_content_type",
+        count: 7,
+      },
+      {
+        sourceType: "html",
+        contentType: "text/html",
+        outcome: "extraction_failure",
+        count: 2,
+      },
+    ]);
+    expect(snapshot.sourceAcquisition).not.toHaveProperty("sourceUrl");
   });
 });

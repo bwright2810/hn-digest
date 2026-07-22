@@ -1,0 +1,32 @@
+[
+  {
+    "name": "plain-text-essay",
+    "contentType": "text/plain",
+    "policy": "extract"
+  },
+  {
+    "name": "markdown-article",
+    "contentType": "text/markdown",
+    "policy": "extract"
+  },
+  {
+    "name": "pdf-document",
+    "contentType": "application/pdf",
+    "policy": "discussion_only"
+  },
+  {
+    "name": "image-submission",
+    "contentType": "image/png",
+    "policy": "discussion_only"
+  },
+  {
+    "name": "audio-submission",
+    "contentType": "audio/mpeg",
+    "policy": "discussion_only"
+  },
+  {
+    "name": "json-endpoint",
+    "contentType": "application/json",
+    "policy": "discussion_only"
+  }
+]

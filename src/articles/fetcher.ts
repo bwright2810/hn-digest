@@ -3,7 +3,13 @@ import { isIP } from "node:net";
 
 import ipaddr from "ipaddr.js";
 
-const ALLOWED_CONTENT_TYPES = new Set(["text/html", "application/xhtml+xml"]);
+export const SUPPORTED_ARTICLE_CONTENT_TYPES = new Set([
+  "text/html",
+  "application/xhtml+xml",
+  "text/plain",
+  "text/markdown",
+  "text/x-markdown",
+]);
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export type ArticleFetchFailureCode =
@@ -79,7 +85,8 @@ export class ArticleFetcher {
       try {
         response = await this.fetchImplementation(currentUrl, {
           headers: {
-            accept: "text/html,application/xhtml+xml;q=0.9",
+            accept:
+              "text/html,application/xhtml+xml;q=0.9,text/markdown;q=0.8,text/plain;q=0.7",
             "user-agent": "HN-Digest/0.1 article fetcher",
           },
           redirect: "manual",
@@ -122,11 +129,11 @@ export class ArticleFetcher {
       const contentType = parseContentType(
         response.headers.get("content-type"),
       );
-      if (!contentType || !ALLOWED_CONTENT_TYPES.has(contentType)) {
+      if (!contentType || !SUPPORTED_ARTICLE_CONTENT_TYPES.has(contentType)) {
         response.body?.cancel().catch(() => undefined);
         throw new ArticleFetchError(
           "unsupported_content_type",
-          "Article response is not supported HTML",
+          "Article response content type is not supported",
           contentType ? { contentType } : {},
         );
       }

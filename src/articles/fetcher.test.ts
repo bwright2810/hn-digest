@@ -53,6 +53,21 @@ describe("ArticleFetcher", () => {
     );
   });
 
+  it.each(["text/plain", "text/markdown", "text/x-markdown"])(
+    "fetches bounded %s documents",
+    async (contentType) => {
+      const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+        new Response("# A supported text document", {
+          headers: { "content-type": `${contentType}; charset=utf-8` },
+        }),
+      );
+
+      await expect(
+        fetcher(fetch).fetch("https://example.com/document"),
+      ).resolves.toMatchObject({ contentType, byteLength: 27 });
+    },
+  );
+
   it("revalidates redirects and rejects private destinations", async () => {
     const lookup = vi.fn(async (hostname: string) =>
       hostname === "example.com" ? ["93.184.216.34"] : ["127.0.0.1"],

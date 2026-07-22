@@ -24,8 +24,9 @@ export interface ArticleExtractionStore {
 
 interface ExtractArticleClient {
   extract(
-    html: string | Uint8Array,
+    content: string | Uint8Array,
     sourceUrl: string | URL,
+    contentType?: string,
   ): ArticleExtraction;
 }
 
@@ -39,6 +40,7 @@ export async function extractArticle(options: {
   const extraction = options.extractor.extract(
     options.fetched.body,
     options.fetched.finalUrl,
+    options.fetched.contentType,
   );
   await options.store.recordExtraction({
     storyId: options.storyId,

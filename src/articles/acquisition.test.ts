@@ -42,6 +42,7 @@ describe("acquireArticle", () => {
         fetchStatus: "fetched",
         httpStatus: 200,
         contentType: "text/html",
+        sourceType: "html",
         byteLength: 7,
         redirectCount: 1,
       },
@@ -78,6 +79,7 @@ describe("acquireArticle", () => {
         metadata: {
           fetchStatus: "failed",
           failureCode: "http_status",
+          sourceType: "unknown",
           status: 503,
         },
       }),

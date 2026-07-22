@@ -1,0 +1,5 @@
+Reliable systems make their boundaries visible. A collector should record what it received, what it rejected, and why, without retaining sensitive source material.
+
+Deterministic extraction is especially useful for plain-text essays and technical notes. Their structure is already meaningful, so normalization should preserve paragraph boundaries while removing only insignificant surrounding whitespace.
+
+When the source is incomplete, the pipeline should mark that limitation explicitly. Discussion analysis can still proceed without pretending that article evidence was available.

@@ -32,6 +32,7 @@ export interface OperationalSnapshot {
     readonly latestScheduledFailureAt: Date | null;
   };
   readonly fetches: { readonly failed: number; readonly extracted: number };
+  readonly sourceAcquisition: readonly SourceAcquisitionMetric[];
   readonly queue: { readonly queued: number; readonly running: number };
   readonly llm: {
     readonly failedJobs: number;
@@ -45,6 +46,19 @@ export interface OperationalSnapshot {
     readonly hitRate: number | null;
   };
   readonly unacknowledgedAlerts: number;
+}
+
+export interface SourceAcquisitionMetric {
+  readonly sourceType: string;
+  readonly contentType: string;
+  readonly outcome:
+    | "access_restriction"
+    | "unsupported_content_type"
+    | "fetch_failure"
+    | "extraction_failure"
+    | "low_confidence"
+    | "extracted";
+  readonly count: number;
 }
 
 export function evaluateSpendBudget(
@@ -153,6 +167,32 @@ export async function collectOperationalSnapshot(
       (SELECT COUNT(*) FROM analysis_cache_lookups WHERE NOT hit AND created_at >= ${from} AND created_at < ${now})::int AS cache_misses,
       (SELECT COUNT(*) FROM operational_alerts WHERE acknowledged_at IS NULL)::int AS unacknowledged_alerts
   `);
+  const sourceResult = await db.execute<Record<string, unknown>>(sql`
+    SELECT
+      CASE
+        WHEN extraction_metadata->>'sourceType' IN ('html', 'plain_text', 'markdown', 'pdf', 'image', 'audio', 'video', 'structured_data', 'feed_or_xml', 'hn_text_post')
+          THEN extraction_metadata->>'sourceType'
+        ELSE 'unknown'
+      END AS source_type,
+      CASE
+        WHEN extraction_metadata->>'contentType' IN ('text/html', 'application/xhtml+xml', 'text/plain', 'text/markdown', 'text/x-markdown', 'application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'audio/mpeg', 'video/mp4', 'application/json', 'application/xml', 'text/xml')
+          THEN extraction_metadata->>'contentType'
+        ELSE 'unknown_or_other'
+      END AS content_type,
+      CASE
+        WHEN status = 'access_restricted' THEN 'access_restriction'
+        WHEN status = 'unsupported' THEN 'unsupported_content_type'
+        WHEN status = 'failed' THEN 'fetch_failure'
+        WHEN status = 'low_confidence' AND extraction_metadata->'extraction'->>'status' = 'empty' THEN 'extraction_failure'
+        WHEN status = 'low_confidence' THEN 'low_confidence'
+        ELSE 'extracted'
+      END AS outcome,
+      COUNT(*)::int AS count
+    FROM documents
+    WHERE updated_at >= ${from} AND updated_at < ${now} AND status <> 'pending'
+    GROUP BY source_type, content_type, outcome
+    ORDER BY count DESC, source_type, content_type, outcome
+  `);
   const row = result.rows[0] ?? {};
   const hits = number(row.cache_hits);
   const misses = number(row.cache_misses);
@@ -168,6 +208,12 @@ export async function collectOperationalSnapshot(
       failed: number(row.fetches_failed),
       extracted: number(row.fetches_extracted),
     },
+    sourceAcquisition: sourceResult.rows.map((metric) => ({
+      sourceType: String(metric.source_type),
+      contentType: String(metric.content_type),
+      outcome: sourceOutcome(metric.outcome),
+      count: number(metric.count),
+    })),
     queue: {
       queued: number(row.jobs_queued),
       running: number(row.jobs_running),
@@ -185,6 +231,20 @@ export async function collectOperationalSnapshot(
     },
     unacknowledgedAlerts: number(row.unacknowledged_alerts),
   };
+}
+
+function sourceOutcome(value: unknown): SourceAcquisitionMetric["outcome"] {
+  const outcome = String(value);
+  if (
+    outcome === "access_restriction" ||
+    outcome === "unsupported_content_type" ||
+    outcome === "fetch_failure" ||
+    outcome === "extraction_failure" ||
+    outcome === "low_confidence" ||
+    outcome === "extracted"
+  )
+    return outcome;
+  return "fetch_failure";
 }
 
 export async function refreshOperationalAlerts(

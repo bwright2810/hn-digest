@@ -44,6 +44,19 @@ export class ArticleExtractor {
   }
 
   extract(
+    content: string | Uint8Array,
+    sourceUrl: string | URL,
+    contentType = "text/html",
+  ): ArticleExtraction {
+    if (
+      ["text/plain", "text/markdown", "text/x-markdown"].includes(contentType)
+    ) {
+      return this.extractText(content, contentType !== "text/plain");
+    }
+    return this.extractHtml(content, sourceUrl);
+  }
+
+  private extractHtml(
     html: string | Uint8Array,
     sourceUrl: string | URL,
   ): ArticleExtraction {
@@ -105,6 +118,55 @@ export class ArticleExtractor {
       title: normalizeNullable(parsed.title),
       byline: normalizeNullable(parsed.byline),
       publishedAt,
+      headings,
+      text,
+      contentHash: createHash("sha256").update(text).digest("hex"),
+      wordCount: text.split(/\s+/u).length,
+      characterCount: text.length,
+      confidenceReasons,
+    };
+  }
+
+  private extractText(
+    content: string | Uint8Array,
+    markdown: boolean,
+  ): ArticleExtraction {
+    let decoded: string;
+    try {
+      decoded =
+        typeof content === "string"
+          ? content
+          : new TextDecoder("utf-8", { fatal: true }).decode(content);
+    } catch {
+      return emptyExtraction("invalid_utf8_text");
+    }
+    if (decoded.includes("\0")) return emptyExtraction("binary_text_content");
+    const text = normalizeDocumentText(decoded);
+    if (!text) return emptyExtraction("normalized_article_was_empty");
+
+    const blocks = text.split(/\n\s*\n/gu).filter(Boolean);
+    const headings = markdown
+      ? text
+          .split("\n")
+          .map((line) => /^(#{1,6})\s+(.+?)\s*#*\s*$/u.exec(line))
+          .filter((match): match is RegExpExecArray => match !== null)
+          .map((match) => ({
+            level: match[1]?.length ?? 1,
+            text: normalizeInlineText(match[2] ?? ""),
+          }))
+          .filter(({ text: heading }) => heading.length > 0)
+      : [];
+    const confidenceReasons: string[] = [];
+    if (text.length < this.minimumCharacterCount)
+      confidenceReasons.push("short_content");
+    if (blocks.length < this.minimumParagraphCount)
+      confidenceReasons.push("few_paragraphs");
+
+    return {
+      status: confidenceReasons.length === 0 ? "extracted" : "low_confidence",
+      title: markdown ? (headings[0]?.text ?? null) : null,
+      byline: null,
+      publishedAt: null,
       headings,
       text,
       contentHash: createHash("sha256").update(text).digest("hex"),

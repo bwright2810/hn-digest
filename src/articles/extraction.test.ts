@@ -48,6 +48,7 @@ describe("extractArticle", () => {
     expect(extractor.extract).toHaveBeenCalledWith(
       fetched.body,
       fetched.finalUrl,
+      fetched.contentType,
     );
     expect(store.recordExtraction).toHaveBeenCalledWith({
       storyId: 42,

@@ -8,6 +8,13 @@ async function fixture(name: string): Promise<string> {
   return readFile(new URL(`fixtures/${name}.html`, import.meta.url), "utf8");
 }
 
+async function textFixture(name: string, extension: string): Promise<string> {
+  return readFile(
+    new URL(`fixtures/${name}.${extension}`, import.meta.url),
+    "utf8",
+  );
+}
+
 describe("ArticleExtractor", () => {
   it("extracts primary text, headings, byline, and publication time", async () => {
     const extractor = new ArticleExtractor();
@@ -81,6 +88,79 @@ describe("ArticleExtractor", () => {
       wordCount: 0,
       characterCount: 0,
       confidenceReasons: ["normalized_article_was_empty"],
+    });
+  });
+
+  it("extracts plain-text essays while preserving paragraph structure", async () => {
+    const result = new ArticleExtractor().extract(
+      await textFixture("plain-text-essay", "txt"),
+      "https://example.com/essay.txt",
+      "text/plain",
+    );
+
+    expect(result).toMatchObject({
+      status: "extracted",
+      title: null,
+      headings: [],
+      contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      confidenceReasons: [],
+    });
+    expect(result.text).toContain("\n\nDeterministic extraction");
+  });
+
+  it("extracts markdown documents and retains their heading hierarchy", async () => {
+    const result = new ArticleExtractor().extract(
+      await textFixture("markdown-article", "md"),
+      "https://example.com/article.md",
+      "text/markdown",
+    );
+
+    expect(result).toMatchObject({
+      status: "extracted",
+      title: "Designing Bounded Collectors",
+      headings: [
+        { level: 1, text: "Designing Bounded Collectors" },
+        { level: 2, text: "Preserve evidence" },
+        { level: 2, text: "Fail explicitly" },
+      ],
+    });
+  });
+
+  it("marks empty supported text explicitly instead of inventing content", () => {
+    expect(
+      new ArticleExtractor().extract(
+        " \n \n",
+        "https://example.com/empty.txt",
+        "text/plain",
+      ),
+    ).toMatchObject({
+      status: "empty",
+      text: null,
+      confidenceReasons: ["normalized_article_was_empty"],
+    });
+  });
+
+  it("rejects binary or invalid UTF-8 bodies mislabeled as text", () => {
+    const extractor = new ArticleExtractor();
+    expect(
+      extractor.extract(
+        "text\0binary",
+        "https://example.com/file",
+        "text/plain",
+      ),
+    ).toMatchObject({
+      status: "empty",
+      confidenceReasons: ["binary_text_content"],
+    });
+    expect(
+      extractor.extract(
+        new Uint8Array([0xc3, 0x28]),
+        "https://example.com/file",
+        "text/plain",
+      ),
+    ).toMatchObject({
+      status: "empty",
+      confidenceReasons: ["invalid_utf8_text"],
     });
   });
 });

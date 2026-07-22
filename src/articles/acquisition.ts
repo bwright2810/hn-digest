@@ -36,6 +36,28 @@ interface FetchArticleClient {
   fetch(source: string | URL): Promise<ArticleFetchResult>;
 }
 
+export function articleSourceType(contentType: string | null): string {
+  switch (contentType) {
+    case "text/html":
+    case "application/xhtml+xml":
+      return "html";
+    case "text/plain":
+      return "plain_text";
+    case "text/markdown":
+    case "text/x-markdown":
+      return "markdown";
+    case "application/pdf":
+      return "pdf";
+    default:
+      if (contentType?.startsWith("image/")) return "image";
+      if (contentType?.startsWith("audio/")) return "audio";
+      if (contentType?.startsWith("video/")) return "video";
+      if (contentType?.includes("json")) return "structured_data";
+      if (contentType?.includes("xml")) return "feed_or_xml";
+      return "unknown";
+  }
+}
+
 export async function acquireArticle(options: {
   readonly storyId: number;
   readonly sourceUrl: string;
@@ -69,6 +91,11 @@ export async function acquireArticle(options: {
       metadata: {
         fetchStatus: "failed",
         failureCode: failure.code,
+        sourceType: articleSourceType(
+          typeof failure.metadata.contentType === "string"
+            ? failure.metadata.contentType
+            : null,
+        ),
         ...failure.metadata,
       },
     });
@@ -89,6 +116,7 @@ export async function acquireArticle(options: {
       fetchStatus: "fetched",
       httpStatus: result.status,
       contentType: result.contentType,
+      sourceType: articleSourceType(result.contentType),
       byteLength: result.byteLength,
       redirectCount: result.redirectCount,
     },
