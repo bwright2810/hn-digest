@@ -38,8 +38,10 @@ selected until HD-075 passes. PDF, OCR, and media processing remain deferred.
 
 ## Phase 0: measure and choose
 
-Run the HD-058 source-acquisition metrics over at least 30 scheduled or
-on-demand digest runs, with enough elapsed time to include varied HN sources.
+Run the HD-058 source-acquisition metrics over at least 10 scheduled or
+on-demand digest runs and 50 story occurrences for the initial audit. Before
+enabling any adapter, extend the review to at least 30 runs with enough elapsed
+time to include varied HN sources.
 Review only aggregate source type, normalized content type, outcome, count, and
 story discussion depth. Do not export source bodies or complete URLs.
 

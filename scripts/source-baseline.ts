@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   );
   const minimumRunCount = minimumRunCountArgument
     ? parsePositiveInteger(minimumRunCountArgument, "minimum run count")
-    : 30;
+    : 10;
   const connection = createDatabase(databaseUrl);
   try {
     const report = await collectSourceAdapterBaseline(connection.db, {

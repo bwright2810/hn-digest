@@ -475,8 +475,8 @@ Acceptance criteria:
 
 ### HD-075 — Establish the source-adapter baseline
 
-Collect aggregate source-acquisition outcomes over at least 30 digest runs and
-rank unsupported formats using the scoring factors in
+Collect an initial aggregate source-acquisition baseline over at least 10
+digest runs and 50 story occurrences, then rank unsupported formats using the scoring factors in
 `docs/discussion-only-source-support-plan.md`. Do not retain source bodies or
 complete URLs in the baseline.
 
@@ -488,6 +488,8 @@ Acceptance criteria:
 - A format is selected only when observed in the baseline or reviewed fixtures
   and expected to recover useful context for at least 20% of its occurrences.
 - Every selected format receives a stable roadmap task and rollout threshold.
+- Enabling an adapter still requires an extended review over at least 30 varied
+  runs; the initial gate may conclude that no format has enough evidence.
 
 ### HD-076 — Add the source-document adapter foundation
 
@@ -749,3 +751,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Add bounded plain-text and Markdown extraction while keeping PDF and media sources discussion-only. | These text formats fit the existing SSRF and extraction-quality model; document and media parsing would add substantially different security and resource requirements. |
 | 2026-07-22 | Introduce HD-075 through HD-079 for discussion-only source reduction, implementing only the shared adapter foundation before production measurements select additional formats. | Stable gated tasks preserve the plan's measurement requirement and avoid authorizing GitHub, feed, JSON Feed, PDF, OCR, or media work from intuition alone. |
 | 2026-07-22 | After one citation-correction attempt, deterministically omit invalid discussion references instead of failing the story. | Preserving valid article analysis and grounded discussion claims gives readers a useful degraded result while never accepting invented comment IDs. |
+| 2026-07-22 | Complete the initial HD-075 audit at 10 runs and 50 source occurrences while retaining 30 varied runs as the adapter-enablement gate. | This allows the production review workflow to be exercised now without treating repeated stories from one day as sufficient evidence to enable a new parser. |

@@ -73,8 +73,10 @@ export interface SourceAdapterBaseline {
   readonly runCount: number;
   readonly ready: boolean;
   readonly roadmapReady: boolean;
+  readonly extendedReady: boolean;
   readonly requiredRunCount: number;
-  readonly roadmapRequiredRunCount: 30;
+  readonly roadmapRequiredRunCount: 10;
+  readonly extendedRequiredRunCount: 30;
   readonly occurrenceCount: number;
   readonly discussionOnlyCount: number;
   readonly discussionOnlyShare: number;
@@ -264,7 +266,7 @@ export async function collectSourceAdapterBaseline(
   if (options.from >= options.to) {
     throw new RangeError("from must be earlier than to");
   }
-  const minimumRunCount = options.minimumRunCount ?? 30;
+  const minimumRunCount = options.minimumRunCount ?? 10;
   if (!Number.isInteger(minimumRunCount) || minimumRunCount <= 0) {
     throw new RangeError("minimumRunCount must be a positive integer");
   }
@@ -360,9 +362,11 @@ export async function collectSourceAdapterBaseline(
     to: options.to,
     runCount,
     ready: runCount >= minimumRunCount,
-    roadmapReady: runCount >= 30,
+    roadmapReady: runCount >= 10,
+    extendedReady: runCount >= 30,
     requiredRunCount: minimumRunCount,
-    roadmapRequiredRunCount: 30,
+    roadmapRequiredRunCount: 10,
+    extendedRequiredRunCount: 30,
     occurrenceCount,
     discussionOnlyCount,
     discussionOnlyShare:

@@ -92,7 +92,7 @@ describe("HD-058 source acquisition metrics", () => {
 });
 
 describe("HD-075 source adapter baseline", () => {
-  it("reports aggregate occurrence metrics and enforces the 30-run gate", async () => {
+  it("reports aggregate metrics and extended readiness after 30 runs", async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({ rows: [{ run_count: 31 }] })
@@ -119,8 +119,10 @@ describe("HD-075 source adapter baseline", () => {
       runCount: 31,
       ready: true,
       roadmapReady: true,
-      requiredRunCount: 30,
-      roadmapRequiredRunCount: 30,
+      extendedReady: true,
+      requiredRunCount: 10,
+      roadmapRequiredRunCount: 10,
+      extendedRequiredRunCount: 30,
       occurrenceCount: 8,
       discussionOnlyCount: 8,
       discussionOnlyShare: 1,
@@ -138,10 +140,10 @@ describe("HD-075 source adapter baseline", () => {
     });
   });
 
-  it("remains unready below 30 runs and validates the date range", async () => {
+  it("remains unready below the initial gate and validates the date range", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ rows: [{ run_count: 29 }] })
+      .mockResolvedValueOnce({ rows: [{ run_count: 9 }] })
       .mockResolvedValueOnce({ rows: [] });
     const from = new Date("2026-05-01T00:00:00Z");
     const to = new Date("2026-07-22T00:00:00Z");
@@ -149,11 +151,13 @@ describe("HD-075 source adapter baseline", () => {
     await expect(
       collectSourceAdapterBaseline({ execute } as never, { from, to }),
     ).resolves.toMatchObject({
-      runCount: 29,
+      runCount: 9,
       ready: false,
       roadmapReady: false,
-      requiredRunCount: 30,
-      roadmapRequiredRunCount: 30,
+      extendedReady: false,
+      requiredRunCount: 10,
+      roadmapRequiredRunCount: 10,
+      extendedRequiredRunCount: 30,
       occurrenceCount: 0,
       discussionOnlyCount: 0,
       discussionOnlyShare: 0,
@@ -164,10 +168,10 @@ describe("HD-075 source adapter baseline", () => {
     ).rejects.toThrow(/earlier/);
   });
 
-  it("supports provisional review without weakening roadmap readiness", async () => {
+  it("supports a lower test threshold without weakening roadmap readiness", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ rows: [{ run_count: 10 }] })
+      .mockResolvedValueOnce({ rows: [{ run_count: 5 }] })
       .mockResolvedValueOnce({ rows: [] });
     const from = new Date("2026-07-01T00:00:00Z");
     const to = new Date("2026-07-22T00:00:00Z");
@@ -176,14 +180,16 @@ describe("HD-075 source adapter baseline", () => {
       collectSourceAdapterBaseline({ execute } as never, {
         from,
         to,
-        minimumRunCount: 10,
+        minimumRunCount: 5,
       }),
     ).resolves.toMatchObject({
-      runCount: 10,
+      runCount: 5,
       ready: true,
       roadmapReady: false,
-      requiredRunCount: 10,
-      roadmapRequiredRunCount: 30,
+      extendedReady: false,
+      requiredRunCount: 5,
+      roadmapRequiredRunCount: 10,
+      extendedRequiredRunCount: 30,
     });
   });
 });
