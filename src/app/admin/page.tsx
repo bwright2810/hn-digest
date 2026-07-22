@@ -2,6 +2,7 @@ import { getConfig } from "../../config/server";
 import { getDatabase } from "../../db/client";
 import { collectAdminRuns, type AdminRunView } from "../../operations/admin";
 import { AdminAutoRefresh } from "./auto-refresh";
+import { ActivitySpinner, RunDigestForm } from "./live-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -95,19 +96,7 @@ export function AdminDashboard({
           <p className="eyebrow">Private operator</p>
           <h1>Digest operations.</h1>
         </div>
-        <form className="run-form" method="post" action="/api/admin/runs">
-          <label htmlFor="story-count">Stories</label>
-          <input
-            id="story-count"
-            name="storyCount"
-            type="number"
-            min="1"
-            max={maximumStoryCount}
-            defaultValue={maximumStoryCount}
-            required
-          />
-          <button type="submit">Run digest now</button>
-        </form>
+        <RunDigestForm maximumStoryCount={maximumStoryCount} />
       </section>
 
       {started ? (
@@ -146,8 +135,15 @@ export function AdminDashboard({
                     </td>
                     <td>{run.trigger.replace("_", " ")}</td>
                     <td>
-                      <span className={`status status--${run.status}`}>
-                        {run.status}
+                      <span className="run-status">
+                        <span className={`status status--${run.status}`}>
+                          {run.status}
+                        </span>
+                        {["pending", "collecting", "analyzing"].includes(
+                          run.status,
+                        ) ? (
+                          <ActivitySpinner />
+                        ) : null}
                       </span>
                       {run.errorCode ? <code>{run.errorCode}</code> : null}
                     </td>

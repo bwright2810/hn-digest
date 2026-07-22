@@ -423,6 +423,37 @@ h1 {
   font-weight: 800;
   cursor: pointer;
 }
+.run-form button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+.run-form__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.run-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.activity-spinner {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+  border: 0.12rem solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: activity-spin 0.75s linear infinite;
+}
+@keyframes activity-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
 .operator-notice {
   margin: var(--space-6) 0 0;
   padding: var(--space-4);
@@ -648,5 +679,10 @@ h1 {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  .activity-spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.65;
   }
 }

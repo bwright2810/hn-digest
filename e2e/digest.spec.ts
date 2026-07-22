@@ -108,6 +108,18 @@ test("protects operator diagnostics with HTTP Basic authentication", async ({
     "Status updates automatically",
   );
   await automaticRefresh;
+  await expect(
+    page
+      .locator("tr")
+      .filter({ hasText: "fixture-active-run" })
+      .locator(".activity-spinner"),
+  ).toBeVisible();
+  await page.route("/api/admin/runs", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    await route.abort();
+  });
+  await page.getByRole("button", { name: "Run digest now" }).click();
+  await expect(page.getByRole("button", { name: "Queuing…" })).toBeDisabled();
   await expectNoHorizontalOverflow(page);
   await operator.close();
 });

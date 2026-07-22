@@ -454,6 +454,25 @@ Acceptance criteria:
   possible, while retaining bounded API requests.
 - A shortfall is explicit when too few ranked stories meet the threshold.
 
+### HD-058 — Audit and expand supported source types
+
+Measure which HN story links fall back to discussion-only analysis, classify
+the failure modes by source and content type, and add deterministic support for
+the highest-value formats that fit the existing extraction and security model.
+PDF extraction remains deferred unless the decision log is deliberately
+updated first.
+
+Acceptance criteria:
+
+- Production-safe metrics distinguish access restrictions, unsupported content
+  types, extraction failures, and low-confidence text without storing source
+  bodies or sensitive URLs.
+- A reviewed fixture set represents the most common unsupported HN link types.
+- Prioritized formats are supported with bounded fetches, SSRF protection,
+  content validation, and extraction-quality tests.
+- Unsupported sources continue to produce an explicit discussion-only result
+  rather than failing the entire story.
+
 ## Milestone 6: Reading experience
 
 ### HD-059 — Define the visual system and responsive shell
