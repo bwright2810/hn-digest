@@ -97,7 +97,11 @@ describeDatabase("DigestPipeline", () => {
     });
 
     const firstRunId = await createPendingRun();
-    await pipeline.collectAndEnqueue(firstRunId);
+    const claims = await Promise.all([
+      pipeline.processNextRun(),
+      pipeline.processNextRun(),
+    ]);
+    expect(claims.filter(Boolean)).toEqual([firstRunId]);
     const [queued] = await connection.db
       .select()
       .from(analysisJobs)

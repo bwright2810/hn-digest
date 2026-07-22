@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, or } from "drizzle-orm";
 
 import {
   type AnalysisCacheComponents,
@@ -69,6 +69,8 @@ import type { ClaimedAnalysisJob, AttemptOutcome } from "../worker/queue";
 
 type Database = ReturnType<typeof createDatabase>["db"];
 
+const COLLECTION_LEASE_MS = 5 * 60 * 1_000;
+
 interface StoredJobContext {
   readonly selectedCommentIds: number[];
   readonly articleTruncated: boolean;
@@ -108,13 +110,43 @@ export class DigestPipeline {
   }
 
   async processNextRun(): Promise<string | null> {
+    const staleBefore = new Date(Date.now() - COLLECTION_LEASE_MS);
     const [run] = await this.db
-      .select({ id: digestRuns.id })
+      .select({
+        id: digestRuns.id,
+        status: digestRuns.status,
+      })
       .from(digestRuns)
-      .where(inArray(digestRuns.status, ["pending", "collecting", "analyzing"]))
+      .where(
+        or(
+          eq(digestRuns.status, "pending"),
+          and(
+            eq(digestRuns.status, "collecting"),
+            lt(digestRuns.updatedAt, staleBefore),
+          ),
+        ),
+      )
       .orderBy(asc(digestRuns.createdAt))
       .limit(1);
     if (!run) return null;
+
+    const [claimed] = await this.db
+      .update(digestRuns)
+      .set({ status: "collecting", updatedAt: new Date() })
+      .where(
+        and(
+          eq(digestRuns.id, run.id),
+          run.status === "pending"
+            ? eq(digestRuns.status, "pending")
+            : and(
+                eq(digestRuns.status, "collecting"),
+                lt(digestRuns.updatedAt, staleBefore),
+              ),
+        ),
+      )
+      .returning({ id: digestRuns.id });
+    if (!claimed) return null;
+
     await this.collectAndEnqueue(run.id);
     return run.id;
   }
@@ -155,11 +187,20 @@ export class DigestPipeline {
       try {
         await this.prepareStory(runStory.id);
       } catch (error) {
+        const errorCode = classifyError(error);
+        console.error(
+          JSON.stringify({
+            event: "digest_story_preparation_failed",
+            runId,
+            digestRunStoryId: runStory.id,
+            errorCode,
+          }),
+        );
         await this.db
           .update(digestRunStories)
           .set({
             status: "failed",
-            failureCode: classifyError(error),
+            failureCode: errorCode,
             updatedAt: new Date(),
           })
           .where(eq(digestRunStories.id, runStory.id));
@@ -732,7 +773,8 @@ function citedCommentIds(output: AnalysisOutput): number[] {
 }
 
 function classifyError(error: unknown): string {
-  return safeCode(error instanceof Error ? error.name : "pipeline_error");
+  if (!(error instanceof Error)) return "pipeline_error";
+  return safeCode(error.name === "Error" ? error.message : error.name);
 }
 
 function safeCode(value: string): string {
