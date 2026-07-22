@@ -22,3 +22,11 @@ normalized extraction metadata records the adapter ID and bounded heading or
 line-range evidence locations. HD-075 must collect the 30-run production
 baseline before HD-077 (GitHub), HD-078 (RSS/Atom), or HD-079 (JSON Feed) can be
 selected. PDF, OCR, and media processing remain deferred.
+
+Run `pnpm source:baseline [from-iso-date] [to-iso-date]` from a trusted
+environment with only `DATABASE_URL` configured. The command defaults to the
+previous 90 days and outputs aggregate JSON containing the qualifying run
+count, readiness gate, coarse source/content types, outcomes, occurrence
+counts, and median HN comment count and rank. It exits with status 2 until at
+least 30 completed, partial, or failed scheduled/on-demand runs are present.
+The report contains no source bodies or URLs.

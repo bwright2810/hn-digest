@@ -148,6 +148,10 @@ development schema.
 - The production image also bundles the operator CLI as `node digest.js run`
   and `node digest.js status <run-id>` for one-off execution in the application
   container.
+- The production image bundles the aggregate-only HD-075 report as
+  `node source-baseline.js [from-iso-date] [to-iso-date]`. Run it as a trusted
+  one-off command on the private database network; it emits no source URLs or
+  bodies and exits with status 2 while fewer than 30 qualifying runs exist.
 - Add all runtime variables from the table above. Do not configure them as
   Docker build arguments.
 - Set the health check to HTTP `GET /api/health` on port 3000. Use a 30-second

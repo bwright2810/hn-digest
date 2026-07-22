@@ -61,6 +61,24 @@ export interface SourceAcquisitionMetric {
   readonly count: number;
 }
 
+export interface SourceAdapterBaselineMetric extends SourceAcquisitionMetric {
+  readonly medianCommentCount: number;
+  readonly medianRank: number;
+  readonly shareOfDiscussionOnly: number;
+}
+
+export interface SourceAdapterBaseline {
+  readonly from: Date;
+  readonly to: Date;
+  readonly runCount: number;
+  readonly ready: boolean;
+  readonly requiredRunCount: 30;
+  readonly occurrenceCount: number;
+  readonly discussionOnlyCount: number;
+  readonly discussionOnlyShare: number;
+  readonly metrics: readonly SourceAdapterBaselineMetric[];
+}
+
 export function evaluateSpendBudget(
   dailySpendUsd: number,
   monthlySpendUsd: number,
@@ -231,6 +249,121 @@ export async function collectOperationalSnapshot(
     },
     unacknowledgedAlerts: number(row.unacknowledged_alerts),
   };
+}
+
+export async function collectSourceAdapterBaseline(
+  db: Database,
+  options: { readonly from: Date; readonly to: Date },
+): Promise<SourceAdapterBaseline> {
+  if (options.from >= options.to) {
+    throw new RangeError("from must be earlier than to");
+  }
+  const runResult = await db.execute<Record<string, unknown>>(sql`
+    SELECT COUNT(*)::int AS run_count
+    FROM digest_runs
+    WHERE trigger IN ('scheduled', 'on_demand')
+      AND status IN ('complete', 'partial', 'failed')
+      AND created_at >= ${options.from} AND created_at < ${options.to}
+  `);
+  const result = await db.execute<Record<string, unknown>>(sql`
+    WITH eligible_runs AS (
+      SELECT id
+      FROM digest_runs
+      WHERE trigger IN ('scheduled', 'on_demand')
+        AND status IN ('complete', 'partial', 'failed')
+        AND created_at >= ${options.from} AND created_at < ${options.to}
+    ), occurrences AS (
+      SELECT
+        drs.digest_run_id,
+        drs.rank,
+        snapshot.comment_count,
+        document.status AS document_status,
+        document.extraction_metadata
+      FROM digest_run_stories drs
+      INNER JOIN eligible_runs run ON run.id = drs.digest_run_id
+      INNER JOIN story_snapshots snapshot ON snapshot.id = drs.story_snapshot_id
+      LEFT JOIN LATERAL (
+        SELECT status, extraction_metadata
+        FROM documents
+        WHERE documents.story_id = drs.story_id
+          AND documents.updated_at <= drs.updated_at
+        ORDER BY documents.updated_at DESC
+        LIMIT 1
+      ) document ON true
+    ), classified AS (
+      SELECT
+        digest_run_id,
+        rank,
+        comment_count,
+        CASE
+          WHEN extraction_metadata->>'sourceType' IN ('html', 'plain_text', 'markdown', 'pdf', 'image', 'audio', 'video', 'structured_data', 'feed_or_xml', 'hn_text_post')
+            THEN extraction_metadata->>'sourceType'
+          ELSE 'unknown'
+        END AS source_type,
+        CASE
+          WHEN extraction_metadata->>'contentType' IN ('text/html', 'application/xhtml+xml', 'text/plain', 'text/markdown', 'text/x-markdown', 'application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'audio/mpeg', 'video/mp4', 'application/json', 'application/feed+json', 'application/atom+xml', 'application/rss+xml', 'application/xml', 'text/xml')
+            THEN extraction_metadata->>'contentType'
+          ELSE 'unknown_or_other'
+        END AS content_type,
+        CASE
+          WHEN document_status IS NULL THEN 'fetch_failure'
+          WHEN document_status = 'access_restricted' THEN 'access_restriction'
+          WHEN document_status = 'unsupported' THEN 'unsupported_content_type'
+          WHEN document_status = 'failed' THEN 'fetch_failure'
+          WHEN document_status = 'low_confidence' AND extraction_metadata->'extraction'->>'status' = 'empty' THEN 'extraction_failure'
+          WHEN document_status = 'low_confidence' THEN 'low_confidence'
+          ELSE 'extracted'
+        END AS outcome
+      FROM occurrences
+    )
+    SELECT
+      source_type,
+      content_type,
+      outcome,
+      COUNT(*)::int AS count,
+      PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY comment_count)::int AS median_comment_count,
+      PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY rank)::int AS median_rank
+    FROM classified
+    GROUP BY source_type, content_type, outcome
+    ORDER BY count DESC, source_type, content_type, outcome
+  `);
+  const runCount = number(runResult.rows[0]?.run_count);
+  const rows = result.rows.map((metric) => ({
+    sourceType: String(metric.source_type),
+    contentType: String(metric.content_type),
+    outcome: sourceOutcome(metric.outcome),
+    count: number(metric.count),
+    medianCommentCount: number(metric.median_comment_count),
+    medianRank: number(metric.median_rank),
+  }));
+  const occurrenceCount = rows.reduce((sum, metric) => sum + metric.count, 0);
+  const discussionOnlyCount = rows
+    .filter((metric) => isDiscussionOnlyOutcome(metric.outcome))
+    .reduce((sum, metric) => sum + metric.count, 0);
+  return {
+    from: options.from,
+    to: options.to,
+    runCount,
+    ready: runCount >= 30,
+    requiredRunCount: 30,
+    occurrenceCount,
+    discussionOnlyCount,
+    discussionOnlyShare:
+      occurrenceCount === 0 ? 0 : discussionOnlyCount / occurrenceCount,
+    metrics: rows.map((metric) => ({
+      ...metric,
+      shareOfDiscussionOnly:
+        isDiscussionOnlyOutcome(metric.outcome) && discussionOnlyCount > 0
+          ? metric.count / discussionOnlyCount
+          : 0,
+    })),
+  };
+}
+
+function isDiscussionOnlyOutcome(
+  outcome: SourceAcquisitionMetric["outcome"],
+): boolean {
+  return outcome !== "extracted" && outcome !== "low_confidence";
 }
 
 function sourceOutcome(value: unknown): SourceAcquisitionMetric["outcome"] {

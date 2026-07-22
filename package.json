@@ -19,7 +19,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && pnpm build:runtime",
-    "build:runtime": "esbuild scripts/production.ts scripts/background.ts scripts/migrate.ts scripts/digest.ts --bundle --platform=node --format=cjs --target=node24 --outdir=.next/runtime --external:jsdom",
+    "build:runtime": "esbuild scripts/production.ts scripts/background.ts scripts/migrate.ts scripts/digest.ts scripts/source-baseline.ts --bundle --platform=node --format=cjs --target=node24 --outdir=.next/runtime --external:jsdom",
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -33,7 +33,8 @@
     "db:rollback": "tsx scripts/db/rollback.ts",
     "db:check": "drizzle-kit check",
     "digest:run": "tsx scripts/digest.ts run",
-    "digest:status": "tsx scripts/digest.ts status"
+    "digest:status": "tsx scripts/digest.ts status",
+    "source:baseline": "tsx scripts/source-baseline.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

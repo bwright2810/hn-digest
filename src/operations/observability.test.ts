@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   collectOperationalSnapshot,
+  collectSourceAdapterBaseline,
   evaluateSpendBudget,
   utcPeriodStarts,
 } from "./observability";
@@ -87,5 +88,74 @@ describe("HD-058 source acquisition metrics", () => {
       },
     ]);
     expect(snapshot.sourceAcquisition).not.toHaveProperty("sourceUrl");
+  });
+});
+
+describe("HD-075 source adapter baseline", () => {
+  it("reports aggregate occurrence metrics and enforces the 30-run gate", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ run_count: 31 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            source_type: "pdf",
+            content_type: "application/pdf",
+            outcome: "unsupported_content_type",
+            count: 8,
+            median_comment_count: 42,
+            median_rank: 7,
+          },
+        ],
+      });
+    const from = new Date("2026-05-01T00:00:00Z");
+    const to = new Date("2026-07-22T00:00:00Z");
+
+    await expect(
+      collectSourceAdapterBaseline({ execute } as never, { from, to }),
+    ).resolves.toEqual({
+      from,
+      to,
+      runCount: 31,
+      ready: true,
+      requiredRunCount: 30,
+      occurrenceCount: 8,
+      discussionOnlyCount: 8,
+      discussionOnlyShare: 1,
+      metrics: [
+        {
+          sourceType: "pdf",
+          contentType: "application/pdf",
+          outcome: "unsupported_content_type",
+          count: 8,
+          medianCommentCount: 42,
+          medianRank: 7,
+          shareOfDiscussionOnly: 1,
+        },
+      ],
+    });
+  });
+
+  it("remains unready below 30 runs and validates the date range", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ run_count: 29 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const from = new Date("2026-05-01T00:00:00Z");
+    const to = new Date("2026-07-22T00:00:00Z");
+
+    await expect(
+      collectSourceAdapterBaseline({ execute } as never, { from, to }),
+    ).resolves.toMatchObject({
+      runCount: 29,
+      ready: false,
+      occurrenceCount: 0,
+      discussionOnlyCount: 0,
+      discussionOnlyShare: 0,
+      metrics: [],
+    });
+    await expect(
+      collectSourceAdapterBaseline({ execute } as never, { from: to, to }),
+    ).rejects.toThrow(/earlier/);
   });
 });

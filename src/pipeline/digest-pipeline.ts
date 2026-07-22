@@ -351,7 +351,7 @@ export class DigestPipeline {
       )
       .orderBy(desc(documents.updatedAt))
       .limit(1);
-    if (!document) discussionOnly = true;
+    if (!hasArticleContent(document)) discussionOnly = true;
 
     const storedComments = await this.db
       .select({
@@ -721,6 +721,12 @@ export class DigestPipeline {
       .set({ status: "failed", errorCode, updatedAt: new Date() })
       .where(eq(digestRuns.id, runId));
   }
+}
+
+export function hasArticleContent(
+  document: { readonly text: string | null } | undefined,
+): boolean {
+  return Boolean(document?.text);
 }
 
 function estimateTokens(text: string): number {
