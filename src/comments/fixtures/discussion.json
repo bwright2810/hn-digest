@@ -1,0 +1,58 @@
+[
+  {
+    "hnItemId": 101,
+    "parentHnItemId": 100,
+    "author": "ada",
+    "text": "The benchmark is useful, but the test set favors short-lived command line workloads. A service workload would expose different latency and memory tradeoffs.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 102,
+    "parentHnItemId": 101,
+    "author": "ben",
+    "text": "That matches our production experience. Tail latency rose after the migration even though median latency improved, so both distributions should be reported.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 103,
+    "parentHnItemId": 101,
+    "author": "cy",
+    "text": "The repository includes the raw measurements and a reproducible harness, which makes this limitation straightforward to test.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 201,
+    "parentHnItemId": 100,
+    "author": "dev",
+    "text": "A second concern is operational complexity. The proposed design adds two failure domains and requires coordinated upgrades, while the article only measures steady-state throughput.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 202,
+    "parentHnItemId": 201,
+    "author": "eli",
+    "text": "There is a simpler deployment described in the appendix, but it gives up the isolation benefit that motivates the design.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 301,
+    "parentHnItemId": 100,
+    "author": "fox",
+    "text": "> The benchmark is useful, but the test set favors short-lived command line workloads.\n> A service workload would expose different latency and memory tradeoffs.\nI agree.",
+    "isDeleted": false,
+    "isDead": false
+  },
+  {
+    "hnItemId": 401,
+    "parentHnItemId": 100,
+    "author": null,
+    "text": null,
+    "isDeleted": true,
+    "isDead": false
+  }
+]
