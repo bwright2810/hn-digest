@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import type { AnalysisOutput } from "../analysis/contract";
 import type { OpenAIAnalysisClient } from "../analysis/openai-client";
@@ -11,7 +11,6 @@ import {
   analysisJobs,
   digestRuns,
   digestRunStories,
-  discussionAnalyses,
   llmUsage,
 } from "../db/schema";
 import type { HackerNewsClient } from "../hn/client";
@@ -24,8 +23,10 @@ const describeDatabase = databaseUrl ? describe : describe.skip;
 
 describeDatabase("DigestPipeline", () => {
   const connection = createDatabase(databaseUrl!);
+  const storyId = 40_000_000 + Math.floor(Math.random() * 1_000_000);
+  const commentId = storyId + 1;
   const story: HackerNewsStory = {
-    id: 44_000_001,
+    id: storyId,
     type: "story",
     by: "author",
     time: 1_750_000_000,
@@ -33,23 +34,16 @@ describeDatabase("DigestPipeline", () => {
     text: "This text post explains a small but important systems idea.",
     score: 100,
     descendants: 1,
-    kids: [44_000_002],
+    kids: [commentId],
     deleted: false,
     dead: false,
   };
-
-  beforeAll(async () => {
-    await connection.db.delete(llmUsage);
-    await connection.db.delete(discussionAnalyses);
-    await connection.db.delete(analysisJobs);
-    await connection.db.delete(digestRunStories);
-    await connection.db.delete(digestRuns);
-  });
 
   afterAll(async () => connection.pool.end());
 
   it("collects, queues, analyzes, persists usage, and reuses unchanged work", async () => {
     let providerCalls = 0;
+    const responsePrefix = randomUUID();
     const hnClient = {
       getTopStoryIds: async () => [story.id],
       getItems: async () => [story],
@@ -57,7 +51,7 @@ describeDatabase("DigestPipeline", () => {
       getCommentDescendants: async () => ({
         comments: [
           {
-            id: 44_000_002,
+            id: commentId,
             type: "comment" as const,
             by: "commenter",
             time: 1_750_000_100,
@@ -72,13 +66,13 @@ describeDatabase("DigestPipeline", () => {
         failures: [],
       }),
     } as unknown as HackerNewsClient;
-    const output = analysisOutput();
+    const output = analysisOutput(commentId);
     const openaiClient = {
       analyze: async () => {
         providerCalls += 1;
         return {
           kind: "completed" as const,
-          responseId: `response-${providerCalls}`,
+          responseId: `${responsePrefix}-${providerCalls}`,
           model: "gpt-5.6-luna",
           usage: {
             inputTokens: 500,
@@ -138,7 +132,12 @@ describeDatabase("DigestPipeline", () => {
         })
       )?.status,
     ).toBe("complete");
-    expect(await connection.db.select().from(llmUsage)).toHaveLength(1);
+    expect(
+      await connection.db
+        .select()
+        .from(llmUsage)
+        .where(eq(llmUsage.analysisJobId, queued!.analysis_jobs.id)),
+    ).toHaveLength(1);
 
     const secondRunId = await createPendingRun();
     await pipeline.collectAndEnqueue(secondRunId);
@@ -178,10 +177,10 @@ describeDatabase("DigestPipeline", () => {
   }
 });
 
-function analysisOutput(): AnalysisOutput {
+function analysisOutput(commentId: number): AnalysisOutput {
   const discussionClaim = {
     claim: "Commenters value the operational simplicity.",
-    supportingCommentIds: [44_000_002],
+    supportingCommentIds: [commentId],
   };
   return {
     promptVersion: "analysis-prompt-v1",
@@ -202,7 +201,7 @@ function analysisOutput(): AnalysisOutput {
       competingViewpoints: [],
       insightfulComments: [
         {
-          commentId: 44_000_002,
+          commentId,
           insight: "Operational simplicity is the central implication.",
           whyNotable: "It connects the idea to practice.",
         },

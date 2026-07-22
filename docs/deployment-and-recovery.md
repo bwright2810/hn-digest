@@ -139,6 +139,9 @@ development schema.
 - Use the repository-root `Dockerfile`; its default runtime starts
   `node production.js`, supervises web/background children, listens on port
   3000, and runs as an unprivileged user.
+- Set Coolify's post-deployment command to `node migrate.js`. The bundled
+  forward-only runner reads `/app/drizzle`, is safe to repeat, and executes in
+  the newly deployed container on the private database network.
 - Add all runtime variables from the table above. Do not configure them as
   Docker build arguments.
 - Set the health check to HTTP `GET /api/health` on port 3000. Use a 30-second

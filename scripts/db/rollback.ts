@@ -32,7 +32,7 @@ async function rollback(): Promise<void> {
   try {
     await client.connect();
     await client.query(migration);
-    console.info("Rolled back the HD-010 initial database migration");
+    console.info("Removed the complete development database schema");
   } finally {
     await client.end();
   }

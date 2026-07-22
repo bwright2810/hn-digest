@@ -29,6 +29,8 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/production.js ./production.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/background.js ./background.js
+COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/migrate.js ./migrate.js
+COPY --from=build --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=runtime-assets --chown=nextjs:nodejs /runtime/node_modules ./node_modules
 USER nextjs
 EXPOSE 3000
