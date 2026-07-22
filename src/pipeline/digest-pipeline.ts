@@ -8,8 +8,10 @@ import {
   resolveAnalysisCache,
 } from "../analysis/cache";
 import {
+  degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
   InvalidCommentCitationError,
+  MAX_CITATION_ATTEMPTS,
 } from "../analysis/citations";
 import {
   ANALYSIS_PROMPT,
@@ -241,7 +243,11 @@ export class DigestPipeline {
       return { status: "failed", errorCode: safeCode(outcome.code) };
     }
 
-    await this.persistAnalysis(claim.id, outcome.output);
+    await this.persistAnalysis(
+      claim.id,
+      outcome.output,
+      claim.attempt >= MAX_CITATION_ATTEMPTS,
+    );
     return { status: "succeeded" };
   }
 
@@ -523,6 +529,7 @@ export class DigestPipeline {
   private async persistAnalysis(
     jobId: string,
     output: AnalysisOutput,
+    degradeInvalidCitations = false,
   ): Promise<void> {
     const [job] = await this.db
       .select({
@@ -542,7 +549,21 @@ export class DigestPipeline {
       .limit(1);
     if (!job) throw new Error("Analysis job not found");
     const context = parseContext(job.context);
-    validateCitations(output, new Set(context.selectedCommentIds));
+    const allowedCommentIds = new Set(context.selectedCommentIds);
+    const degraded = degradeInvalidCitations
+      ? degradeInvalidCommentCitations(output, allowedCommentIds)
+      : { output, invalidCommentIds: [] };
+    if (degraded.invalidCommentIds.length > 0) {
+      console.error(
+        JSON.stringify({
+          event: "invalid_comment_citations_degraded",
+          jobId,
+          invalidCommentIds: degraded.invalidCommentIds,
+        }),
+      );
+    }
+    const persistedOutput = degraded.output;
+    validateCitations(persistedOutput, allowedCommentIds);
     const keys = createAnalysisCacheKeys({
       articleContentHash: job.articleContentHash,
       selectedCommentHash: job.selectedCommentHash,
@@ -563,10 +584,10 @@ export class DigestPipeline {
           schemaVersion: ANALYSIS_SCHEMA_VERSION,
           model: this.config.openai.model,
           result: {
-            promptVersion: output.promptVersion,
-            schemaVersion: output.schemaVersion,
-            article: output.article,
-            combinedTakeaway: output.combinedTakeaway,
+            promptVersion: persistedOutput.promptVersion,
+            schemaVersion: persistedOutput.schemaVersion,
+            article: persistedOutput.article,
+            combinedTakeaway: persistedOutput.combinedTakeaway,
           },
         });
       }
@@ -578,8 +599,8 @@ export class DigestPipeline {
         promptVersion: ANALYSIS_PROMPT_VERSION,
         schemaVersion: ANALYSIS_SCHEMA_VERSION,
         model: this.config.openai.model,
-        result: { ...output },
-        citedCommentIds: citedCommentIds(output),
+        result: { ...persistedOutput },
+        citedCommentIds: citedCommentIds(persistedOutput),
       });
       await transaction
         .update(digestRunStories)
