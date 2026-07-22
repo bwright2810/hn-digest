@@ -39,9 +39,13 @@ export default function RootLayout({
               <span>HN Digest</span>
             </Link>
             <div className="site-actions">
-              {/* A framework-prefetched protected URL triggers the browser's
-                  HTTP Basic prompt while readers are still on the home page. */}
-              <a href="/admin">Admin</a>
+              {/* Next may prefetch any same-origin anchor. A GET form keeps the
+                  Basic challenge behind an intentional operator action. */}
+              <form action="/admin" method="get">
+                <button className="admin-navigation" type="submit">
+                  Admin
+                </button>
+              </form>
               <ThemeToggle />
             </div>
           </header>

@@ -50,10 +50,7 @@ test("does not prefetch the Basic-authenticated admin page", async ({
   await page.goto("/?fixture=complete");
   await page.waitForTimeout(750);
   expect(adminRequests).toEqual([]);
-  await expect(page.getByRole("link", { name: "Admin" })).toHaveAttribute(
-    "href",
-    "/admin",
-  );
+  await expect(page.getByRole("button", { name: "Admin" })).toBeVisible();
 });
 
 test("defaults to dark mode, persists the theme choice, and uses desktop width", async ({

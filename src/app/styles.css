@@ -140,11 +140,27 @@ a:hover {
   gap: var(--space-4);
 }
 .site-actions > a,
+.admin-navigation,
 .theme-toggle {
   color: var(--color-ink-soft);
   font: 700 0.72rem/1 var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+.site-actions form {
+  margin: 0;
+}
+.admin-navigation {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+.admin-navigation:hover {
+  color: var(--color-accent);
 }
 .theme-toggle {
   min-height: 2.5rem;
