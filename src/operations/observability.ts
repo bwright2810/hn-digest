@@ -72,7 +72,9 @@ export interface SourceAdapterBaseline {
   readonly to: Date;
   readonly runCount: number;
   readonly ready: boolean;
-  readonly requiredRunCount: 30;
+  readonly roadmapReady: boolean;
+  readonly requiredRunCount: number;
+  readonly roadmapRequiredRunCount: 30;
   readonly occurrenceCount: number;
   readonly discussionOnlyCount: number;
   readonly discussionOnlyShare: number;
@@ -253,10 +255,18 @@ export async function collectOperationalSnapshot(
 
 export async function collectSourceAdapterBaseline(
   db: Database,
-  options: { readonly from: Date; readonly to: Date },
+  options: {
+    readonly from: Date;
+    readonly to: Date;
+    readonly minimumRunCount?: number;
+  },
 ): Promise<SourceAdapterBaseline> {
   if (options.from >= options.to) {
     throw new RangeError("from must be earlier than to");
+  }
+  const minimumRunCount = options.minimumRunCount ?? 30;
+  if (!Number.isInteger(minimumRunCount) || minimumRunCount <= 0) {
+    throw new RangeError("minimumRunCount must be a positive integer");
   }
   const runResult = await db.execute<Record<string, unknown>>(sql`
     SELECT COUNT(*)::int AS run_count
@@ -278,12 +288,13 @@ export async function collectSourceAdapterBaseline(
         drs.rank,
         snapshot.comment_count,
         document.status AS document_status,
+        document.source_url,
         document.extraction_metadata
       FROM digest_run_stories drs
       INNER JOIN eligible_runs run ON run.id = drs.digest_run_id
       INNER JOIN story_snapshots snapshot ON snapshot.id = drs.story_snapshot_id
       LEFT JOIN LATERAL (
-        SELECT status, extraction_metadata
+        SELECT status, source_url, extraction_metadata
         FROM documents
         WHERE documents.story_id = drs.story_id
           AND documents.updated_at <= drs.updated_at
@@ -296,6 +307,8 @@ export async function collectSourceAdapterBaseline(
         rank,
         comment_count,
         CASE
+          WHEN source_url ~* '^https://(www\.)?github\.com/[^/]+/[^/]+/?([?#].*)?$' THEN 'github_repository'
+          WHEN source_url ~* '^https://(www\.)?github\.com/[^/]+/[^/]+/(blob|raw)/' OR source_url ~* '^https://raw\.githubusercontent\.com/' THEN 'github_file'
           WHEN extraction_metadata->>'sourceType' IN ('html', 'plain_text', 'markdown', 'pdf', 'image', 'audio', 'video', 'structured_data', 'feed_or_xml', 'hn_text_post')
             THEN extraction_metadata->>'sourceType'
           ELSE 'unknown'
@@ -344,8 +357,10 @@ export async function collectSourceAdapterBaseline(
     from: options.from,
     to: options.to,
     runCount,
-    ready: runCount >= 30,
-    requiredRunCount: 30,
+    ready: runCount >= minimumRunCount,
+    roadmapReady: runCount >= 30,
+    requiredRunCount: minimumRunCount,
+    roadmapRequiredRunCount: 30,
     occurrenceCount,
     discussionOnlyCount,
     discussionOnlyShare:

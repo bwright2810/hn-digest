@@ -118,7 +118,9 @@ describe("HD-075 source adapter baseline", () => {
       to,
       runCount: 31,
       ready: true,
+      roadmapReady: true,
       requiredRunCount: 30,
+      roadmapRequiredRunCount: 30,
       occurrenceCount: 8,
       discussionOnlyCount: 8,
       discussionOnlyShare: 1,
@@ -149,6 +151,9 @@ describe("HD-075 source adapter baseline", () => {
     ).resolves.toMatchObject({
       runCount: 29,
       ready: false,
+      roadmapReady: false,
+      requiredRunCount: 30,
+      roadmapRequiredRunCount: 30,
       occurrenceCount: 0,
       discussionOnlyCount: 0,
       discussionOnlyShare: 0,
@@ -157,5 +162,28 @@ describe("HD-075 source adapter baseline", () => {
     await expect(
       collectSourceAdapterBaseline({ execute } as never, { from: to, to }),
     ).rejects.toThrow(/earlier/);
+  });
+
+  it("supports provisional review without weakening roadmap readiness", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ run_count: 10 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const from = new Date("2026-07-01T00:00:00Z");
+    const to = new Date("2026-07-22T00:00:00Z");
+
+    await expect(
+      collectSourceAdapterBaseline({ execute } as never, {
+        from,
+        to,
+        minimumRunCount: 10,
+      }),
+    ).resolves.toMatchObject({
+      runCount: 10,
+      ready: true,
+      roadmapReady: false,
+      requiredRunCount: 10,
+      roadmapRequiredRunCount: 30,
+    });
   });
 });

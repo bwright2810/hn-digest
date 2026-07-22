@@ -23,10 +23,16 @@ line-range evidence locations. HD-075 must collect the 30-run production
 baseline before HD-077 (GitHub), HD-078 (RSS/Atom), or HD-079 (JSON Feed) can be
 selected. PDF, OCR, and media processing remain deferred.
 
-Run `pnpm source:baseline [from-iso-date] [to-iso-date]` from a trusted
-environment with only `DATABASE_URL` configured. The command defaults to the
-previous 90 days and outputs aggregate JSON containing the qualifying run
-count, readiness gate, coarse source/content types, outcomes, occurrence
-counts, and median HN comment count and rank. It exits with status 2 until at
-least 30 completed, partial, or failed scheduled/on-demand runs are present.
-The report contains no source bodies or URLs.
+Run
+`pnpm source:baseline [from-iso-date] [to-iso-date] [minimum-run-count]` from a
+trusted environment with only `DATABASE_URL` configured. The command defaults
+to the previous 90 days and outputs aggregate JSON containing the qualifying
+run count, readiness gate, coarse source/content types, outcomes, occurrence
+counts, and median HN comment count and rank. It exits with status 2 until the
+requested threshold is present. The report contains no source bodies or URLs.
+
+The optional minimum is for exercising the review workflow before 30 runs are
+available. Such a report can set `ready` but never `roadmapReady`; HD-075 still
+requires `roadmapReady: true`. Source URLs are inspected only inside the
+aggregate query to classify public GitHub repository and file links into
+bounded labels; complete URLs are never returned.
