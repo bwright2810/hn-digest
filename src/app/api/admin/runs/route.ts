@@ -46,10 +46,18 @@ export async function POST(request: Request) {
   if (!runId) return new NextResponse("Unable to queue run", { status: 503 });
 
   return NextResponse.redirect(
-    new URL(
-      `/admin?started=${encodeURIComponent(runId)}${coalesced ? "&coalesced=1" : ""}`,
-      request.url,
-    ),
+    adminRunRedirectUrl(config.application.url, runId, coalesced),
     303,
   );
+}
+
+export function adminRunRedirectUrl(
+  applicationUrl: URL,
+  runId: string,
+  coalesced: boolean,
+): URL {
+  const url = new URL("/admin", applicationUrl);
+  url.searchParams.set("started", runId);
+  if (coalesced) url.searchParams.set("coalesced", "1");
+  return url;
 }
