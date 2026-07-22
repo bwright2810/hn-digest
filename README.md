@@ -21,6 +21,11 @@ The application listens on `http://localhost:3000`. Its health check is availabl
 
 Replace the two secret placeholders in `.env.local` before startup. Development defaults are provided for non-secret settings. Production requires every documented setting explicitly; invalid configuration stops the server and reports field names without printing supplied values.
 
+Article fetching defaults to a 10-second total timeout, a 2 MiB response limit,
+and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,
+`ARTICLE_FETCH_MAX_BYTES`, and `ARTICLE_FETCH_MAX_REDIRECTS`. Every redirect is
+resolved and checked against public IP ranges before it is requested.
+
 ## Validation
 
 ```sh

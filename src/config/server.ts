@@ -6,6 +6,9 @@ const DEVELOPMENT_DEFAULTS = {
   DIGEST_MORNING_TIME: "07:00",
   DIGEST_EVENING_TIME: "19:00",
   DIGEST_STORY_COUNT: "5",
+  ARTICLE_FETCH_TIMEOUT_MS: "10000",
+  ARTICLE_FETCH_MAX_BYTES: "2097152",
+  ARTICLE_FETCH_MAX_REDIRECTS: "5",
   LLM_INSTRUCTION_TOKEN_LIMIT: "2000",
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
@@ -63,6 +66,9 @@ const environmentSchema = z.object({
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "must use HH:MM in 24-hour time"),
   DIGEST_STORY_COUNT: positiveInteger,
+  ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
+  ARTICLE_FETCH_MAX_BYTES: positiveInteger,
+  ARTICLE_FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative(),
   LLM_INSTRUCTION_TOKEN_LIMIT: positiveInteger,
   LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
   LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
@@ -87,6 +93,11 @@ export interface AppConfig {
   };
   readonly stories: {
     readonly perRun: number;
+  };
+  readonly articleFetch: {
+    readonly timeoutMs: number;
+    readonly maximumBytes: number;
+    readonly maximumRedirects: number;
   };
   readonly tokens: {
     readonly instructions: number;
@@ -151,6 +162,11 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       eveningTime: values.DIGEST_EVENING_TIME,
     }),
     stories: Object.freeze({ perRun: values.DIGEST_STORY_COUNT }),
+    articleFetch: Object.freeze({
+      timeoutMs: values.ARTICLE_FETCH_TIMEOUT_MS,
+      maximumBytes: values.ARTICLE_FETCH_MAX_BYTES,
+      maximumRedirects: values.ARTICLE_FETCH_MAX_REDIRECTS,
+    }),
     tokens: Object.freeze({
       instructions: values.LLM_INSTRUCTION_TOKEN_LIMIT,
       article: values.LLM_ARTICLE_TOKEN_LIMIT,

@@ -18,6 +18,11 @@ describe("loadConfig", () => {
       eveningTime: "19:00",
     });
     expect(config.stories.perRun).toBe(5);
+    expect(config.articleFetch).toEqual({
+      timeoutMs: 10_000,
+      maximumBytes: 2_097_152,
+      maximumRedirects: 5,
+    });
     expect(config.tokens).toEqual({
       instructions: 2_000,
       article: 12_000,
@@ -36,7 +41,7 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*LLM_OUTPUT_TOKEN_LIMIT/s,
+      /APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT/s,
     );
   });
 
@@ -68,10 +73,12 @@ describe("loadConfig", () => {
         ...requiredSecrets,
         DIGEST_TIME_ZONE: "Not/A_Real_Zone",
         DIGEST_MORNING_TIME: "25:00",
+        ARTICLE_FETCH_MAX_BYTES: "0",
+        ARTICLE_FETCH_MAX_REDIRECTS: "-1",
         LLM_ARTICLE_TOKEN_LIMIT: "0",
       }),
     ).toThrowError(
-      /DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*LLM_ARTICLE_TOKEN_LIMIT/s,
+      /DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT/s,
     );
   });
 });
