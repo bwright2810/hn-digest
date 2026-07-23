@@ -194,6 +194,21 @@ Acceptance criteria:
 - Existing delivery idempotency, edition preferences, and retries are
   unchanged.
 
+### HD-107 — Deliver the latest pre-launch scheduled digest [complete]
+
+Dependencies: HD-106.
+
+Allow the first controlled production subscriber to receive the most recent
+completed scheduled digest when that run predates the newsletter-ready marker.
+
+Acceptance criteria:
+
+- Completed or partial scheduled runs fall back to their update time only when
+  the newsletter-ready timestamp is absent.
+- First-delivery backlog bounding and subsequent forward-only delivery use the
+  same effective readiness timestamp.
+- Integration coverage exercises the legacy null-marker path.
+
 ## Milestone 3: Public digest API
 
 ### HD-110 — Expose a rate-limited public digest API [complete]

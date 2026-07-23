@@ -97,29 +97,29 @@ export class NewsletterDeliveryWorker {
   }
 
   private async enqueueDeliverableRuns(now: Date): Promise<number> {
+    const effectiveReadyAt = sql<Date>`coalesce(${digestRuns.newsletterReadyAt}, ${digestRuns.updatedAt})`;
     const runs = await this.database
       .select({
         id: digestRuns.id,
         scheduleKey: digestRuns.scheduleKey,
-        newsletterReadyAt: digestRuns.newsletterReadyAt,
+        readyAt: effectiveReadyAt,
       })
       .from(digestRuns)
       .where(
         and(
           eq(digestRuns.trigger, "scheduled"),
           inArray(digestRuns.status, ["complete", "partial"]),
-          isNotNull(digestRuns.newsletterReadyAt),
-          lte(digestRuns.newsletterReadyAt, now),
+          lte(effectiveReadyAt, now),
         ),
       )
-      .orderBy(desc(digestRuns.newsletterReadyAt));
+      .orderBy(desc(effectiveReadyAt));
     const mostRecentRunId = runs[0]?.id;
     const latestDeliveryBySubscriber = new Map(
       (
         await this.database
           .select({
             subscriberId: newsletterDeliveries.subscriberId,
-            newsletterReadyAt: sql<Date>`max(${digestRuns.newsletterReadyAt})`,
+            readyAt: sql<Date>`max(coalesce(${digestRuns.newsletterReadyAt}, ${digestRuns.updatedAt}))`,
           })
           .from(newsletterDeliveries)
           .innerJoin(
@@ -127,10 +127,7 @@ export class NewsletterDeliveryWorker {
             eq(newsletterDeliveries.digestRunId, digestRuns.id),
           )
           .groupBy(newsletterDeliveries.subscriberId)
-      ).map(({ subscriberId, newsletterReadyAt }) => [
-        subscriberId,
-        newsletterReadyAt,
-      ]),
+      ).map(({ subscriberId, readyAt }) => [subscriberId, readyAt]),
     );
     let count = 0;
     for (const run of runs) {
@@ -163,7 +160,7 @@ export class NewsletterDeliveryWorker {
               subscriber.id,
             );
             return latestDelivery
-              ? latestDelivery < run.newsletterReadyAt!
+              ? latestDelivery < run.readyAt
               : run.id === mostRecentRunId;
           }),
         );
