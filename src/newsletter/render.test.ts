@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { DigestRunView } from "../digests/reader";
+import {
+  ANALYSIS_PROMPT_VERSION,
+  ANALYSIS_SCHEMA_VERSION,
+} from "../analysis/contract";
 
 import { renderNewsletter } from "./render";
 
@@ -22,7 +26,41 @@ const digest: DigestRunView = {
       author: "tester",
       status: "complete",
       failureCode: null,
-      analysis: null,
+      analysis: {
+        promptVersion: ANALYSIS_PROMPT_VERSION,
+        schemaVersion: ANALYSIS_SCHEMA_VERSION,
+        article: {
+          thesis: {
+            claim: "The article explains typed <systems>.",
+            citations: [
+              { locator: "Introduction", sourceUrl: "https://example.com" },
+            ],
+          },
+          keyPoints: [],
+          evidence: [],
+          limitations: [],
+          confidence: "high",
+          sourceQualityNotes: [],
+        },
+        discussion: {
+          consensus: [
+            {
+              claim: "Commenters value the practical examples & caveats.",
+              supportingCommentIds: [42001],
+            },
+          ],
+          competingViewpoints: [],
+          insightfulComments: [],
+          unresolvedQuestions: [],
+          confidence: "medium",
+          sourceQualityNotes: [],
+        },
+        combinedTakeaway: {
+          summary: "Useful guidance, provided its limits are understood.",
+          tensions: [],
+          confidence: "high",
+        },
+      },
     },
   ],
 };
@@ -47,7 +85,14 @@ describe("renderNewsletter", () => {
     expect(result.subject).toBe("Morning HN Digest");
     for (const value of [
       "Typed &lt;news&gt;",
-      "Original article",
+      "The article explains typed &lt;systems&gt;.",
+      "Commenters value the practical examples &amp; caveats.",
+      "Useful guidance, provided its limits are understood.",
+      "Article",
+      "Discussion",
+      "The takeaway",
+      "42001",
+      "Read original",
       "HN discussion",
       "Manage preferences",
       "Unsubscribe",
@@ -56,6 +101,10 @@ describe("renderNewsletter", () => {
       expect(result.html).toContain(value);
     for (const value of [
       "Typed <news>",
+      "ARTICLE",
+      "The article explains typed <systems>.",
+      "DISCUSSION",
+      "THE TAKEAWAY",
       "https://example.com/article?a=1&b=2",
       "https://news.ycombinator.com/item?id=42",
       "Manage preferences:",

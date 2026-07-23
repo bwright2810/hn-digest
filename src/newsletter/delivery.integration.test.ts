@@ -14,6 +14,7 @@ import { encryptSubscriberEmail } from "../subscribers/crypto";
 
 import { NewsletterDeliveryWorker } from "./delivery";
 import { DeliveryProviderError, type DeliveryProvider } from "./provider";
+import { reissueNewsletterDelivery } from "./reissue";
 
 const databaseUrl = process.env.DATABASE_URL;
 const runDatabaseTests = process.env.RUN_DATABASE_TESTS === "1" && databaseUrl;
@@ -192,5 +193,33 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
         where: (delivery, { eq }) => eq(delivery.digestRunId, olderRun!.id),
       }),
     ).toHaveLength(0);
+
+    const successSubscriber = await connection.db.query.subscribers.findFirst({
+      where: (subscriber, { eq }) =>
+        eq(subscriber.emailLookupDigest, `${prefix}-success`),
+    });
+    const sourceDelivery = deliveries.find(
+      (delivery) => delivery.subscriberId === successSubscriber?.id,
+    );
+    expect(sourceDelivery).toBeDefined();
+    await expect(
+      reissueNewsletterDelivery(connection.db, sourceDelivery!.id, now),
+    ).resolves.toMatchObject({ sequence: 2 });
+    await expect(
+      reissueNewsletterDelivery(connection.db, sourceDelivery!.id, now),
+    ).rejects.toThrow(/latest delivery/u);
+    expect(
+      await worker.process(new Date(now.getTime() + 30_000)),
+    ).toMatchObject({ queued: 0, claimed: 1, sent: 1 });
+    expect(calls.get("success@example.com")).toBe(2);
+    expect(
+      await connection.db.query.newsletterDeliveries.findMany({
+        where: (delivery, { eq }) =>
+          eq(delivery.subscriberId, successSubscriber!.id),
+      }),
+    ).toMatchObject([
+      { sequence: 1, status: "sent" },
+      { sequence: 2, status: "sent" },
+    ]);
   });
 });
