@@ -177,7 +177,7 @@ Acceptance criteria:
 - Automated tests cover Reply-To and destructive lifecycle boundaries, and the
   launch runbook identifies the commands and required evidence.
 
-### HD-106 — Bound first-subscriber digest delivery [in progress]
+### HD-106 — Bound first-subscriber digest delivery [complete]
 
 Dependencies: HD-103.
 
