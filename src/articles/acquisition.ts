@@ -33,7 +33,7 @@ export interface ArticleFetchStore {
   recordFetch(record: ArticleFetchRecord): Promise<void>;
 }
 
-interface FetchArticleClient {
+export interface FetchArticleClient {
   fetch(source: string | URL): Promise<ArticleFetchResult>;
 }
 
@@ -181,15 +181,32 @@ export class PostgresArticleFetchStore implements ArticleFetchStore {
 
 export function createArticleAcquisition() {
   const config = getConfig();
+  const fetcher = createSourceAwareArticleFetcher(config.articleFetch);
+  const store = new PostgresArticleFetchStore();
+  return (storyId: number, sourceUrl: string) =>
+    acquireArticle({ storyId, sourceUrl, fetcher, store });
+}
+
+export function createSourceAwareArticleFetcher(options: {
+  readonly timeoutMs: number;
+  readonly maximumBytes: number;
+  readonly maximumRedirects: number;
+  readonly fetch?: typeof globalThis.fetch;
+  readonly lookup?: (hostname: string) => Promise<readonly string[]>;
+}): FetchArticleClient {
   const articleFetcher = new ArticleFetcher({
-    timeoutMs: config.articleFetch.timeoutMs,
-    maximumBytes: config.articleFetch.maximumBytes,
-    maximumRedirects: config.articleFetch.maximumRedirects,
+    timeoutMs: options.timeoutMs,
+    maximumBytes: options.maximumBytes,
+    maximumRedirects: options.maximumRedirects,
+    fetch: options.fetch,
+    lookup: options.lookup,
   });
   const githubApiFetcher = new ArticleFetcher({
-    timeoutMs: config.articleFetch.timeoutMs,
-    maximumBytes: config.articleFetch.maximumBytes,
-    maximumRedirects: config.articleFetch.maximumRedirects,
+    timeoutMs: options.timeoutMs,
+    maximumBytes: options.maximumBytes,
+    maximumRedirects: options.maximumRedirects,
+    fetch: options.fetch,
+    lookup: options.lookup,
     supportedContentTypes: new Set(["application/json"]),
     requestHeaders: {
       accept: "application/vnd.github+json",
@@ -199,9 +216,7 @@ export function createArticleAcquisition() {
   const fetcher = new GitHubSourceFetcher({
     articleFetcher,
     apiFetcher: githubApiFetcher,
-    maximumBytes: config.articleFetch.maximumBytes,
+    maximumBytes: options.maximumBytes,
   });
-  const store = new PostgresArticleFetchStore();
-  return (storyId: number, sourceUrl: string) =>
-    acquireArticle({ storyId, sourceUrl, fetcher, store });
+  return fetcher;
 }

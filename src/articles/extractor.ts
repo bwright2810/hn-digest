@@ -7,6 +7,7 @@ import {
   SourceDocumentAdapterRegistry,
   type EvidenceLocation,
 } from "./adapters";
+import { parseFeedEntry } from "./feeds";
 
 export type ArticleExtractionStatus = "extracted" | "low_confidence" | "empty";
 
@@ -79,6 +80,17 @@ export class ArticleExtractor {
             "github-source-v1",
             githubRepositoryPath(sourceUrl) ?? undefined,
           ),
+      },
+      {
+        id: "rss-atom-v1",
+        contentTypes: new Set([
+          "application/rss+xml",
+          "application/atom+xml",
+          "application/xml",
+          "text/xml",
+        ]),
+        matches: () => true,
+        extract: ({ body }) => this.extractFeed(body),
       },
       {
         id: "plain-text-v1",
@@ -241,6 +253,50 @@ export class ArticleExtractor {
           ? [{ kind: "file_path" as const, path: repositoryPath }]
           : []),
         ...(markdown ? headingEvidence(headings) : lineEvidence(text)),
+      ],
+    };
+  }
+
+  private extractFeed(content: string | Uint8Array): ArticleExtraction {
+    const parsed = parseFeedEntry(content);
+    if (parsed.status === "unsupported") {
+      return emptyExtraction(parsed.reason, "rss-atom-v1");
+    }
+    const headings = parsed.title
+      ? [{ level: 1, text: normalizeInlineText(parsed.title) }]
+      : [];
+    const text = normalizeDocumentText(
+      [parsed.title ? `# ${parsed.title}` : null, parsed.text]
+        .filter((value): value is string => value !== null)
+        .join("\n\n"),
+    );
+    if (!text)
+      return emptyExtraction("feed_entry_missing_content", "rss-atom-v1");
+    const confidenceReasons: string[] = [];
+    if (text.length < this.minimumCharacterCount) {
+      confidenceReasons.push("short_content");
+    }
+    if (
+      parsed.text.split(/\n\s*\n/gu).filter(Boolean).length <
+      this.minimumParagraphCount
+    ) {
+      confidenceReasons.push("few_paragraphs");
+    }
+    return {
+      status: confidenceReasons.length === 0 ? "extracted" : "low_confidence",
+      title: parsed.title,
+      byline: parsed.author,
+      publishedAt: parsed.publishedAt,
+      headings,
+      text,
+      contentHash: createHash("sha256").update(text).digest("hex"),
+      wordCount: text.split(/\s+/u).length,
+      characterCount: text.length,
+      confidenceReasons,
+      adapterId: `${parsed.kind}-v1`,
+      evidenceLocations: [
+        { kind: "entry", entryId: parsed.entryId },
+        ...headingEvidence(headings),
       ],
     };
   }

@@ -32,6 +32,11 @@ plans, commits, and pull requests where applicable.
   generated forward migrations under `drizzle/`, and a development-only full
   rollback script. CI exercises migrations and database constraints against an
   isolated PostgreSQL 17 service.
+- HD-077 and HD-078 added bounded public GitHub README/file and RSS/Atom source
+  support by explicit owner direction. GitHub never clones or traverses, feeds
+  select one direct entry, and both paths retain the shared SSRF and size
+  controls. JSON Feed, generic XML, PDF, OCR, and media extraction remain
+  unsupported.
 - The agreed baseline is TypeScript on Node.js LTS, pnpm, Next.js, PostgreSQL
   with Drizzle ORM, Zod, Vitest, headless Playwright, ESLint, Prettier, CSS
   Modules/custom properties, the Hacker News Firebase API, Readability-style

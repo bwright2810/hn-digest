@@ -35,6 +35,8 @@ import {
 } from "../analysis/usage";
 import {
   acquireArticle,
+  createSourceAwareArticleFetcher,
+  type FetchArticleClient,
   PostgresArticleFetchStore,
 } from "../articles/acquisition";
 import {
@@ -42,7 +44,6 @@ import {
   PostgresArticleExtractionStore,
 } from "../articles/extraction";
 import { ArticleExtractor } from "../articles/extractor";
-import { ArticleFetcher } from "../articles/fetcher";
 import { selectArticleContext } from "../articles/selection";
 import {
   acquireTextPost,
@@ -86,12 +87,14 @@ interface StoredJobContext {
 export interface DigestPipelineDependencies {
   readonly hnClient?: HackerNewsClient;
   readonly openaiClient?: OpenAIAnalysisClient;
+  readonly articleFetcher?: FetchArticleClient;
 }
 
 export class DigestPipeline {
   private readonly hnClient: HackerNewsClient;
   private readonly openaiClient: OpenAIAnalysisClient;
   private readonly prices: LlmPriceAssumptions;
+  private readonly articleFetcher: FetchArticleClient;
 
   constructor(
     private readonly db: Database,
@@ -99,6 +102,9 @@ export class DigestPipeline {
     dependencies: DigestPipelineDependencies = {},
   ) {
     this.hnClient = dependencies.hnClient ?? new HackerNewsClient();
+    this.articleFetcher =
+      dependencies.articleFetcher ??
+      createSourceAwareArticleFetcher(config.articleFetch);
     this.openaiClient =
       dependencies.openaiClient ??
       new OpenAIAnalysisClient({
@@ -316,11 +322,7 @@ export class DigestPipeline {
       const acquired = await acquireArticle({
         storyId: record.storyId,
         sourceUrl: record.url,
-        fetcher: new ArticleFetcher({
-          timeoutMs: this.config.articleFetch.timeoutMs,
-          maximumBytes: this.config.articleFetch.maximumBytes,
-          maximumRedirects: this.config.articleFetch.maximumRedirects,
-        }),
+        fetcher: this.articleFetcher,
         store: new PostgresArticleFetchStore(this.db),
       });
       if (acquired.status === "fetched") {

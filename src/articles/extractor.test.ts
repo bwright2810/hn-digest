@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import { ArticleExtractor } from "./extractor";
+import { atomFixture, rssFixture } from "./fixtures/feeds";
 
 async function fixture(name: string): Promise<string> {
   return readFile(new URL(`fixtures/${name}.html`, import.meta.url), "utf8");
@@ -179,6 +180,59 @@ describe("ArticleExtractor", () => {
         { kind: "file_path", path: "src/worker.ts" },
         { kind: "line_range", startLine: 1, endLine: 1 },
       ],
+    });
+  });
+
+  it.each([
+    [
+      "RSS",
+      rssFixture,
+      "application/rss+xml",
+      "rss-v1",
+      "fixture-entry-1",
+      "First bounded entry",
+    ],
+    [
+      "Atom",
+      atomFixture,
+      "application/atom+xml",
+      "atom-v1",
+      "tag:example.test,2026:entry-1",
+      "First Atom entry",
+    ],
+  ])(
+    "extracts one deterministic %s entry with entry evidence",
+    (_name, body, contentType, adapterId, entryId, title) => {
+      const result = new ArticleExtractor({
+        minimumCharacterCount: 0,
+        minimumParagraphCount: 0,
+      }).extract(body, "https://example.com/feed", contentType);
+      expect(result).toMatchObject({
+        status: "extracted",
+        adapterId,
+        title,
+        evidenceLocations: [
+          { kind: "entry", entryId },
+          { kind: "heading", heading: title, level: 1 },
+        ],
+        contentHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      });
+      expect(result.text).not.toContain("Not selected");
+    },
+  );
+
+  it("keeps generic XML explicitly unsupported", () => {
+    expect(
+      new ArticleExtractor().extract(
+        "<document><entry>Not a feed</entry></document>",
+        "https://example.com/document.xml",
+        "application/xml",
+      ),
+    ).toMatchObject({
+      status: "empty",
+      adapterId: "rss-atom-v1",
+      confidenceReasons: ["generic_xml_unsupported"],
+      evidenceLocations: [],
     });
   });
 

@@ -81,3 +81,7 @@ On 2026-07-23 the owner explicitly activated HD-077 despite this review's
 selection result. The roadmap decision log records that override. HD-077 is
 limited to one public repository README or one explicitly linked curated text
 file per story; the evidence review continues to govern HD-078 and HD-079.
+
+Later on 2026-07-23, the owner also explicitly activated HD-078. Its hardened
+adapter selects one direct RSS/Atom entry and does not enable generic XML or any
+crawling behavior. HD-079 remains governed by this review and stays gated.

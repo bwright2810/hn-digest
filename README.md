@@ -32,6 +32,12 @@ Contents API. HN Digest does not clone, list, or traverse repositories, follow
 embedded URLs, or accept GitHub credentials. Extracted GitHub evidence retains
 the repository-relative path and a commit-pinned canonical link.
 
+RSS and Atom sources select only the first direct item or entry in document
+order. Feed links, enclosures, stylesheets, and embedded resources are never
+followed. Generic XML, sitemaps, DTDs, entities, XInclude, malformed documents,
+and parser network access remain unsupported; accepted entry evidence retains a
+stable entry ID and source metadata.
+
 ## Visual system
 
 The interface uses a restrained editorial system defined in
