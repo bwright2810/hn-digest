@@ -52,7 +52,10 @@ export default function RootLayout({
           {children}
           <footer className="site-footer">
             <p>A focused view of what Hacker News is reading and saying.</p>
-            <a href="https://news.ycombinator.com/">Visit Hacker News</a>
+            <nav aria-label="Footer">
+              <Link href="/newsletter">Newsletter</Link>
+              <a href="https://news.ycombinator.com/">Visit Hacker News</a>
+            </nav>
           </footer>
         </div>
       </body>

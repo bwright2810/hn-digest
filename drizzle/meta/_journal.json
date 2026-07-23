@@ -71,6 +71,13 @@
       "when": 1784820615811,
       "tag": "0009_reflective_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784821279962,
+      "tag": "0010_crazy_karnak",
+      "breakpoints": true
     }
   ]
 }

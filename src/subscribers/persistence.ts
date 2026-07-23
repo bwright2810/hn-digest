@@ -280,6 +280,51 @@ export async function createPreferenceToken(
   });
 }
 
+export async function getSubscriberPreferences(
+  database: Database,
+  keys: SubscriberKeys,
+  token: string,
+  now = new Date(),
+): Promise<EditionPreferences | null> {
+  const tokenDigest = digestSubscriberValue(
+    token,
+    keys.lookupHmacKey,
+    "action-token",
+  );
+  const [row] = await database
+    .select({
+      morning: subscribers.morningEnabled,
+      evening: subscribers.eveningEnabled,
+      status: subscribers.status,
+      suppressionReason: subscribers.suppressionReason,
+      expiresAt: subscriberActionTokens.expiresAt,
+      consumedAt: subscriberActionTokens.consumedAt,
+      invalidatedAt: subscriberActionTokens.invalidatedAt,
+    })
+    .from(subscriberActionTokens)
+    .innerJoin(
+      subscribers,
+      eq(subscribers.id, subscriberActionTokens.subscriberId),
+    )
+    .where(
+      and(
+        eq(subscriberActionTokens.tokenDigest, tokenDigest),
+        eq(subscriberActionTokens.purpose, "preferences"),
+      ),
+    );
+  if (
+    !row ||
+    row.status !== "confirmed" ||
+    row.suppressionReason ||
+    row.consumedAt ||
+    row.invalidatedAt ||
+    row.expiresAt <= now
+  ) {
+    return null;
+  }
+  return { morning: row.morning, evening: row.evening };
+}
+
 export async function updateSubscriberPreferences(
   database: Database,
   keys: SubscriberKeys,

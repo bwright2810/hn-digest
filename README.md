@@ -113,6 +113,12 @@ subscriber data model, suppression and retention rules, and launch gates are
 documented in
 [`docs/newsletter-delivery-and-compliance.md`](./docs/newsletter-delivery-and-compliance.md).
 
+HD-102 newsletter signup remains disabled by default. Enabling it requires the
+documented Resend sender settings and does not bypass the HD-100 launch review.
+Signup, confirmation, preference changes, and unsubscribe are token-backed,
+rate-limited, same-origin public flows; subscriber status is never disclosed by
+the signup response.
+
 ## Deployment and recovery
 
 The Coolify deployment topology, complete runtime configuration, migration

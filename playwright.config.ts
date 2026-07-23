@@ -15,9 +15,18 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     env: {
-      DATABASE_URL: "postgresql://fixture:fixture@127.0.0.1:5432/fixture",
+      DATABASE_URL:
+        process.env.DATABASE_URL ??
+        "postgresql://fixture:fixture@127.0.0.1:5432/fixture",
       OPENAI_API_KEY: "playwright-placeholder",
       ADMIN_PASSWORD: "playwright-admin-password",
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY:
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      SUBSCRIBER_LOOKUP_HMAC_KEY:
+        "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+      NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "true",
+      RESEND_API_KEY: "playwright-resend-placeholder",
+      NEWSLETTER_FROM_EMAIL: "digest@example.com",
       PLAYWRIGHT_FIXTURES: "1",
       NEXT_TELEMETRY_DISABLED: "1",
     },

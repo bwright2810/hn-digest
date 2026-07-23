@@ -37,10 +37,17 @@ const DEVELOPMENT_DEFAULTS = {
   WORKER_POLL_INTERVAL_MS: "5000",
   RUNTIME_SHUTDOWN_GRACE_MS: "30000",
   SUBSCRIBER_KEY_VERSION: "1",
+  NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "false",
+  NEWSLETTER_CONSENT_POLICY_VERSION: "newsletter-v1",
+  NEWSLETTER_SIGNUP_RATE_LIMIT: "3",
+  NEWSLETTER_SIGNUP_RATE_WINDOW_MS: "900000",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
 const positiveMoney = z.coerce.number().positive().finite();
+const environmentBoolean = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true");
 const base64Key = z.string().refine(
   (value) => {
     try {
@@ -148,6 +155,12 @@ const environmentSchema = z
     SUBSCRIBER_EMAIL_ENCRYPTION_KEY: base64Key,
     SUBSCRIBER_LOOKUP_HMAC_KEY: base64Key,
     SUBSCRIBER_KEY_VERSION: positiveInteger,
+    NEWSLETTER_PUBLIC_SIGNUP_ENABLED: environmentBoolean,
+    NEWSLETTER_CONSENT_POLICY_VERSION: z.string().min(1).max(80),
+    NEWSLETTER_SIGNUP_RATE_LIMIT: positiveInteger,
+    NEWSLETTER_SIGNUP_RATE_WINDOW_MS: positiveInteger,
+    RESEND_API_KEY: z.string().min(1).optional(),
+    NEWSLETTER_FROM_EMAIL: z.email().optional(),
   })
   .superRefine((values, context) => {
     for (const [softKey, hardKey] of [
@@ -160,6 +173,17 @@ const environmentSchema = z
           path: [softKey],
           message: `must not exceed ${hardKey}`,
         });
+      }
+    }
+    if (values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED) {
+      for (const key of ["RESEND_API_KEY", "NEWSLETTER_FROM_EMAIL"] as const) {
+        if (!values[key]) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: "is required when NEWSLETTER_PUBLIC_SIGNUP_ENABLED=true",
+          });
+        }
       }
     }
   });
@@ -232,6 +256,14 @@ export interface AppConfig {
     readonly emailEncryptionKey: Buffer;
     readonly lookupHmacKey: Buffer;
     readonly keyVersion: number;
+  };
+  readonly newsletter: {
+    readonly publicSignupEnabled: boolean;
+    readonly consentPolicyVersion: string;
+    readonly signupRateLimit: number;
+    readonly signupRateWindowMs: number;
+    readonly resendApiKey: string | null;
+    readonly fromEmail: string | null;
   };
 }
 
@@ -349,6 +381,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       ),
       lookupHmacKey: Buffer.from(values.SUBSCRIBER_LOOKUP_HMAC_KEY, "base64"),
       keyVersion: values.SUBSCRIBER_KEY_VERSION,
+    }),
+    newsletter: Object.freeze({
+      publicSignupEnabled: values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED,
+      consentPolicyVersion: values.NEWSLETTER_CONSENT_POLICY_VERSION,
+      signupRateLimit: values.NEWSLETTER_SIGNUP_RATE_LIMIT,
+      signupRateWindowMs: values.NEWSLETTER_SIGNUP_RATE_WINDOW_MS,
+      resendApiKey: values.RESEND_API_KEY ?? null,
+      fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
     }),
   });
 }

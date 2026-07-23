@@ -73,6 +73,14 @@ describe("loadConfig", () => {
       lookupHmacKey: Buffer.alloc(32, 23),
       keyVersion: 1,
     });
+    expect(config.newsletter).toEqual({
+      publicSignupEnabled: false,
+      consentPolicyVersion: "newsletter-v1",
+      signupRateLimit: 3,
+      signupRateWindowMs: 900_000,
+      resendApiKey: null,
+      fromEmail: null,
+    });
   });
 
   it("requires secrets in every environment", () => {
@@ -85,7 +93,7 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /ADMIN_PASSWORD.*OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS.*SUBSCRIBER_KEY_VERSION/s,
+      /ADMIN_PASSWORD.*OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS.*SUBSCRIBER_KEY_VERSION.*NEWSLETTER_PUBLIC_SIGNUP_ENABLED.*NEWSLETTER_CONSENT_POLICY_VERSION.*NEWSLETTER_SIGNUP_RATE_LIMIT.*NEWSLETTER_SIGNUP_RATE_WINDOW_MS/s,
     );
   });
 
@@ -144,5 +152,25 @@ describe("loadConfig", () => {
         LLM_DAILY_HARD_LIMIT_USD: "3",
       }),
     ).toThrowError(/LLM_DAILY_SOFT_LIMIT_USD.*LLM_DAILY_HARD_LIMIT_USD/s);
+  });
+
+  it("requires provider settings only when public newsletter signup is enabled", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "development",
+        ...requiredSecrets,
+        NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "true",
+      }),
+    ).toThrowError(/RESEND_API_KEY.*NEWSLETTER_FROM_EMAIL/s);
+
+    const config = loadConfig({
+      NODE_ENV: "development",
+      ...requiredSecrets,
+      NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "true",
+      RESEND_API_KEY: "resend-test-value",
+      NEWSLETTER_FROM_EMAIL: "digest@example.com",
+    });
+    expect(config.newsletter.publicSignupEnabled).toBe(true);
+    expect(config.newsletter.fromEmail).toBe("digest@example.com");
   });
 });

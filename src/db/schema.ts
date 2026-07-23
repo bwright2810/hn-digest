@@ -241,6 +241,32 @@ export const subscriberActionTokens = pgTable(
   ],
 );
 
+export const subscriberSignupLimits = pgTable(
+  "subscriber_signup_limits",
+  {
+    keyDigest: varchar("key_digest", { length: 64 }).primaryKey(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    attemptCount: integer("attempt_count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("subscriber_signup_limits_expires_at_idx").on(table.expiresAt),
+    check(
+      "subscriber_signup_limits_attempt_count_positive",
+      sql`${table.attemptCount} > 0`,
+    ),
+    check(
+      "subscriber_signup_limits_expiry_after_window",
+      sql`${table.expiresAt} > ${table.windowStartedAt}`,
+    ),
+  ],
+);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {

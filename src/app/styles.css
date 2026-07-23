@@ -574,6 +574,116 @@ h1 {
   font-size: 0.8rem;
   font-weight: 700;
 }
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.newsletter-page,
+.newsletter-result {
+  max-width: 54rem;
+  padding-block: var(--space-8) var(--space-9);
+}
+.newsletter-heading h1,
+.newsletter-result h1 {
+  max-width: 14ch;
+  margin: var(--space-2) 0 var(--space-5);
+}
+.newsletter-heading > p:last-child,
+.newsletter-result > p {
+  max-width: 62ch;
+  color: var(--color-ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+.newsletter-notice {
+  max-width: 42rem;
+  margin: var(--space-7) 0 0;
+  padding: var(--space-4) var(--space-5);
+  border-left: 0.2rem solid var(--color-complete);
+  background: var(--color-paper-raised);
+  line-height: 1.55;
+}
+.newsletter-notice--error {
+  border-left-color: var(--color-accent);
+}
+.newsletter-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 38rem;
+  margin-top: var(--space-7);
+}
+.newsletter-form > label,
+.newsletter-form legend {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.newsletter-form input[type="email"] {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-rule);
+  border-radius: 0;
+  background: var(--color-paper-raised);
+  color: var(--color-ink);
+  font: inherit;
+}
+.newsletter-form fieldset {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  border: 0;
+}
+.newsletter-form legend {
+  margin-bottom: var(--space-3);
+}
+.newsletter-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-rule);
+  cursor: pointer;
+}
+.newsletter-choice input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--color-accent);
+}
+.newsletter-choice span {
+  display: grid;
+  gap: var(--space-1);
+}
+.newsletter-choice small,
+.newsletter-consent {
+  color: var(--color-ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.newsletter-form button {
+  min-height: 3rem;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-paper);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.newsletter-form .button-secondary {
+  background: transparent;
+  color: var(--color-ink);
+}
+.newsletter-result > a {
+  display: inline-block;
+  margin-top: var(--space-5);
+  font-weight: 800;
+}
 
 @media (max-width: 40rem) {
   .site-shell {
