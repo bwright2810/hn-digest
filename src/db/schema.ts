@@ -115,6 +115,19 @@ export const subscriberActionTokenPurpose = pgEnum(
   ["confirmation", "preferences"],
 );
 
+export const newsletterEdition = pgEnum("newsletter_edition", [
+  "morning",
+  "evening",
+]);
+
+export const newsletterDeliveryStatus = pgEnum("newsletter_delivery_status", [
+  "pending",
+  "sending",
+  "retry",
+  "sent",
+  "failed",
+]);
+
 export const subscribers = pgTable(
   "subscribers",
   {
@@ -282,6 +295,7 @@ export const digestRuns = pgTable(
       .default(sql`'[]'::jsonb`)
       .notNull(),
     status: digestRunStatus("status").default("pending").notNull(),
+    newsletterReadyAt: timestamp("newsletter_ready_at", { withTimezone: true }),
     errorCode: varchar("error_code", { length: 100 }),
     ...timestampColumns,
   },
@@ -306,6 +320,58 @@ export const digestRuns = pgTable(
     check(
       "digest_runs_excluded_story_count_nonnegative",
       sql`${table.excludedStoryCount} >= 0`,
+    ),
+  ],
+);
+
+export const newsletterDeliveries = pgTable(
+  "newsletter_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    digestRunId: uuid("digest_run_id")
+      .notNull()
+      .references(() => digestRuns.id, { onDelete: "cascade" }),
+    subscriberId: uuid("subscriber_id")
+      .notNull()
+      .references(() => subscribers.id, { onDelete: "cascade" }),
+    edition: newsletterEdition("edition").notNull(),
+    status: newsletterDeliveryStatus("status").default("pending").notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    providerMessageId: varchar("provider_message_id", { length: 160 }),
+    lastErrorCode: varchar("last_error_code", { length: 100 }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    sendingStartedAt: timestamp("sending_started_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    ...timestampColumns,
+  },
+  (table) => [
+    uniqueIndex("newsletter_deliveries_run_subscriber_unique").on(
+      table.digestRunId,
+      table.subscriberId,
+    ),
+    index("newsletter_deliveries_claim_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.createdAt,
+    ),
+    index("newsletter_deliveries_digest_status_idx").on(
+      table.digestRunId,
+      table.status,
+    ),
+    check(
+      "newsletter_deliveries_attempt_count_nonnegative",
+      sql`${table.attemptCount} >= 0`,
+    ),
+    check(
+      "newsletter_deliveries_sent_state",
+      sql`${table.status} <> 'sent' or (${table.sentAt} is not null and ${table.providerMessageId} is not null)`,
+    ),
+    check(
+      "newsletter_deliveries_failed_state",
+      sql`${table.status} <> 'failed' or ${table.failedAt} is not null`,
     ),
   ],
 );

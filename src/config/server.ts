@@ -41,6 +41,12 @@ const DEVELOPMENT_DEFAULTS = {
   NEWSLETTER_CONSENT_POLICY_VERSION: "newsletter-v1",
   NEWSLETTER_SIGNUP_RATE_LIMIT: "3",
   NEWSLETTER_SIGNUP_RATE_WINDOW_MS: "900000",
+  NEWSLETTER_DELIVERY_ENABLED: "false",
+  NEWSLETTER_DELIVERY_BATCH_SIZE: "25",
+  NEWSLETTER_DELIVERY_CONCURRENCY: "2",
+  NEWSLETTER_DELIVERY_MAX_ATTEMPTS: "3",
+  NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: "5000",
+  NEWSLETTER_POSTAL_ADDRESS: "Not configured — delivery disabled",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
@@ -159,6 +165,12 @@ const environmentSchema = z
     NEWSLETTER_CONSENT_POLICY_VERSION: z.string().min(1).max(80),
     NEWSLETTER_SIGNUP_RATE_LIMIT: positiveInteger,
     NEWSLETTER_SIGNUP_RATE_WINDOW_MS: positiveInteger,
+    NEWSLETTER_DELIVERY_ENABLED: environmentBoolean,
+    NEWSLETTER_DELIVERY_BATCH_SIZE: positiveInteger.max(100),
+    NEWSLETTER_DELIVERY_CONCURRENCY: positiveInteger.max(5),
+    NEWSLETTER_DELIVERY_MAX_ATTEMPTS: positiveInteger.max(5),
+    NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: positiveInteger,
+    NEWSLETTER_POSTAL_ADDRESS: z.string().min(1).max(300),
     RESEND_API_KEY: z.string().min(1).optional(),
     NEWSLETTER_FROM_EMAIL: z.email().optional(),
   })
@@ -175,7 +187,10 @@ const environmentSchema = z
         });
       }
     }
-    if (values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED) {
+    if (
+      values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED ||
+      values.NEWSLETTER_DELIVERY_ENABLED
+    ) {
       for (const key of ["RESEND_API_KEY", "NEWSLETTER_FROM_EMAIL"] as const) {
         if (!values[key]) {
           context.addIssue({
@@ -264,6 +279,12 @@ export interface AppConfig {
     readonly signupRateWindowMs: number;
     readonly resendApiKey: string | null;
     readonly fromEmail: string | null;
+    readonly deliveryEnabled: boolean;
+    readonly deliveryBatchSize: number;
+    readonly deliveryConcurrency: number;
+    readonly deliveryMaximumAttempts: number;
+    readonly deliveryPollIntervalMs: number;
+    readonly postalAddress: string;
   };
 }
 
@@ -389,6 +410,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       signupRateWindowMs: values.NEWSLETTER_SIGNUP_RATE_WINDOW_MS,
       resendApiKey: values.RESEND_API_KEY ?? null,
       fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
+      deliveryEnabled: values.NEWSLETTER_DELIVERY_ENABLED,
+      deliveryBatchSize: values.NEWSLETTER_DELIVERY_BATCH_SIZE,
+      deliveryConcurrency: values.NEWSLETTER_DELIVERY_CONCURRENCY,
+      deliveryMaximumAttempts: values.NEWSLETTER_DELIVERY_MAX_ATTEMPTS,
+      deliveryPollIntervalMs: values.NEWSLETTER_DELIVERY_POLL_INTERVAL_MS,
+      postalAddress: values.NEWSLETTER_POSTAL_ADDRESS,
     }),
   });
 }

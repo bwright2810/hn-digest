@@ -148,12 +148,14 @@ describeDatabase("DigestPipeline", () => {
     ).toBe(1);
     expect(providerCalls).toBe(2);
     expect(
-      (
-        await connection.db.query.digestRuns.findFirst({
-          where: eq(digestRuns.id, firstRunId),
-        })
-      )?.status,
-    ).toBe("complete");
+      await connection.db.query.digestRuns.findFirst({
+        columns: { status: true, newsletterReadyAt: true },
+        where: eq(digestRuns.id, firstRunId),
+      }),
+    ).toMatchObject({
+      status: "complete",
+      newsletterReadyAt: expect.any(Date),
+    });
     expect(
       await connection.db
         .select()
@@ -178,12 +180,11 @@ describeDatabase("DigestPipeline", () => {
     expect(reused[0]?.reusedFrom).toBeTruthy();
     expect(providerCalls).toBe(2);
     expect(
-      (
-        await connection.db.query.digestRuns.findFirst({
-          where: eq(digestRuns.id, secondRunId),
-        })
-      )?.status,
-    ).toBe("complete");
+      await connection.db.query.digestRuns.findFirst({
+        columns: { status: true, newsletterReadyAt: true },
+        where: eq(digestRuns.id, secondRunId),
+      }),
+    ).toEqual({ status: "complete", newsletterReadyAt: null });
   });
 
   async function createPendingRun(

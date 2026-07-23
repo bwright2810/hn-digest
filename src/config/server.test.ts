@@ -80,6 +80,12 @@ describe("loadConfig", () => {
       signupRateWindowMs: 900_000,
       resendApiKey: null,
       fromEmail: null,
+      deliveryEnabled: false,
+      deliveryBatchSize: 25,
+      deliveryConcurrency: 2,
+      deliveryMaximumAttempts: 3,
+      deliveryPollIntervalMs: 5_000,
+      postalAddress: "Not configured — delivery disabled",
     });
   });
 

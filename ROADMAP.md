@@ -114,7 +114,7 @@ Acceptance criteria:
 - Headless Playwright covers the complete lifecycle without contacting a live
   email provider.
 
-### HD-103 — Render and send scheduled newsletter editions [planned]
+### HD-103 — Render and send scheduled newsletter editions [complete]
 
 Dependencies: HD-090, HD-100, HD-101, HD-102.
 
