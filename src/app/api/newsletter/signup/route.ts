@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         recipient: email,
         confirmationUrl,
         fromEmail: config.newsletter.fromEmail,
+        replyToEmail: config.newsletter.replyToEmail,
         apiKey: config.newsletter.resendApiKey,
       });
     } catch {

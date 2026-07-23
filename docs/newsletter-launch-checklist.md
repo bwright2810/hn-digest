@@ -29,6 +29,11 @@ repository.
       POST both suppress the next delivery promptly and remain idempotent.
 - [ ] Verify the documented retention cleanup and subscriber export/deletion
       procedures, including suppression preservation and backup aging.
+      Run `pnpm subscriber:cleanup`; fulfill a verified request with
+      `pnpm subscriber:export -- <email>` before
+      `pnpm subscriber:delete -- <email> --confirm`. Treat command output as
+      sensitive, never paste it into tickets or logs, and record only the date,
+      verifier, and outcome in the private operations system.
 
 ## Delivery and incident readiness
 

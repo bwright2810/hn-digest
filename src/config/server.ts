@@ -47,7 +47,9 @@ const DEVELOPMENT_DEFAULTS = {
   NEWSLETTER_DELIVERY_CONCURRENCY: "2",
   NEWSLETTER_DELIVERY_MAX_ATTEMPTS: "3",
   NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: "5000",
+  NEWSLETTER_RETENTION_POLL_INTERVAL_MS: "21600000",
   NEWSLETTER_POSTAL_ADDRESS: "Not configured — delivery disabled",
+  NEWSLETTER_REPLY_TO_EMAIL: "privacy@example.com",
   PUBLIC_API_MAX_AGE_DAYS: "30",
   PUBLIC_API_RATE_LIMIT: "10",
   PUBLIC_API_RATE_WINDOW_MS: "60000",
@@ -190,10 +192,12 @@ const environmentSchema = z
     NEWSLETTER_DELIVERY_CONCURRENCY: positiveInteger.max(5),
     NEWSLETTER_DELIVERY_MAX_ATTEMPTS: positiveInteger.max(5),
     NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: positiveInteger,
+    NEWSLETTER_RETENTION_POLL_INTERVAL_MS: positiveInteger,
     NEWSLETTER_POSTAL_ADDRESS: z.string().min(1).max(300),
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_WEBHOOK_SECRET: z.string().min(16).optional(),
     NEWSLETTER_FROM_EMAIL: z.email().optional(),
+    NEWSLETTER_REPLY_TO_EMAIL: z.email(),
     PUBLIC_API_MAX_AGE_DAYS: positiveInteger.max(365),
     PUBLIC_API_RATE_LIMIT: positiveInteger.max(1000),
     PUBLIC_API_RATE_WINDOW_MS: positiveInteger.max(3_600_000),
@@ -312,11 +316,13 @@ export interface AppConfig {
     readonly resendApiKey: string | null;
     readonly resendWebhookSecret: string | null;
     readonly fromEmail: string | null;
+    readonly replyToEmail: string;
     readonly deliveryEnabled: boolean;
     readonly deliveryBatchSize: number;
     readonly deliveryConcurrency: number;
     readonly deliveryMaximumAttempts: number;
     readonly deliveryPollIntervalMs: number;
+    readonly retentionPollIntervalMs: number;
     readonly postalAddress: string;
   };
   readonly publicApi: {
@@ -450,11 +456,13 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       resendApiKey: values.RESEND_API_KEY ?? null,
       resendWebhookSecret: values.RESEND_WEBHOOK_SECRET ?? null,
       fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
+      replyToEmail: values.NEWSLETTER_REPLY_TO_EMAIL,
       deliveryEnabled: values.NEWSLETTER_DELIVERY_ENABLED,
       deliveryBatchSize: values.NEWSLETTER_DELIVERY_BATCH_SIZE,
       deliveryConcurrency: values.NEWSLETTER_DELIVERY_CONCURRENCY,
       deliveryMaximumAttempts: values.NEWSLETTER_DELIVERY_MAX_ATTEMPTS,
       deliveryPollIntervalMs: values.NEWSLETTER_DELIVERY_POLL_INTERVAL_MS,
+      retentionPollIntervalMs: values.NEWSLETTER_RETENTION_POLL_INTERVAL_MS,
       postalAddress: values.NEWSLETTER_POSTAL_ADDRESS,
     }),
     publicApi: Object.freeze({

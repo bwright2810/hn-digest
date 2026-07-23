@@ -10,6 +10,19 @@ import {
 
 const lookupKey = Buffer.alloc(32, 1);
 
+test("publishes the newsletter privacy notice without horizontal overflow", async ({
+  page,
+}) => {
+  await page.goto("/newsletter");
+  await page.getByRole("link", { name: "Privacy", exact: true }).click();
+  await expect(page).toHaveURL(/\/privacy$/u);
+  await expect(
+    page.getByRole("heading", { name: "Privacy, in plain language." }),
+  ).toBeVisible();
+  await expect(page.getByText("privacy@just-dev.us")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
 test("completes signup, confirmation, preference, and unsubscribe lifecycle", async ({
   page,
 }, testInfo) => {

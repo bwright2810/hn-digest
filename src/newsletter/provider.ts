@@ -1,6 +1,7 @@
 export interface DigestEmail {
   readonly recipient: string;
   readonly from: string;
+  readonly replyTo: string;
   readonly subject: string;
   readonly html: string;
   readonly text: string;
@@ -42,6 +43,7 @@ export class ResendDeliveryProvider implements DeliveryProvider {
           },
           body: JSON.stringify({
             from: message.from,
+            reply_to: message.replyTo,
             to: [message.recipient],
             subject: message.subject,
             html: message.html,
