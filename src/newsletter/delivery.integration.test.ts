@@ -64,7 +64,8 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
         scheduledFor: new Date("2026-07-23T11:00:00Z"),
         requestedStoryCount: 1,
         status: "partial",
-        newsletterReadyAt: now,
+        newsletterReadyAt: null,
+        updatedAt: now,
       })
       .returning();
     const [story] = await connection.db
