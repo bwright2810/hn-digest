@@ -1,835 +1,204 @@
-# HN Digest implementation roadmap
+# HN Digest roadmap
 
-HN Digest collects the leading Hacker News stories on a schedule or on demand,
-extracts their linked articles and notable discussions, and produces concise,
-source-grounded summaries with an LLM.
+This roadmap contains only approved future work. Completed implementation
+history is available in Git history. Unapproved possibilities belong in
+`FUTURE_IDEAS.md`.
 
-Task IDs are stable. Completed tasks remain in this file as the implementation
-record; active, gated, and deferred work is called out explicitly.
+Task IDs are stable. Implement tasks in dependency order, keep changes scoped,
+and record material architectural or product decisions in this file.
 
-## Current state
+## Status
 
-The MVP is deployed and operational, and the repository is public under the MIT
-license. The application collects scheduled and on-demand digests, performs
-bounded source acquisition and structured analysis, tracks usage and cost, and
-exposes authenticated operator and editorial reading surfaces. Production uses
-its own private PostgreSQL resource.
+- **Planned:** approved but not started.
+- **In progress:** currently being implemented.
+- **Complete:** implemented and validated against its acceptance criteria.
 
-Status labels mean:
+## Milestone 1: Avoid repeated scheduled stories
 
-- **Complete:** implemented and validated against the task's acceptance criteria.
-- **Monitoring:** collecting production evidence before a decision.
-- **Gated:** authorized only if its stated evidence gate is met.
-- **Deferred:** outside the current release until the decision log changes.
+### HD-090 — Skip stories covered by the previous scheduled run [complete]
 
-There is no active implementation task. Remaining roadmap work is:
-
-1. Monitor the production outcomes of the HD-077 GitHub and HD-078 RSS/Atom
-   adapters.
-2. Keep HD-079 gated unless production evidence justifies JSON Feed support.
-3. Activate deferred work only through an explicit decision-log update.
-
-## MVP product boundaries
-
-- Collect a configurable number of stories from Hacker News twice daily and on
-  demand.
-- Summarize the linked article, the important perspectives in its HN discussion,
-  and the combined takeaway.
-- Preserve links to the story, article, and cited HN comments.
-- Avoid reprocessing unchanged material.
-- Enforce per-story and monthly LLM budgets.
-- Provide a mobile-first web interface for browsing digest runs.
-- Use a modern, minimal, distinctive visual language that does not resemble a
-  generic chatbot or interchangeable LLM dashboard.
-
-Not in the MVP: native mobile apps, user accounts, personalized
-ranking, embeddings, vector search, multiple LLM providers, and a separate
-model-based comment-ranking stage.
-
-## Technical baseline
-
-- TypeScript on the current Node.js LTS release
-- `pnpm`
-- Next.js for the server-rendered web application and API
-- PostgreSQL with Drizzle ORM
-- Zod for configuration, boundary, and schema validation
-- A PostgreSQL-backed job queue initially
-- Vitest for unit and integration tests
-- Headless Playwright for browser verification
-- ESLint and Prettier
-- CSS Modules and CSS custom properties for the visual system
-- OpenAI Responses API with Structured Outputs
-- Hacker News Firebase API
-- Readability-style HTML article extraction
-- A Dockerfile deployed through Coolify
-- Docker Compose for local PostgreSQL
-
-The web application, scheduler, and worker share one repository and one
-production container while remaining separate logical modules. This keeps
-deployment simple and allows the processes to be split later without
-redesigning the pipeline.
-
-Production runs through Coolify on the owner's existing Hetzner server and
-domain. The hostname is configured privately through `APP_URL` and should not
-be recorded in this public roadmap.
-
-### Verified deployment environment
-
-Read-only inventory captured on 2026-07-22 through the `coolify` SSH alias:
-
-- Hetzner KVM virtual server running Ubuntu 24.04.4 LTS on x86-64
-- 2 virtual CPUs
-- 1.9 GiB RAM and 4 GiB swap
-- 38 GiB root filesystem with approximately 20 GiB available at inspection
-- Docker Engine 29.2.1 and Docker Compose 5.0.2
-- Coolify `4.0.0-beta.462`
-- Traefik `3.6` as the Coolify-managed reverse proxy
-- Coolify's internal PostgreSQL 15 and Redis 7 containers
-- Seven existing application containers at inspection time
-
-The existing `coolify-db` is Coolify's control-plane database and must not be
-used by HN Digest. Create a separate PostgreSQL resource managed by Coolify,
-with its own persistent volume, credentials, health check, and private network
-connection to the application. Do not publish PostgreSQL port 5432 to the
-internet.
-
-The host has sufficient capacity for the private MVP at its expected load, but
-RAM is limited. Deploy the web process and background worker together initially
-unless measurements justify separate containers. Apply container resource
-limits, keep worker and fetch concurrency conservative, and do not run
-Playwright browsers on the production host. Run Playwright in CI or a dedicated
-test environment.
-
-Coolify should manage HTTPS routing through Traefik and inject application
-secrets at runtime. Store database data in a persistent Coolify volume. Database
-backups must be automated, encrypted where appropriate, retained outside this
-server, and periodically restored in a test environment; a same-host volume is
-not a disaster-recovery backup.
-
-Record changes to this baseline in the decision log at the end of this file.
-
-## Milestone 0: Project foundation
-
-### HD-001 — Scaffold the TypeScript application [complete]
-
-Create the package, TypeScript configuration, source/test directories, linting,
-formatting, and scripts for development, build, type-checking, and tests.
+When collecting a scheduled morning or evening digest, skip stories that were
+included in the immediately preceding completed scheduled digest. Continue
+through the ranked Hacker News candidates until the configured story count is
+filled or no eligible candidates remain.
 
 Acceptance criteria:
 
-- A clean checkout can install dependencies and run all validation commands.
-- The application starts locally and exposes a health check.
-- Supported Node.js and package-manager versions are documented.
-- The scaffold uses the agreed toolchain from the technical baseline.
-- A production Dockerfile and local PostgreSQL Docker Compose configuration are
-  present without embedding credentials.
+- Only scheduled runs participate; on-demand runs neither establish nor consume
+  the previous-run exclusion set.
+- The comparison uses the immediately preceding completed scheduled run across
+  morning/evening boundaries, not merely the previous run of the same type.
+- Stories are identified by stable HN item ID rather than title or URL.
+- The baseline is the immediately preceding scheduled digest made available to
+  readers; stories already published in a partial digest remain excluded, while
+  a failed run with no published digest is ignored.
+- Candidate ordering still follows the captured Hacker News ranking after
+  excluded and otherwise ineligible stories are removed.
+- If too few eligible stories exist, the run completes with the available
+  stories and records the shortfall rather than reintroducing duplicates.
+- Logs and operator diagnostics report exclusion counts and IDs without storing
+  or logging article bodies.
+- Tests cover consecutive morning/evening runs, intervening on-demand runs,
+  failed and partial runs, insufficient candidates, and retry idempotency.
 
-### HD-002 — Add configuration and secret validation [complete]
+## Milestone 2: Subscription newsletter
 
-Define typed configuration for the database, OpenAI, scheduling, story count,
-token limits, and application URL. Commit an example environment file without
-credentials.
+The newsletter is a larger product surface and should be delivered in bounded
+stages. Subscribers may choose the morning edition, evening edition, or both.
+Newsletter work introduces subscriber personal data and an external email
+provider, but does not introduce general-purpose user accounts.
 
-Acceptance criteria:
+### HD-100 — Design newsletter delivery and compliance boundaries [planned]
 
-- Startup fails with a useful message when required configuration is missing.
-- Secrets are never returned from an HTTP endpoint or written to logs.
-- Safe development defaults exist for non-secret values.
+Dependencies: none.
 
-### HD-003 — Establish automated checks [complete]
-
-Add CI for installation, formatting, linting, type-checking, and tests.
-
-Acceptance criteria:
-
-- Checks run on pull requests and pushes to `main`.
-- Dependency caching does not cache secrets or generated application data.
-
-## Milestone 1: Persistence and Hacker News ingestion
-
-### HD-010 — Design the initial database schema [complete]
-
-Create migrations for:
-
-- `stories`
-- `story_snapshots`
-- `comments`
-- `documents`
-- `digest_runs`
-- `digest_run_stories`
-- `analysis_jobs`
-- `article_analyses`
-- `discussion_analyses`
-- `llm_usage`
+Select the transactional/bulk email provider and document the subscription,
+consent, confirmation, delivery, unsubscribe, suppression, retention, and
+deletion lifecycle before collecting email addresses.
 
 Acceptance criteria:
 
-- Migrations can create and roll back a development database.
-- HN item IDs, URLs, content hashes, prompt versions, and model versions have
-  appropriate unique constraints and indexes.
-- Repeated ingestion is idempotent.
+- The decision record covers provider choice, expected cost, sending limits,
+  data location, webhook authentication, and failure behavior.
+- Morning and evening preferences have an explicit data model and migration
+  plan.
+- Signup uses confirmed opt-in; unconfirmed addresses never receive digests.
+- Consent evidence records the policy/version, source, and timestamps needed to
+  explain the subscription without retaining unnecessary request data.
+- Every message supports a clear unsubscribe path and standards-compatible
+  list-unsubscribe behavior, including one-click unsubscribe where supported.
+- The plan covers sender authentication and reputation controls, including SPF,
+  DKIM, DMARC, bounce handling, complaint handling, and suppression.
+- Retention, deletion, privacy disclosure, and applicable anti-spam/privacy
+  obligations are documented and reviewed before launch.
+- Secrets remain runtime configuration and are never exposed to the client,
+  logs, repository, or email links.
 
-### HD-011 — Implement the Hacker News API client [complete]
+### HD-101 — Implement subscriber and preference persistence [planned]
 
-Fetch top-story IDs, individual items, and comment descendants with bounded
-concurrency, timeouts, retries, and response validation.
+Dependencies: HD-100.
 
-Acceptance criteria:
-
-- Deleted and dead items are handled without failing a run.
-- A malformed or unavailable item produces an observable error and does not
-  abort unrelated stories.
-- Tests use fixtures rather than the live API.
-
-### HD-012 — Ingest a top-stories snapshot [complete]
-
-Create a digest run and persist the top configurable `x` stories with their
-rank, score, metadata, and collection time.
-
-Acceptance criteria:
-
-- Running ingestion twice does not duplicate stories.
-- Each run preserves its original ordering even as HN scores change.
-- Run status records partial and complete outcomes.
-
-### HD-013 — Ingest and normalize comment trees [complete]
-
-Fetch each story's discussion, sanitize HN HTML, preserve parent/child
-relationships, and store comment metadata and text hashes.
+Add the minimal persistence required for confirmed subscriptions, morning and
+evening preferences, confirmation state, unsubscribe state, consent evidence,
+and provider suppression state.
 
 Acceptance criteria:
 
-- Deep trees are fetched without unbounded recursion.
-- Deleted comments do not break thread structure.
-- Subsequent runs update changed comments and reuse unchanged comments.
+- Email addresses are normalized consistently and protected as sensitive data.
+- Repeated signup, confirmation, preference, and unsubscribe operations are
+  idempotent.
+- Opaque, purpose-specific, expiring tokens are used for confirmation and
+  preference-management links; raw tokens are not persisted or logged.
+- Public behavior does not reveal whether an email address is subscribed.
+- Data constraints prevent duplicate active subscriber records and invalid
+  preference states.
+- Migrations and lifecycle behavior have automated tests.
 
-## Milestone 2: Article acquisition
+### HD-102 — Build signup, confirmation, and unsubscribe flows [planned]
 
-### HD-020 — Build a safe URL fetcher [complete]
+Dependencies: HD-101.
 
-Fetch public article URLs with explicit timeouts, size limits, content-type
-checks, redirect limits, and protection against private/internal network access.
-
-Acceptance criteria:
-
-- Loopback, link-local, private-network, and unsafe redirect destinations are
-  rejected.
-- Responses exceeding the configured limit are stopped.
-- Fetch metadata and failure reasons are persisted without sensitive headers.
-
-### HD-021 — Extract readable article text [complete]
-
-Convert supported HTML pages into a title, byline, publication time, headings,
-and primary article text. Normalize whitespace while retaining useful structure.
+Provide accessible public forms and endpoints for selecting morning, evening,
+or both editions; confirming the subscription; changing preferences; and
+unsubscribing.
 
 Acceptance criteria:
 
-- Extraction is covered by representative saved fixtures.
-- Low-confidence or empty extraction is identified explicitly.
-- The normalized content receives a stable hash.
+- Signup responses resist address enumeration and automated abuse.
+- Confirmation is required before delivery begins.
+- Subscribers can change edition preferences without creating an account.
+- Unsubscribe is easy, takes effect promptly, and does not require login.
+- Forms work at 320-pixel and desktop viewports with keyboard navigation,
+  visible focus, clear validation, and useful success/error states.
+- Rate limiting and CSRF protections cover state-changing public endpoints.
+- Headless Playwright covers the complete lifecycle without contacting a live
+  email provider.
 
-### HD-022 — Handle nonstandard submissions [complete]
+### HD-103 — Render and send scheduled newsletter editions [planned]
 
-Support HN text posts, inaccessible URLs, unsupported media, and PDFs with a
-clear fallback policy.
+Dependencies: HD-090, HD-100, HD-101, HD-102.
 
-Acceptance criteria:
-
-- Text posts can be summarized without an external URL.
-- Unsupported and access-restricted pages produce discussion-only jobs.
-- PDF extraction is deferred from the private MVP. PDF submissions receive an
-  explicit unsupported-document or discussion-only result; they never silently
-  emit an empty article.
-
-## Milestone 3: Context selection and token control
-
-### HD-030 — Implement deterministic comment ranking [complete]
-
-Rank comments using transparent signals such as thread position, reply activity,
-length, branch diversity, and duplicate/quotation penalties.
+Render morning and evening newsletters from the same persisted digest data used
+by the web application, and deliver each edition only to confirmed subscribers
+who selected it.
 
 Acceptance criteria:
 
-- Selection covers multiple substantial branches rather than only the largest.
-- Every selected comment retains its HN ID and parent ID.
-- Ranking is deterministic and tested against fixed discussion fixtures.
+- Sending starts only after the corresponding digest reaches its deliverable
+  terminal state.
+- Delivery is idempotent per subscriber and digest edition; retries cannot send
+  the same edition twice.
+- Morning-only, evening-only, and both-edition preferences are enforced.
+- Email content preserves source provenance and links to the canonical digest,
+  original article, HN discussion, and unsubscribe/preferences flow.
+- HTML and plain-text alternatives are generated from the same stored data.
+- Per-recipient failures do not abort unrelated deliveries; bounded retries and
+  final outcomes are persisted.
+- Provider calls, concurrency, and batch sizes are bounded and observable.
+- Tests use a fake provider and contain no real subscriber data.
 
-### HD-031 — Build token-aware article selection [complete]
+### HD-104 — Process delivery events and operate the newsletter [planned]
 
-Fit long articles into a configurable budget while favoring the introduction,
-conclusion, headings, and representative body sections.
+Dependencies: HD-103.
 
-Acceptance criteria:
-
-- The final article context never exceeds its configured token allowance.
-- Truncation is reported to downstream analysis and in stored metadata.
-- Short articles pass through without unnecessary transformation.
-
-### HD-032 — Assemble and estimate analysis requests [complete]
-
-Combine instructions, schema, article excerpts, and selected comments; estimate
-input tokens and worst-case output cost before submission.
-
-Acceptance criteria:
-
-- Separate limits exist for article, comments, instructions, and output.
-- Jobs exceeding a hard cost limit are rejected or downgraded before an API
-  request is made.
-- The assembled request treats source content as untrusted data, not
-  instructions.
-
-## Milestone 4: LLM analysis
-
-### HD-040 — Define the versioned analysis schema and prompt [complete]
-
-Create a Structured Outputs schema covering article thesis, key points,
-evidence, limitations, discussion consensus, competing viewpoints, insightful
-comments, unresolved questions, combined takeaway, citations, and confidence.
+Authenticate and process provider delivery events, maintain suppression state,
+and expose privacy-safe operator diagnostics.
 
 Acceptance criteria:
 
-- All discussion claims can cite one or more HN comment IDs.
-- Article claims and commenter opinions are represented separately.
-- Prompt and schema versions are stored with every result.
-- Output length expectations are explicit.
+- Webhook signatures are verified before processing and replayed events are
+  idempotent.
+- Hard bounces, complaints, and unsubscribes suppress future delivery promptly.
+- Event payload retention is minimized and sensitive fields are not logged.
+- Operator diagnostics show aggregate and per-delivery status without exposing
+  subscriber lists through public routes.
+- Alerts cover sustained send failures and provider rejection without leaking
+  addresses or message bodies.
+- A launch checklist verifies sender authentication, unsubscribe behavior,
+  provider production access, privacy text, and end-to-end delivery.
 
-### HD-041 — Implement the OpenAI client [complete]
+## Milestone 3: Public digest API
 
-Call the Responses API with timeouts, bounded retries, Structured Outputs, an
-explicit model and reasoning setting, and a strict output-token cap.
+### HD-110 — Expose a rate-limited public digest API [planned]
 
-Acceptance criteria:
+Dependencies: none.
 
-- API errors are classified as retryable or terminal.
-- Refusals and incomplete responses are stored as explicit outcomes.
-- Logs never contain credentials or full copyrighted source documents.
-
-### HD-042 — Persist usage and calculate cost [complete]
-
-Record input, output, cached-read, and cache-write tokens plus the applicable
-configured prices for every attempt.
-
-Acceptance criteria:
-
-- Costs can be reported per story, run, day, model, and prompt version.
-- Historical costs remain reproducible when provider prices change.
-- Estimated and actual usage can be compared.
-
-### HD-043 — Add content-addressed analysis caching [complete]
-
-Reuse analysis based on article hash, selected-comment hash, prompt/schema
-version, model, and reasoning configuration.
+Expose a read-only API that returns a morning or evening digest for a requested
+date. No API token is required. Requests are limited by client IP address to 10
+per minute.
 
 Acceptance criteria:
 
-- An unchanged story creates no new LLM request.
-- Article analysis can be reused when only the discussion changes.
-- Cache misses explain which key component changed.
-
-### HD-044 — Add model routing and one-step fallback [deferred]
-
-Status: deferred until evaluation data shows that selective escalation produces
-a material quality improvement over the economical default model.
-
-Use an economical default model and retry once with a stronger configuration
-only for defined validation failures or high-value jobs.
-
-Acceptance criteria:
-
-- Routing rules are configuration, not scattered conditionals.
-- No job can enter an unlimited retry or model-escalation loop.
-- Usage reports distinguish initial and fallback attempts.
-
-## Milestone 5: Job execution and scheduling
-
-### HD-050 — Implement a PostgreSQL-backed worker [complete]
-
-Claim jobs safely, enforce bounded concurrency, recover stale leases, and store
-attempt history.
-
-Acceptance criteria:
-
-- Multiple workers cannot process the same claimed attempt concurrently.
-- A worker crash does not permanently strand a job.
-- Per-host fetch concurrency and LLM concurrency can be configured separately.
-
-### HD-051 — Implement scheduled digest runs [complete]
-
-Create morning and evening runs at 7:00 AM and 7:00 PM in
-`America/New_York` without duplicating runs after restarts. Persist timestamps
-in UTC and calculate schedules with the named IANA time zone.
-
-Acceptance criteria:
-
-- Schedule and time zone are configuration values.
-- Production defaults are 7:00 AM and 7:00 PM in `America/New_York`.
-- A unique schedule key prevents duplicate runs.
-- Missed-run and daylight-saving transition behavior are documented and tested.
-
-### HD-052 — Add asynchronous Batch API processing [deferred]
-
-Status: deferred until scheduled inference volume makes the cost savings worth
-the additional submission, polling, reconciliation, and timing complexity.
-
-Submit scheduled LLM jobs through the provider's Batch API, poll their status,
-and reconcile individual results. Leave on-demand jobs on the synchronous path.
-
-Acceptance criteria:
-
-- Batch request IDs map reliably back to analysis jobs.
-- Partial failures can be retried without resubmitting successful work.
-- The synchronous path remains available when a digest must complete promptly.
-
-### HD-053 — Add on-demand run controls [complete]
-
-Expose an authenticated operator action or CLI command that starts a run with a
-bounded story count.
-
-Acceptance criteria:
-
-- Concurrent duplicate requests are coalesced or clearly rejected.
-- The caller receives a run ID and can inspect progress.
-- The endpoint cannot be used anonymously to create unbounded LLM spend.
-
-### HD-054 — Add production process entrypoints [complete]
-
-Run the Next.js web process and the PostgreSQL-backed scheduler and
-worker-readiness loops from one production container, while keeping them as
-separate logical modules.
-The runtime must stop cleanly, poll conservatively on the memory-constrained
-host, and isolate recoverable background-loop failures from the web process.
-
-This task starts the existing scheduler and worker machinery. End-to-end
-assembly of collected stories into analysis jobs is a separate pipeline task;
-HD-054 must not fabricate model requests or persist complete prompt payloads as
-a shortcut.
-
-Acceptance criteria:
-
-- One container starts the web server, scheduler loop, and worker-readiness
-  loop; queued jobs remain unclaimed until a real pipeline processor exists.
-- SIGTERM and SIGINT stop polling, drain current iterations, close PostgreSQL,
-  and terminate the web child process within a bounded grace period.
-- Poll intervals are typed configuration and production requires explicit
-  values.
-- Schedule polling uses the configured named time zone and existing unique
-  schedule key, so restarts cannot create duplicate scheduled runs.
-- Recoverable scheduler or worker iteration failures are classified and logged
-  without silently terminating the web process; startup/configuration failures
-  still fail the container.
-- Unit tests cover polling, failure isolation, and graceful cancellation, and a
-  production-container smoke test verifies all entrypoints start.
-
-### HD-055 — Connect the end-to-end digest pipeline [complete]
-
-Turn pending scheduled and on-demand runs into bounded analysis jobs, process
-those jobs through the synchronous OpenAI Responses API, and persist validated
-article/discussion results and usage. Reconstruct model requests from stored,
-trusted application records rather than persisting complete prompts or source
-bodies in the queue.
-
-Acceptance criteria:
-
-- Pending runs collect top stories, comments, and supported article or HN text
-  content, with per-story failures isolated from unrelated stories.
-- Deterministic article/comment selection runs before enqueueing, and queued
-  metadata contains hashes, IDs, versions, budgets, and truncation facts but no
-  complete source corpus or model prompt.
-- Each cache miss creates one bounded synchronous request and may make one
-  additional correction attempt only when comment-citation validation fails; a
-  cache hit attaches validated prior results without an LLM call.
-- Per-request, daily, and monthly spend checks run before submission; actual
-  provider usage and the price assumptions used are persisted.
-- Refusals, incomplete responses, acquisition failures, and provider failures
-  produce explicit story/job states and cannot strand a run. Citation failures
-  are corrected once, then invalid discussion references are omitted
-  deterministically while valid analysis remains available.
-- Run/story statuses reach complete, partial, or failed terminal states, and
-  retry-safe polling does not duplicate stories or queued jobs.
-- Integration tests exercise collection, queue assembly, cache reuse, worker
-  persistence, and terminal-state reconciliation without live HN/OpenAI calls.
-
-### HD-056 — Add authenticated operator controls [complete]
-
-Provide a private, single-operator web surface for starting bounded on-demand
-runs and reviewing recent run, story, job, and validation failures. Protect the
-surface with deployment-supplied HTTP Basic credentials; this is operational
-access, not a general user-account system.
-
-Acceptance criteria:
-
-- Anonymous requests cannot view operational data or create LLM work.
-- The operator can enqueue one to the configured maximum story count; an
-  already-active on-demand run is coalesced and linked instead of duplicated.
-- Recent runs expose terminal and active states, story-level failure codes, and
-  job/attempt failure classifications without source bodies, prompts, or secrets.
-- The production credential is injected at runtime and is never logged or
-  returned by an application route.
-
-### HD-057 — Gate digest stories by discussion depth [complete]
-
-Scan Hacker News's ranked `topstories` feed in order and include only available
-stories meeting a configurable minimum comment count.
-
-Acceptance criteria:
-
-- Filtering preserves the relative HN rank of qualifying stories.
-- The collector scans beyond the first requested IDs to fill the run when
-  possible, while retaining bounded API requests.
-- A shortfall is explicit when too few ranked stories meet the threshold.
-
-### HD-058 — Audit and expand supported source types [complete]
-
-Measure which HN story links fall back to discussion-only analysis, classify
-the failure modes by source and content type, and add deterministic support for
-the highest-value formats that fit the existing extraction and security model.
-PDF extraction remains deferred unless the decision log is deliberately
-updated first.
-
-Acceptance criteria:
-
-- Production-safe metrics distinguish access restrictions, unsupported content
-  types, extraction failures, and low-confidence text without storing source
-  bodies or sensitive URLs.
-- A reviewed fixture set represents the most common unsupported HN link types.
-- Prioritized formats are supported with bounded fetches, SSRF protection,
-  content validation, and extraction-quality tests.
-- Unsupported sources continue to produce an explicit discussion-only result
-  rather than failing the entire story.
-
-### HD-075 — Establish the source-adapter baseline [complete]
-
-Collect an initial aggregate source-acquisition baseline over at least 10
-digest runs and 50 story occurrences, then rank unsupported formats using the
-scoring factors in `docs/discussion-only-source-support-plan.md`. Do not retain
-source bodies or complete URLs in the baseline.
-
-Acceptance criteria:
-
-- The reviewed baseline includes outcome counts, coarse source/content types,
-  median discussion depth and rank, expected recovery, effort, risk, and
-  evidence fidelity.
-- A format is selected only when observed in the baseline or reviewed fixtures
-  and expected to recover useful context for at least 20% of its occurrences.
-- Every selected format receives a stable roadmap task and rollout threshold.
-- The completed initial audit may conclude that no format has enough evidence;
-  adapter enablement is evaluated separately under HD-081.
-
-### HD-076 — Add the source-document adapter foundation [complete]
-
-Route existing HTML, plain-text, and Markdown extraction through a
-deterministic MIME-aware registry and preserve bounded format-appropriate
-evidence locations in extraction metadata.
-
-Acceptance criteria:
-
-- Adapter IDs are stable and unique, selection order is deterministic, and an
-  unmatched input produces an explicit unsupported result.
-- Extraction results preserve adapter identity, structured failure reasons,
-  stable content hashes, and heading or line-range evidence locations.
-- Existing fetch limits, SSRF checks, persistence behavior, and
-  discussion-only fallback remain intact.
-
-### HD-077 — Add bounded public GitHub source support [complete]
-
-Resolve public repository roots to one README and explicit GitHub blob links to
-one allow-listed text file through the public GitHub Contents API. Do not clone,
-list, or traverse repositories. Preserve repository-relative paths and
-line/heading evidence.
-
-Acceptance criteria:
-
-- Repository URLs request only the preferred README; explicit blob URLs request
-  only their named curated text file, and branch names containing slashes remain
-  unsupported rather than triggering discovery.
-- GitHub API requests and redirects use the existing SSRF, timeout, redirect,
-  content-type, and response-size controls; decoded content is size-checked
-  again before extraction.
-- Malformed metadata, mismatched paths, invalid base64, binary text, unsafe
-  redirects, rate limits, and inaccessible repositories fail explicitly and
-  preserve discussion-only fallback.
-- Successful results use a commit-pinned canonical GitHub URL and retain the
-  repository-relative file path plus heading or line-range evidence.
-- No GitHub credential is required, logged, stored, or accepted by this path.
-
-### HD-078 — Add bounded RSS and Atom support [complete]
-
-Fetch bounded RSS/Atom documents through the existing safe article fetcher and
-select the first direct item/entry in document order. Generic XML, sitemaps,
-recursive crawling, DTDs, external entities, XInclude, and parser network access
-remain unsupported.
-
-Acceptance criteria:
-
-- Named RSS/Atom MIME types and XML feed candidates retain the existing timeout,
-  redirect, response-size, MIME, and per-redirect SSRF protections.
-- RSS selects the first direct channel item and Atom selects the first direct
-  namespaced entry; no link, enclosure, stylesheet, or embedded URL is fetched.
-- DTD and entity declarations are rejected before parsing, XInclude is rejected
-  after namespace-aware parsing, and malformed or generic XML fails explicitly.
-- Extracted entries retain a stable bounded entry ID, title, author,
-  publication time, content hash, and heading evidence when present.
-- The shared production pipeline uses the source-aware fetcher, with regression
-  coverage for both GitHub and feed acquisition paths.
-
-### HD-079 — Add bounded JSON Feed support [gated by HD-081]
-
-Implement a named, versioned JSON Feed adapter only if HD-081 selects it.
-Arbitrary JSON and unknown schemas remain unsupported, and embedded URLs must
-not be followed.
-
-## Milestone 6: Reading experience
-
-### HD-059 — Define the visual system and responsive shell [complete]
-
-Establish the typography, spacing, color, interaction, and responsive-layout
-rules before building individual pages. The product should feel editorial and
-purpose-built for reading Hacker News digests, not like a chat interface with a
-different logo.
-
-Acceptance criteria:
-
-- Core tokens and reusable primitives are documented and implemented in code.
-- The shell works from a 320-pixel-wide viewport through large desktop sizes.
-- Typography and information hierarchy favor sustained reading and scanning.
-- The design avoids default LLM-product motifs such as chat bubbles, glowing
-  gradient decoration, and an oversized prompt box when those patterns do not
-  serve a real interaction.
-- Keyboard navigation, visible focus, contrast, reduced motion, and semantic
-  landmarks are supported.
-
-### HD-060 — Build the digest-run page [complete]
-
-Show run status and ordered story cards containing the article summary,
-discussion overview, combined takeaway, and source links.
-
-Acceptance criteria:
-
-- Partial and failed analyses have understandable states.
-- All cited comments link to their HN anchors.
-- Story cards and navigation require no horizontal scrolling at a 320-pixel
-  viewport and make effective use of wider screens.
-- Primary reading and navigation actions are usable with touch, keyboard, and
-  mouse input.
-
-### HD-061 — Build story detail and history pages [deferred]
-
-Status: deferred until the core digest reading experience is validated.
-
-Show the complete structured analysis and how a story's discussion evolved
-across digest runs.
-
-Acceptance criteria:
-
-- Users can distinguish collection time from article publication time.
-- Reused versus newly generated analysis is visible in diagnostic metadata.
-
-### HD-062 — Add a delivery channel [deferred]
-
-Status: deferred until the web digest and scheduling workflow are reliable.
-
-Start with one channel—preferably email or an RSS/Atom feed—and render from the
-same stored digest data as the web interface.
-
-Acceptance criteria:
-
-- Delivery retries are idempotent.
-- A run cannot be delivered twice accidentally.
-- Links lead back to the canonical digest and original sources.
-
-### HD-063 — Add headless Playwright UI verification [complete]
-
-Create browser tests for the responsive shell and critical reading flows. Run
-them headlessly during local validation and CI, with artifacts retained on
-failure.
-
-Acceptance criteria:
-
-- Tests cover the implemented latest-digest and operator flows, including
-  loading, empty, partial, and failed-analysis states. Deferred story-history
-  screens are tested when HD-061 is activated.
-- Each critical flow is exercised at representative mobile and desktop viewport
-  sizes, including a 320-pixel-wide viewport.
-- Tests verify navigation and important keyboard interactions, and detect
-  unexpected horizontal overflow.
-- CI runs Playwright headlessly and retains screenshots, traces, and videos on
-  failure without storing secrets or sensitive source content.
-- Stable fixtures or seeded test data keep tests independent of live Hacker
-  News and LLM APIs.
-
-## Milestone 7: Quality, operations, and release
-
-### HD-070 — Create a representative evaluation set [complete]
-
-Save 30–50 legally appropriate fixtures spanning technical articles, opinion
-pieces, text posts, inaccessible pages, long discussions, weak discussions, and
-controversial threads.
-
-Acceptance criteria:
-
-- A rubric scores faithfulness, coverage, discussion synthesis, citation
-  quality, concision, and usefulness.
-- Fixtures contain no secrets and avoid storing unnecessary copyrighted text.
-- Model and prompt changes can be compared against the same cases.
-
-### HD-071 — Add observability and budget alerts [complete]
-
-Track run duration, fetch/extraction failures, queue depth, LLM failures, cache
-hit rate, token usage, and estimated spend.
-
-Acceptance criteria:
-
-- Daily and monthly soft limits generate alerts.
-- Hard limits stop new LLM submissions while leaving collection and browsing
-  functional.
-- A failed scheduled run is visible without inspecting raw logs.
-
-### HD-072 — Perform security and privacy review [complete]
-
-Review SSRF protection, HTML sanitization, prompt injection boundaries,
-operator authentication, secret handling, logs, and data retention.
-
-Acceptance criteria:
-
-- No endpoint exposes environment variables, credentials, or arbitrary files.
-- Untrusted article/comment content cannot alter application instructions.
-- Retention and deletion behavior are documented.
-
-### HD-073 — Write deployment and recovery documentation [complete]
-
-Document database setup, migrations, worker/web processes, scheduling, backups,
-configuration, deployment, rollback, and common failure recovery.
-
-Acceptance criteria:
-
-- A new environment can be deployed from the documentation.
-- Database backup and restore have been tested.
-- There is a documented way to disable scheduling and LLM spend immediately.
-- Coolify configuration covers the application build, health check, domain,
-  HTTPS routing, runtime secrets, persistent PostgreSQL volume, and private
-  application-to-database networking.
-- PostgreSQL is a dedicated HN Digest resource, not Coolify's internal database,
-  and has no public host-port mapping.
-- Production container memory and concurrency limits are documented for the
-  2-vCPU/1.9-GiB host.
-- Playwright runs outside the production server.
-
-### HD-074 — Prepare the repository for public MIT release [complete]
-
-Keep the project private initially, then perform an intentional public-release
-review and add the MIT license before changing repository visibility.
-
-Acceptance criteria:
-
-- An MIT `LICENSE` file and matching package metadata are committed before the
-  repository becomes public.
-- Git history, fixtures, logs, documentation, examples, and configuration are
-  reviewed for secrets, private hostnames, personal data, and unnecessary
-  copyrighted source text.
-- Public setup, contribution, and security-reporting documentation are present.
-- Repository visibility is changed only after the release review passes.
-
-The owner-controlled visibility change and post-publication verification were
-completed on 2026-07-23.
-
-### HD-081 — Complete the alternate source-adapter review [complete]
-
-Evaluate candidate adapters without waiting for 30 varied production digest
-runs. Combine the completed HD-075 production baseline with bounded, zero-LLM
-top-stories discovery and reviewed, redistribution-safe fixtures that exercise
-each candidate's successful, malformed, oversized, and unsafe inputs. Decide
-explicitly whether any gated source adapter has enough recoverable value to
-justify implementation.
-
-Acceptance criteria:
-
-- The review uses the completed HD-075 baseline and reports both story
-  occurrences and distinct stories so repetition cannot inflate demand.
-- A discovery scan covers up to 500 current top stories and reports eligible
-  distinct candidates by coarse source type without fetching source bodies.
-- Reviewed fixtures demonstrate that each selected adapter can recover useful,
-  evidence-addressable content while preserving fetch, size, parser, and SSRF
-  boundaries.
-- Acquisition outcomes are ranked by frequency, expected recovery, evidence
-  fidelity, implementation effort, and security risk.
-- Discovery and fixtures supplement rather than overwrite the observed
-  production acquisition outcomes.
-- Each selected adapter meets the 20% expected-recovery threshold and activates
-  its existing stable task; otherwise HD-077 through HD-079 remain gated.
-- The decision and evidence summary are recorded without source bodies or
-  complete URLs.
-
-## Deferred work
-
-- HD-044: stronger-model routing and fallback
-- HD-052: Batch API processing
-- HD-061: story history pages
-- HD-062: email or feed delivery
-- PDF text extraction within HD-022
-- Separate LLM calls for article and discussion analysis
-
-For the MVP, one bounded synchronous request should generate both the article
-and discussion sections. Persist those sections separately where useful so they
-can evolve independently later, but do not double the number of model calls.
-
-## Cross-cutting rules
-
-- Do not send an LLM content that deterministic code can discard first.
-- Every external request has a timeout, size limit, and bounded retry policy.
-- Every LLM request has input, output, per-job, daily, and monthly limits.
-- Persist raw provider usage; do not infer actual tokens solely from estimates.
-- Cache using content hashes plus prompt, schema, model, and reasoning versions.
-- Preserve evidence IDs and source URLs throughout the pipeline.
-- Treat web pages, HN posts, and comments as untrusted input.
-- Prefer measurable quality improvements over adding more model calls.
-
-## Open decision
-
-- First post-MVP delivery channel if HD-062 is activated: email or RSS/Atom.
-
-## Resolved operating defaults
-
-- Production collects 10 stories per run, subject to the configurable minimum
-  of 10 HN comments per story.
-- Scheduled runs occur at 7:00 AM and 7:00 PM in `America/New_York`.
-- On-demand runs are available through both a bounded CLI and an HTTP
-  Basic-protected operator surface.
-- Article, comment, instruction, and output token allowances are typed runtime
-  configuration and may be tuned operationally without reopening architecture.
-- The production hostname is selected and stored privately in `APP_URL`.
+- A versioned endpoint accepts an ISO calendar date and an explicit `morning`
+  or `evening` edition.
+- Date interpretation follows the configured digest timezone, while persisted
+  timestamps and response timestamps remain UTC/ISO 8601.
+- The maximum retrievable age is typed configuration with a 30-day default;
+  requests outside the window receive a stable non-success response without
+  revealing internal storage details.
+- Only completed, publicly renderable digest data and source/evidence links are
+  returned; operator diagnostics, subscriber data, prompts, raw source bodies,
+  and internal errors are excluded.
+- The response has a versioned, documented schema and deterministic ordering.
+- Missing dates, invalid editions, invalid dates, future dates, and unavailable
+  or partial digests have documented status and error bodies.
+- Each trusted client IP is limited to 10 requests in a rolling or fixed
+  one-minute window, with standard rate-limit response headers and HTTP 429 on
+  exhaustion.
+- Client IP derivation trusts forwarded headers only from explicitly configured
+  reverse proxies; callers cannot bypass limits by supplying arbitrary
+  forwarding headers.
+- The limiter behaves correctly across all production application processes
+  and fails safely if its shared state is unavailable.
+- Responses use bounded caching appropriate to immutable historical digests
+  without allowing caching to bypass rate-limit accounting.
+- Unit, integration, and abuse-case tests cover schema output, age boundaries,
+  timezone boundaries, rate limits, spoofed forwarding headers, and accidental
+  sensitive-field exposure.
 
 ## Decision log
 
-Record decisions here with the date, choice, and short rationale.
-
 | Date | Decision | Rationale |
 | --- | --- | --- |
-| 2026-07-22 | Use `hn-digest` as the project name. | Direct, memorable, and accurately describes the product. |
-| 2026-07-22 | Deploy through Coolify on the owner's existing Hetzner server and domain. | Avoids additional hosting and domain costs and reuses the existing Docker/Traefik deployment platform. |
-| 2026-07-22 | Run a dedicated HN Digest PostgreSQL resource in Coolify on the same server. | The private MVP load fits the host; isolating it from Coolify's control-plane database preserves ownership, upgrades, backups, and recovery boundaries. |
-| 2026-07-22 | Run Playwright outside production and initially colocate the web and worker processes. | The server has only 1.9 GiB RAM; browser processes and unnecessary service separation would reduce operating headroom. |
-| 2026-07-22 | Defer HD-044, HD-052, HD-061, HD-062, PDF extraction, and separate article/discussion model calls. | Keeps the private MVP focused and avoids complexity whose cost or quality benefit has not yet been demonstrated. |
-| 2026-07-22 | Use Node.js LTS, TypeScript, pnpm, Next.js, PostgreSQL with Drizzle, Zod, Vitest, Playwright, ESLint, Prettier, and CSS Modules/custom properties. | Provides a typed full-stack baseline, predictable validation, controlled visual design, and straightforward Coolify deployment. |
-| 2026-07-22 | Schedule digests for 7:00 AM and 7:00 PM in `America/New_York`, while storing timestamps in UTC. | Matches the owner's preferred Eastern Time schedule and handles EST/EDT transitions through an IANA time zone. |
-| 2026-07-22 | Keep the repository private initially and plan an MIT-licensed public release. | Allows development and a security review before intentionally publishing code and history. |
-| 2026-07-22 | Use configurable `gpt-5.6-luna` with low reasoning as the private-MVP baseline. | It is the current efficient high-volume model; changing the baseline or using stronger reasoning remains contingent on evaluation results. |
-| 2026-07-22 | Price the `gpt-5.6-luna` standard synchronous path at $1.00/M input, $0.10/M cached read, $1.25/M cache write, and $6.00/M output tokens through explicit production configuration. | These are the current published API rates; persisting the configured assumptions keeps historical cost calculations explainable if provider pricing changes. |
-| 2026-07-22 | Evaluate analysis changes against 30 fixed synthetic cases with a weighted six-dimension rubric. | Synthetic CC0 fixtures keep comparison repeatable and legally safe; weighting faithfulness highest prevents aggregate quality gains from obscuring grounding regressions. |
-| 2026-07-22 | Use UTC calendar windows for LLM daily/monthly budgets and persist deduplicated operational alerts. | UTC boundaries make enforcement reproducible alongside persisted timestamps; database alerts remain visible without relying on ephemeral process logs. |
-| 2026-07-22 | License the source under MIT while keeping npm publication disabled and repository visibility owner-controlled. | Public source availability does not require publishing an npm package, and the final visibility change must follow a fresh security and history review. |
-| 2026-07-22 | Expose on-demand runs through a bounded shell CLI and coalesce active runs in PostgreSQL. | Authenticated shell access avoids a new public operator endpoint, while a partial unique index prevents concurrent commands from duplicating collection or LLM spend. |
-| 2026-07-22 | Add a private HTTP Basic-protected operator page alongside the CLI. | The private owner needs mobile/desktop access to failure diagnostics and bounded on-demand runs without introducing accounts or exposing an anonymous spend trigger. |
-| 2026-07-22 | Rank digest stories directly from HN `topstories` without topical filtering. | The MVP should preserve Hacker News's current leading-story order; personalization and semantic topic ranking remain outside scope. |
-| 2026-07-22 | Require at least 10 HN comments by default before selecting a story. | Very new stories often lack enough discussion to support useful synthesis; a configurable threshold keeps the gate tunable. |
-| 2026-07-22 | Allow one spend-checked correction attempt when model output cites an HN comment outside the selected context. This terminal-failure policy was superseded later the same day. | A bounded retry can recover an otherwise useful analysis while preserving evidence validation; the later degraded-result policy retains valid work after that retry. |
-| 2026-07-22 | Add bounded plain-text and Markdown extraction while keeping PDF and media sources discussion-only. | These text formats fit the existing SSRF and extraction-quality model; document and media parsing would add substantially different security and resource requirements. |
-| 2026-07-22 | Introduce HD-075 through HD-079 for discussion-only source reduction, implementing only the shared adapter foundation before production measurements select additional formats. | Stable gated tasks preserve the plan's measurement requirement and avoid authorizing GitHub, feed, JSON Feed, PDF, OCR, or media work from intuition alone. |
-| 2026-07-22 | After one citation-correction attempt, deterministically omit invalid discussion references instead of failing the story. | Preserving valid article analysis and grounded discussion claims gives readers a useful degraded result while never accepting invented comment IDs. |
-| 2026-07-22 | Complete the initial HD-075 audit at 10 runs and 50 source occurrences, with adapter enablement decided separately under HD-081. | This allows the production review workflow to be exercised without treating repeated stories from one day as sufficient evidence to enable a new parser. |
-| 2026-07-22 | Complete HD-075 without selecting an additional adapter and move adapter enablement review to HD-081. | The initial production baseline and a bounded scan of 500 current top stories found no unsupported format with enough distinct, eligible demand to justify implementation. |
-| 2026-07-23 | Remove HD-080 from the roadmap. | Off-server production backup work is no longer required as a tracked product task. |
-| 2026-07-23 | Replace HD-081's 30-run waiting period with an alternate bounded evidence review. | Combining the observed HD-075 baseline, a zero-LLM scan of up to 500 current top stories, and reviewed adversarial fixtures tests demand, recoverability, evidence fidelity, and parser safety without delaying the decision for additional scheduled runs. |
-| 2026-07-23 | Complete HD-081 without activating HD-077, HD-078, or HD-079. | The production baseline recovered all observed GitHub repository sources through HTML, while bounded discovery found no eligible feed, JSON Feed, or PDF candidates. No additional adapter demonstrated the required 20% incremental recovery value, so implementing and exposing a new parser would add risk without measured benefit. |
-| 2026-07-23 | Publish the repository under the MIT license after the final release review. | The owner explicitly approved the visibility change; anonymous access, license detection, private vulnerability reporting, Dependabot, secret scanning, code scanning, branch protection, and CI were enabled or verified as part of the release. |
-| 2026-07-23 | Activate HD-077 by explicit owner direction after HD-081 selected no adapter. | The owner chose to add narrowly bounded public GitHub support despite the absence of measured incremental recovery. The implementation remains limited to one README or one explicit curated text file per story and introduces no repository listing, traversal, cloning, credential, or fallback fetch path. |
-| 2026-07-23 | Activate HD-078 by explicit owner direction after HD-081 selected no feed adapter. | The owner chose to add bounded RSS/Atom support. The adapter deterministically selects one direct entry and rejects generic XML, sitemaps, DTDs, entities, XInclude, parser networking, recursive crawling, and all embedded-resource fetching. |
+| 2026-07-23 | Reset the post-MVP roadmap to HD-090, the HD-100 newsletter series, and HD-110. | The next product priorities are avoiding consecutive scheduled-story repetition, adding opt-in morning/evening newsletter delivery, and exposing bounded public digest access. |
+| 2026-07-23 | Complete HD-090 by excluding HN item IDs from the most recent earlier published scheduled digest. | Ordering by the scheduled slot makes retries deterministic; complete and partial published digests establish the baseline, while failed and on-demand runs do not. Persisting encountered exclusions gives operators an auditable count and ID list without retaining source content. |

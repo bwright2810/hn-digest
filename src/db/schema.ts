@@ -90,6 +90,11 @@ export const digestRuns = pgTable(
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     collectedAt: timestamp("collected_at", { withTimezone: true }),
     requestedStoryCount: integer("requested_story_count").notNull(),
+    excludedStoryCount: integer("excluded_story_count").default(0).notNull(),
+    excludedHnItemIds: jsonb("excluded_hn_item_ids")
+      .$type<number[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
     status: digestRunStatus("status").default("pending").notNull(),
     errorCode: varchar("error_code", { length: 100 }),
     ...timestampColumns,
@@ -111,6 +116,10 @@ export const digestRuns = pgTable(
     check(
       "digest_runs_requested_story_count_positive",
       sql`${table.requestedStoryCount} > 0`,
+    ),
+    check(
+      "digest_runs_excluded_story_count_nonnegative",
+      sql`${table.excludedStoryCount} >= 0`,
     ),
   ],
 );

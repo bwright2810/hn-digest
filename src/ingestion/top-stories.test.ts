@@ -79,7 +79,93 @@ describe("ingestTopStories", () => {
       runId: "run-1",
       status: "complete",
       collectedStoryCount: 2,
+      excludedHnItemIds: [],
       failures: [],
+    });
+  });
+
+  it("skips previous scheduled stories and scans farther without changing rank order", async () => {
+    const runStore = {
+      ...store(),
+      getPreviousScheduledStoryIds: vi.fn().mockResolvedValue([100]),
+      recordStoryExclusions: vi.fn().mockResolvedValue(undefined),
+    };
+    const thirdStory = story({ id: 300, score: 40, title: "Third" });
+    const client = {
+      getTopStoryIds: vi.fn().mockResolvedValue([100, 200, 300]),
+      getItems: vi.fn().mockResolvedValue([secondStory, thirdStory]),
+    };
+    const collectedAt = new Date("2026-07-23T23:00:00Z");
+
+    const result = await ingestTopStories({
+      storyCount: 2,
+      client,
+      store: runStore,
+      now: () => collectedAt,
+      existingRunId: "evening-run",
+    });
+
+    expect(client.getItems).toHaveBeenCalledWith([200, 300]);
+    expect(runStore.saveStory).toHaveBeenNthCalledWith(
+      1,
+      "evening-run",
+      1,
+      secondStory,
+      collectedAt,
+    );
+    expect(runStore.saveStory).toHaveBeenNthCalledWith(
+      2,
+      "evening-run",
+      2,
+      thirdStory,
+      collectedAt,
+    );
+    expect(runStore.recordStoryExclusions).toHaveBeenCalledWith(
+      "evening-run",
+      [100],
+      collectedAt,
+    );
+    expect(result).toMatchObject({
+      status: "complete",
+      collectedStoryCount: 2,
+      excludedHnItemIds: [100],
+    });
+  });
+
+  it("records a shortfall instead of reintroducing an excluded story", async () => {
+    const runStore = {
+      ...store(),
+      getPreviousScheduledStoryIds: vi.fn().mockResolvedValue([100]),
+      recordStoryExclusions: vi.fn().mockResolvedValue(undefined),
+    };
+    const client = {
+      getTopStoryIds: vi.fn().mockResolvedValue([100, 200]),
+      getItems: vi.fn().mockResolvedValue([secondStory]),
+    };
+
+    const result = await ingestTopStories({
+      storyCount: 2,
+      client,
+      store: runStore,
+    });
+
+    expect(runStore.saveStory).toHaveBeenCalledTimes(1);
+    expect(runStore.saveStory).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      firstStory,
+      expect.anything(),
+    );
+    expect(runStore.finishRun).toHaveBeenCalledWith(
+      "run-1",
+      "partial",
+      expect.any(Date),
+      "TOP_STORIES_SHORTFALL",
+    );
+    expect(result).toMatchObject({
+      status: "partial",
+      collectedStoryCount: 1,
+      excludedHnItemIds: [100],
     });
   });
 

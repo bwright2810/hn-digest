@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 
 import { getConfig } from "../config/server";
 import { getDatabase } from "../db/client";
@@ -26,12 +26,19 @@ export interface TopStoriesIngestionResult {
   readonly runId: string;
   readonly status: "complete" | "partial" | "failed";
   readonly collectedStoryCount: number;
+  readonly excludedHnItemIds: readonly number[];
   readonly failures: readonly IngestionFailure[];
 }
 
 export interface DigestRunStore {
   createRun(requestedStoryCount: number): Promise<string>;
   startRun?(runId: string, startedAt: Date): Promise<void>;
+  getPreviousScheduledStoryIds?(runId: string): Promise<readonly number[]>;
+  recordStoryExclusions?(
+    runId: string,
+    hnItemIds: readonly number[],
+    recordedAt: Date,
+  ): Promise<void>;
   saveStory(
     runId: string,
     rank: number,
@@ -85,12 +92,13 @@ export async function ingestTopStories(options: {
     throw new TopStoriesIngestionError(runId, error);
   }
 
+  const previousScheduledStoryIds = new Set(
+    (await options.store.getPreviousScheduledStoryIds?.(runId)) ?? [],
+  );
+  const excludedHnItemIds: number[] = [];
   const failures: IngestionFailure[] = [];
   let collectedStoryCount = 0;
-  const scanLimit = Math.min(
-    topStoryIds.length,
-    Math.max(options.storyCount * 10, 50),
-  );
+  const scanLimit = Math.min(topStoryIds.length, 500);
   const batchSize = 20;
 
   for (
@@ -98,10 +106,16 @@ export async function ingestTopStories(options: {
     offset < scanLimit && collectedStoryCount < options.storyCount;
     offset += batchSize
   ) {
-    const itemIds = topStoryIds.slice(
+    const candidateIds = topStoryIds.slice(
       offset,
       Math.min(offset + batchSize, scanLimit),
     );
+    const itemIds = candidateIds.filter((itemId) => {
+      if (!previousScheduledStoryIds.has(itemId)) return true;
+      if (!excludedHnItemIds.includes(itemId)) excludedHnItemIds.push(itemId);
+      return false;
+    });
+    if (itemIds.length === 0) continue;
     const results = await options.client.getItems(itemIds);
     for (
       let index = 0;
@@ -124,6 +138,7 @@ export async function ingestTopStories(options: {
     }
   }
 
+  await options.store.recordStoryExclusions?.(runId, excludedHnItemIds, now());
   const hasShortfall = collectedStoryCount < options.storyCount;
   const status =
     failures.length === 0 && !hasShortfall ? "complete" : "partial";
@@ -138,7 +153,13 @@ export async function ingestTopStories(options: {
         : null,
   );
 
-  return { runId, status, collectedStoryCount, failures };
+  return {
+    runId,
+    status,
+    collectedStoryCount,
+    excludedHnItemIds,
+    failures,
+  };
 }
 
 export class TopStoriesIngestionError extends Error {
@@ -216,6 +237,55 @@ export class PostgresDigestRunStore implements DigestRunStore {
         throw new Error("Digest run is not available for collection");
       }
     }
+  }
+
+  async getPreviousScheduledStoryIds(
+    runId: string,
+  ): Promise<readonly number[]> {
+    const currentRun = await this.database.query.digestRuns.findFirst({
+      columns: { scheduledFor: true, trigger: true },
+      where: eq(digestRuns.id, runId),
+    });
+    if (currentRun?.trigger !== "scheduled" || !currentRun.scheduledFor) {
+      return [];
+    }
+
+    const [previousRun] = await this.database
+      .select({ id: digestRuns.id })
+      .from(digestRuns)
+      .where(
+        and(
+          eq(digestRuns.trigger, "scheduled"),
+          inArray(digestRuns.status, ["complete", "partial"]),
+          lt(digestRuns.scheduledFor, currentRun.scheduledFor),
+        ),
+      )
+      .orderBy(desc(digestRuns.scheduledFor), desc(digestRuns.createdAt))
+      .limit(1);
+    if (!previousRun) return [];
+
+    const rows = await this.database
+      .select({ hnItemId: stories.hnItemId })
+      .from(digestRunStories)
+      .innerJoin(stories, eq(digestRunStories.storyId, stories.id))
+      .where(eq(digestRunStories.digestRunId, previousRun.id))
+      .orderBy(digestRunStories.rank);
+    return rows.map(({ hnItemId }) => hnItemId);
+  }
+
+  async recordStoryExclusions(
+    runId: string,
+    hnItemIds: readonly number[],
+    recordedAt: Date,
+  ): Promise<void> {
+    await this.database
+      .update(digestRuns)
+      .set({
+        excludedStoryCount: hnItemIds.length,
+        excludedHnItemIds: [...hnItemIds],
+        updatedAt: recordedAt,
+      })
+      .where(eq(digestRuns.id, runId));
   }
 
   async saveStory(

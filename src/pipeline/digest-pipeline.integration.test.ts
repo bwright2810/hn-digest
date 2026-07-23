@@ -159,7 +159,7 @@ describeDatabase("DigestPipeline", () => {
         .where(eq(llmUsage.analysisJobId, queued!.analysis_jobs.id)),
     ).toHaveLength(2);
 
-    const secondRunId = await createPendingRun();
+    const secondRunId = await createPendingRun("on_demand");
     await pipeline.collectAndEnqueue(secondRunId);
     const reused = await connection.db
       .select({
@@ -184,12 +184,16 @@ describeDatabase("DigestPipeline", () => {
     ).toBe("complete");
   });
 
-  async function createPendingRun(): Promise<string> {
+  async function createPendingRun(
+    trigger: "scheduled" | "on_demand" = "scheduled",
+  ): Promise<string> {
     const [run] = await connection.db
       .insert(digestRuns)
       .values({
-        trigger: "scheduled",
-        scheduleKey: `integration-${randomUUID()}`,
+        trigger,
+        scheduleKey:
+          trigger === "scheduled" ? `integration-${randomUUID()}` : null,
+        scheduledFor: trigger === "scheduled" ? new Date() : null,
         requestedStoryCount: 1,
       })
       .returning({ id: digestRuns.id });

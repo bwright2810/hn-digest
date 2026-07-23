@@ -46,6 +46,8 @@ const adminFixtureRuns: readonly AdminRunView[] = [
     trigger: "on_demand",
     status: "analyzing",
     requestedStoryCount: 10,
+    excludedStoryCount: 0,
+    excludedHnItemIds: [],
     createdAt: new Date("2026-07-22T11:10:00Z"),
     updatedAt: new Date("2026-07-22T11:12:00Z"),
     errorCode: null,
@@ -56,6 +58,8 @@ const adminFixtureRuns: readonly AdminRunView[] = [
     trigger: "scheduled",
     status: "partial",
     requestedStoryCount: 2,
+    excludedStoryCount: 1,
+    excludedHnItemIds: [12345],
     createdAt: new Date("2026-07-22T11:00:00Z"),
     updatedAt: new Date("2026-07-22T11:05:00Z"),
     errorCode: null,
@@ -146,6 +150,13 @@ export function AdminDashboard({
                         ) : null}
                       </span>
                       {run.errorCode ? <code>{run.errorCode}</code> : null}
+                      {run.excludedStoryCount > 0 ? (
+                        <code>
+                          Skipped from previous digest: {run.excludedStoryCount}
+                          {" · HN "}
+                          {run.excludedHnItemIds.join(", ")}
+                        </code>
+                      ) : null}
                     </td>
                     <td>
                       {run.failures.length === 0 ? (
