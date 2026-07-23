@@ -209,6 +209,25 @@ Acceptance criteria:
   same effective readiness timestamp.
 - Integration coverage exercises the legacy null-marker path.
 
+### HD-108 — Match newsletter editions to the editorial digest [in progress]
+
+Dependencies: HD-103, HD-104, HD-107.
+
+Bring the HTML newsletter closer to the web digest while retaining broad email
+client compatibility, and support deliberate operator-controlled reissues
+without deleting delivery history or reusing provider idempotency keys.
+
+Acceptance criteria:
+
+- Each analyzed story renders distinct Article, Discussion, and The takeaway
+  sections from the same persisted analysis used by the web application.
+- Email-safe HTML provides restrained editorial hierarchy, metadata, source
+  provenance, responsive behavior, and a complete plain-text alternative.
+- Reissues create a new, auditable delivery sequence while ordinary worker
+  polling remains idempotent for each subscriber, digest, and sequence.
+- Tests cover rendered analysis content, escaping, fallback content, and a
+  worker-claimed reissue.
+
 ## Milestone 3: Public digest API
 
 ### HD-110 — Expose a rate-limited public digest API [complete]

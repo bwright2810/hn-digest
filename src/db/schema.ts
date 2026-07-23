@@ -388,6 +388,7 @@ export const newsletterDeliveries = pgTable(
       .notNull()
       .references(() => subscribers.id, { onDelete: "cascade" }),
     edition: newsletterEdition("edition").notNull(),
+    sequence: integer("sequence").default(1).notNull(),
     status: newsletterDeliveryStatus("status").default("pending").notNull(),
     attemptCount: integer("attempt_count").default(0).notNull(),
     providerMessageId: varchar("provider_message_id", { length: 160 }),
@@ -403,9 +404,10 @@ export const newsletterDeliveries = pgTable(
     ...timestampColumns,
   },
   (table) => [
-    uniqueIndex("newsletter_deliveries_run_subscriber_unique").on(
+    uniqueIndex("newsletter_deliveries_run_subscriber_sequence_unique").on(
       table.digestRunId,
       table.subscriberId,
+      table.sequence,
     ),
     index("newsletter_deliveries_claim_idx").on(
       table.status,
@@ -422,6 +424,10 @@ export const newsletterDeliveries = pgTable(
     check(
       "newsletter_deliveries_attempt_count_nonnegative",
       sql`${table.attemptCount} >= 0`,
+    ),
+    check(
+      "newsletter_deliveries_sequence_positive",
+      sql`${table.sequence} > 0`,
     ),
     check(
       "newsletter_deliveries_sent_state",
