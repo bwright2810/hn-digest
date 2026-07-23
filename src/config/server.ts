@@ -1,4 +1,5 @@
 import { z } from "zod";
+import ipaddr from "ipaddr.js";
 
 const DEVELOPMENT_DEFAULTS = {
   ADMIN_PASSWORD: "development-only-admin-password",
@@ -47,6 +48,10 @@ const DEVELOPMENT_DEFAULTS = {
   NEWSLETTER_DELIVERY_MAX_ATTEMPTS: "3",
   NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: "5000",
   NEWSLETTER_POSTAL_ADDRESS: "Not configured — delivery disabled",
+  PUBLIC_API_MAX_AGE_DAYS: "30",
+  PUBLIC_API_RATE_LIMIT: "10",
+  PUBLIC_API_RATE_WINDOW_MS: "60000",
+  PUBLIC_API_TRUSTED_PROXY_CIDRS: "127.0.0.1/32,::1/128",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
@@ -104,6 +109,21 @@ const applicationUrl = z.string().refine(
     }
   },
   { message: "must be an HTTP or HTTPS URL" },
+);
+
+const cidrList = z.string().refine(
+  (value) => {
+    try {
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .every((entry) => Boolean(ipaddr.parseCIDR(entry)));
+    } catch {
+      return false;
+    }
+  },
+  { message: "must be a comma-separated list of IP CIDR ranges" },
 );
 
 const environmentSchema = z
@@ -174,6 +194,10 @@ const environmentSchema = z
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_WEBHOOK_SECRET: z.string().min(16).optional(),
     NEWSLETTER_FROM_EMAIL: z.email().optional(),
+    PUBLIC_API_MAX_AGE_DAYS: positiveInteger.max(365),
+    PUBLIC_API_RATE_LIMIT: positiveInteger.max(1000),
+    PUBLIC_API_RATE_WINDOW_MS: positiveInteger.max(3_600_000),
+    PUBLIC_API_TRUSTED_PROXY_CIDRS: cidrList,
   })
   .superRefine((values, context) => {
     for (const [softKey, hardKey] of [
@@ -294,6 +318,12 @@ export interface AppConfig {
     readonly deliveryMaximumAttempts: number;
     readonly deliveryPollIntervalMs: number;
     readonly postalAddress: string;
+  };
+  readonly publicApi: {
+    readonly maximumAgeDays: number;
+    readonly rateLimit: number;
+    readonly rateWindowMs: number;
+    readonly trustedProxyCidrs: readonly string[];
   };
 }
 
@@ -426,6 +456,16 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       deliveryMaximumAttempts: values.NEWSLETTER_DELIVERY_MAX_ATTEMPTS,
       deliveryPollIntervalMs: values.NEWSLETTER_DELIVERY_POLL_INTERVAL_MS,
       postalAddress: values.NEWSLETTER_POSTAL_ADDRESS,
+    }),
+    publicApi: Object.freeze({
+      maximumAgeDays: values.PUBLIC_API_MAX_AGE_DAYS,
+      rateLimit: values.PUBLIC_API_RATE_LIMIT,
+      rateWindowMs: values.PUBLIC_API_RATE_WINDOW_MS,
+      trustedProxyCidrs: Object.freeze(
+        values.PUBLIC_API_TRUSTED_PROXY_CIDRS.split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      ),
     }),
   });
 }

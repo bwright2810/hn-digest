@@ -69,7 +69,7 @@ export function normalizeSubscriberEmail(input: string): string {
 export function digestSubscriberValue(
   value: string,
   key: Uint8Array,
-  context: "email" | "action-token" | "rate-limit",
+  context: "email" | "action-token" | "rate-limit" | "public-api-rate-limit",
 ): string {
   assertKey(key, "lookup HMAC key");
   return createHmac("sha256", key)
