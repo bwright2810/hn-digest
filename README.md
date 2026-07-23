@@ -19,7 +19,7 @@ pnpm dev
 
 The application listens on `http://localhost:3000`. Its health check is available at `GET /api/health` and returns `{ "status": "ok" }`.
 
-Replace the two secret placeholders in `.env.local` before startup. Development defaults are provided for non-secret settings. Production requires every documented setting explicitly; invalid configuration stops the server and reports field names without printing supplied values.
+Replace the secret placeholders in `.env.local` before startup. Subscriber email encryption and lookup use different random 32-byte keys encoded as base64; generate and retain them outside the repository. Development defaults are provided for non-secret settings. Production requires every documented setting explicitly; invalid configuration stops the server and reports field names without printing supplied values.
 
 Article fetching defaults to a 10-second total timeout, a 2 MiB response limit,
 and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,

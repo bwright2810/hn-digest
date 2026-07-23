@@ -36,10 +36,26 @@ const DEVELOPMENT_DEFAULTS = {
   SCHEDULER_POLL_INTERVAL_MS: "30000",
   WORKER_POLL_INTERVAL_MS: "5000",
   RUNTIME_SHUTDOWN_GRACE_MS: "30000",
+  SUBSCRIBER_KEY_VERSION: "1",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
 const positiveMoney = z.coerce.number().positive().finite();
+const base64Key = z.string().refine(
+  (value) => {
+    try {
+      const decoded = Buffer.from(value, "base64");
+      return (
+        /^[A-Za-z0-9+/]{43}=$/u.test(value) &&
+        decoded.length === 32 &&
+        decoded.toString("base64") === value
+      );
+    } catch {
+      return false;
+    }
+  },
+  { message: "must be a base64-encoded 32-byte key" },
+);
 
 const timeZone = z.string().refine(
   (value) => {
@@ -129,6 +145,9 @@ const environmentSchema = z
     SCHEDULER_POLL_INTERVAL_MS: positiveInteger,
     WORKER_POLL_INTERVAL_MS: positiveInteger,
     RUNTIME_SHUTDOWN_GRACE_MS: positiveInteger,
+    SUBSCRIBER_EMAIL_ENCRYPTION_KEY: base64Key,
+    SUBSCRIBER_LOOKUP_HMAC_KEY: base64Key,
+    SUBSCRIBER_KEY_VERSION: positiveInteger,
   })
   .superRefine((values, context) => {
     for (const [softKey, hardKey] of [
@@ -208,6 +227,11 @@ export interface AppConfig {
     readonly dailyHardLimitUsd: number;
     readonly monthlySoftLimitUsd: number;
     readonly monthlyHardLimitUsd: number;
+  };
+  readonly subscribers: {
+    readonly emailEncryptionKey: Buffer;
+    readonly lookupHmacKey: Buffer;
+    readonly keyVersion: number;
   };
 }
 
@@ -317,6 +341,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       dailyHardLimitUsd: values.LLM_DAILY_HARD_LIMIT_USD,
       monthlySoftLimitUsd: values.LLM_MONTHLY_SOFT_LIMIT_USD,
       monthlyHardLimitUsd: values.LLM_MONTHLY_HARD_LIMIT_USD,
+    }),
+    subscribers: Object.freeze({
+      emailEncryptionKey: Buffer.from(
+        values.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
+        "base64",
+      ),
+      lookupHmacKey: Buffer.from(values.SUBSCRIBER_LOOKUP_HMAC_KEY, "base64"),
+      keyVersion: values.SUBSCRIBER_KEY_VERSION,
     }),
   });
 }

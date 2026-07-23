@@ -90,6 +90,8 @@ describeDatabase("DigestPipeline", () => {
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
       OPENAI_API_KEY: "test-only",
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
+      SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
       DIGEST_MINIMUM_COMMENT_COUNT: "1",
     });

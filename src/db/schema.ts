@@ -81,6 +81,166 @@ export const operationalAlertKind = pgEnum("operational_alert_kind", [
   "scheduled_run_failed",
 ]);
 
+export const subscriberStatus = pgEnum("subscriber_status", [
+  "unconfirmed",
+  "confirmed",
+  "unsubscribed",
+]);
+
+export const subscriberSuppressionReason = pgEnum(
+  "subscriber_suppression_reason",
+  ["hard_bounce", "complaint", "provider_unsubscribe", "provider_suppressed"],
+);
+
+export const subscriberConsentEventKind = pgEnum(
+  "subscriber_consent_event_kind",
+  [
+    "signup_requested",
+    "subscription_confirmed",
+    "preferences_changed",
+    "unsubscribed",
+    "resubscribe_requested",
+    "suppressed",
+    "suppression_cleared",
+  ],
+);
+
+export const subscriberConsentSource = pgEnum("subscriber_consent_source", [
+  "public_signup",
+  "operator_review",
+]);
+
+export const subscriberActionTokenPurpose = pgEnum(
+  "subscriber_action_token_purpose",
+  ["confirmation", "preferences"],
+);
+
+export const subscribers = pgTable(
+  "subscribers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    emailCiphertext: text("email_ciphertext"),
+    emailEncryptionKeyVersion: integer("email_encryption_key_version"),
+    emailLookupDigest: varchar("email_lookup_digest", { length: 64 }).notNull(),
+    emailLookupKeyVersion: integer("email_lookup_key_version").notNull(),
+    status: subscriberStatus("status").default("unconfirmed").notNull(),
+    morningEnabled: boolean("morning_enabled").notNull(),
+    eveningEnabled: boolean("evening_enabled").notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    lastPreferenceChangedAt: timestamp("last_preference_changed_at", {
+      withTimezone: true,
+    }),
+    suppressionReason: subscriberSuppressionReason("suppression_reason"),
+    suppressedAt: timestamp("suppressed_at", { withTimezone: true }),
+    ...timestampColumns,
+  },
+  (table) => [
+    uniqueIndex("subscribers_email_lookup_digest_unique").on(
+      table.emailLookupDigest,
+    ),
+    index("subscribers_delivery_eligibility_idx").on(
+      table.status,
+      table.suppressionReason,
+      table.morningEnabled,
+      table.eveningEnabled,
+    ),
+    check(
+      "subscribers_email_key_versions_positive",
+      sql`${table.emailLookupKeyVersion} > 0 and (${table.emailEncryptionKeyVersion} is null or ${table.emailEncryptionKeyVersion} > 0)`,
+    ),
+    check(
+      "subscribers_email_ciphertext_pair",
+      sql`(${table.emailCiphertext} is null) = (${table.emailEncryptionKeyVersion} is null)`,
+    ),
+    check(
+      "subscribers_active_email_required",
+      sql`${table.status} = 'unsubscribed' or ${table.emailCiphertext} is not null`,
+    ),
+    check(
+      "subscribers_active_preferences_required",
+      sql`${table.status} = 'unsubscribed' or ${table.morningEnabled} or ${table.eveningEnabled}`,
+    ),
+    check(
+      "subscribers_unsubscribed_state",
+      sql`${table.status} <> 'unsubscribed' or (not ${table.morningEnabled} and not ${table.eveningEnabled} and ${table.unsubscribedAt} is not null)`,
+    ),
+    check(
+      "subscribers_confirmed_state",
+      sql`${table.status} <> 'confirmed' or ${table.confirmedAt} is not null`,
+    ),
+    check(
+      "subscribers_suppression_pair",
+      sql`(${table.suppressionReason} is null) = (${table.suppressedAt} is null)`,
+    ),
+  ],
+);
+
+export const subscriberConsentEvents = pgTable(
+  "subscriber_consent_events",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    subscriberId: uuid("subscriber_id")
+      .notNull()
+      .references(() => subscribers.id, { onDelete: "cascade" }),
+    kind: subscriberConsentEventKind("kind").notNull(),
+    morningEnabled: boolean("morning_enabled").notNull(),
+    eveningEnabled: boolean("evening_enabled").notNull(),
+    consentPolicyVersion: varchar("consent_policy_version", {
+      length: 80,
+    }).notNull(),
+    source: subscriberConsentSource("source").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("subscriber_consent_events_subscriber_created_idx").on(
+      table.subscriberId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const subscriberActionTokens = pgTable(
+  "subscriber_action_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subscriberId: uuid("subscriber_id")
+      .notNull()
+      .references(() => subscribers.id, { onDelete: "cascade" }),
+    purpose: subscriberActionTokenPurpose("purpose").notNull(),
+    tokenDigest: varchar("token_digest", { length: 64 }).notNull(),
+    tokenKeyVersion: integer("token_key_version").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("subscriber_action_tokens_digest_unique").on(table.tokenDigest),
+    index("subscriber_action_tokens_subscriber_purpose_idx").on(
+      table.subscriberId,
+      table.purpose,
+      table.createdAt,
+    ),
+    check(
+      "subscriber_action_tokens_key_version_positive",
+      sql`${table.tokenKeyVersion} > 0`,
+    ),
+    check(
+      "subscriber_action_tokens_expiry_after_creation",
+      sql`${table.expiresAt} > ${table.createdAt}`,
+    ),
+  ],
+);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {

@@ -5,6 +5,8 @@ import { ConfigurationError, loadConfig } from "./server";
 const requiredSecrets = {
   DATABASE_URL: "postgresql://digest:database-secret@localhost:5432/hn_digest",
   OPENAI_API_KEY: "openai-secret-value",
+  SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString("base64"),
+  SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 23).toString("base64"),
 };
 
 describe("loadConfig", () => {
@@ -66,11 +68,16 @@ describe("loadConfig", () => {
       monthlySoftLimitUsd: 30,
       monthlyHardLimitUsd: 40,
     });
+    expect(config.subscribers).toEqual({
+      emailEncryptionKey: Buffer.alloc(32, 11),
+      lookupHmacKey: Buffer.alloc(32, 23),
+      keyVersion: 1,
+    });
   });
 
   it("requires secrets in every environment", () => {
     expect(() => loadConfig({ NODE_ENV: "development" })).toThrowError(
-      /DATABASE_URL.*OPENAI_API_KEY/s,
+      /DATABASE_URL.*OPENAI_API_KEY.*SUBSCRIBER_EMAIL_ENCRYPTION_KEY.*SUBSCRIBER_LOOKUP_HMAC_KEY/s,
     );
   });
 
@@ -78,13 +85,15 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /ADMIN_PASSWORD.*OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS/s,
+      /ADMIN_PASSWORD.*OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS.*SUBSCRIBER_KEY_VERSION/s,
     );
   });
 
   it("never includes supplied secret values in validation errors", () => {
     const databaseSecret = "do-not-log-this-database-secret";
     const openaiSecret = "do-not-log-this-openai-secret";
+    const encryptionSecret = "do-not-log-this-encryption-secret";
+    const lookupSecret = "do-not-log-this-lookup-secret";
 
     let error: unknown;
     try {
@@ -92,6 +101,8 @@ describe("loadConfig", () => {
         NODE_ENV: "development",
         DATABASE_URL: databaseSecret,
         OPENAI_API_KEY: openaiSecret,
+        SUBSCRIBER_EMAIL_ENCRYPTION_KEY: encryptionSecret,
+        SUBSCRIBER_LOOKUP_HMAC_KEY: lookupSecret,
         DIGEST_STORY_COUNT: "not-a-number",
       });
     } catch (caught) {
@@ -101,6 +112,8 @@ describe("loadConfig", () => {
     expect(error).toBeInstanceOf(ConfigurationError);
     expect(String(error)).not.toContain(databaseSecret);
     expect(String(error)).not.toContain(openaiSecret);
+    expect(String(error)).not.toContain(encryptionSecret);
+    expect(String(error)).not.toContain(lookupSecret);
   });
 
   it("rejects invalid schedules and token limits", () => {

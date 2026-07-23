@@ -74,7 +74,7 @@ Acceptance criteria:
 - Secrets remain runtime configuration and are never exposed to the client,
   logs, repository, or email links.
 
-### HD-101 — Implement subscriber and preference persistence [planned]
+### HD-101 — Implement subscriber and preference persistence [complete]
 
 Dependencies: HD-100.
 
@@ -203,3 +203,4 @@ Acceptance criteria:
 | 2026-07-23 | Reset the post-MVP roadmap to HD-090, the HD-100 newsletter series, and HD-110. | The next product priorities are avoiding consecutive scheduled-story repetition, adding opt-in morning/evening newsletter delivery, and exposing bounded public digest access. |
 | 2026-07-23 | Complete HD-090 by excluding HN item IDs from the most recent earlier published scheduled digest. | Ordering by the scheduled slot makes retries deterministic; complete and partial published digests establish the baseline, while failed and on-demand runs do not. Persisting encountered exclusions gives operators an auditable count and ID list without retaining source content. |
 | 2026-07-23 | Complete HD-100 with Resend as the initial newsletter delivery provider while PostgreSQL remains authoritative for subscribers and consent. | Resend provides signed replay-safe webhooks, send idempotency, custom one-click unsubscribe headers, suppression, and bounded entry pricing without adding AWS operational resources. Subscriber truth stays local, tracking stays disabled, provider storage is explicitly US-based and limited to its documented retention, and production remains gated on the recorded compliance and deliverability review. |
+| 2026-07-23 | Complete HD-101 with encrypted subscriber addresses, keyed lookup digests, and database-backed consent and action-token lifecycles. | AES-256-GCM keeps recoverable addresses authenticated and opaque at rest, separate versioned HMAC material supports uniqueness and token lookup without plaintext indexes, and PostgreSQL constraints plus per-address transaction locks make preference state and repeated lifecycle operations durable and idempotent. |
