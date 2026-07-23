@@ -81,3 +81,101 @@ describe.skipIf(!runDatabaseTests)("HD-012 top-story persistence", () => {
       .where(inArray(digestRuns.id, [firstRunId, secondRunId]));
   });
 });
+
+describe.skipIf(!runDatabaseTests)("HD-090 scheduled story exclusions", () => {
+  const connection = createDatabase(databaseUrl!);
+  const store = new PostgresDigestRunStore(connection.db);
+  const fixtureIds = [91_000_090, 91_000_091];
+  const runIds: string[] = [];
+
+  afterAll(async () => {
+    if (runIds.length > 0) {
+      await connection.db
+        .delete(digestRuns)
+        .where(inArray(digestRuns.id, runIds));
+    }
+    await connection.db
+      .delete(stories)
+      .where(inArray(stories.hnItemId, fixtureIds));
+    await connection.pool.end();
+  });
+
+  it("uses the previous published scheduled run across slots and ignores on-demand and failed runs", async () => {
+    const morning = await scheduledRun("2032-07-22T11:00:00Z", "partial");
+    await store.saveStory(
+      morning,
+      1,
+      fixtureStory(fixtureIds[0]!),
+      new Date("2032-07-22T11:01:00Z"),
+    );
+
+    const [onDemand] = await connection.db
+      .insert(digestRuns)
+      .values({
+        trigger: "on_demand",
+        requestedStoryCount: 1,
+        status: "complete",
+      })
+      .returning({ id: digestRuns.id });
+    runIds.push(onDemand!.id);
+    await store.saveStory(
+      onDemand!.id,
+      1,
+      fixtureStory(fixtureIds[1]!),
+      new Date("2032-07-22T12:00:00Z"),
+    );
+
+    await scheduledRun("2032-07-22T15:00:00Z", "failed");
+    const evening = await scheduledRun("2032-07-22T23:00:00Z", "collecting");
+
+    expect(await store.getPreviousScheduledStoryIds(evening)).toEqual([
+      fixtureIds[0],
+    ]);
+    expect(await store.getPreviousScheduledStoryIds(evening)).toEqual([
+      fixtureIds[0],
+    ]);
+    expect(await store.getPreviousScheduledStoryIds(onDemand!.id)).toEqual([]);
+
+    const recordedAt = new Date("2032-07-22T23:01:00Z");
+    await store.recordStoryExclusions(evening, [fixtureIds[0]!], recordedAt);
+    await store.recordStoryExclusions(evening, [fixtureIds[0]!], recordedAt);
+    const recorded = await connection.db.query.digestRuns.findFirst({
+      where: eq(digestRuns.id, evening),
+    });
+    expect(recorded).toMatchObject({
+      excludedStoryCount: 1,
+      excludedHnItemIds: [fixtureIds[0]],
+    });
+  });
+
+  async function scheduledRun(
+    scheduledFor: string,
+    status: "collecting" | "complete" | "partial" | "failed",
+  ): Promise<string> {
+    const [run] = await connection.db
+      .insert(digestRuns)
+      .values({
+        trigger: "scheduled",
+        scheduleKey: `hd-090-${scheduledFor}`,
+        scheduledFor: new Date(scheduledFor),
+        requestedStoryCount: 2,
+        status,
+      })
+      .returning({ id: digestRuns.id });
+    runIds.push(run!.id);
+    return run!.id;
+  }
+});
+
+function fixtureStory(id: number) {
+  return {
+    by: "hd-090",
+    descendants: 12,
+    id,
+    score: 100,
+    time: 1_972_000_000,
+    title: `HD-090 story ${id}`,
+    type: "story" as const,
+    url: `https://example.com/hd-090/${id}`,
+  };
+}

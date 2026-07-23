@@ -57,6 +57,13 @@
       "when": 1784729379904,
       "tag": "0007_wide_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784816788190,
+      "tag": "0008_furry_hellfire_club",
+      "breakpoints": true
     }
   ]
 }

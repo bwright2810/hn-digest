@@ -29,6 +29,8 @@ export interface AdminRunView {
   readonly trigger: string;
   readonly status: string;
   readonly requestedStoryCount: number;
+  readonly excludedStoryCount: number;
+  readonly excludedHnItemIds: readonly number[];
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly errorCode: string | null;
@@ -85,6 +87,8 @@ export async function collectAdminRuns(
     trigger: run.trigger,
     status: run.status,
     requestedStoryCount: run.requestedStoryCount,
+    excludedStoryCount: run.excludedStoryCount,
+    excludedHnItemIds: run.excludedHnItemIds,
     createdAt: run.createdAt,
     updatedAt: run.updatedAt,
     errorCode: run.errorCode,

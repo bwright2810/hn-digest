@@ -165,20 +165,30 @@ export class DigestPipeline {
 
   async collectAndEnqueue(runId: string): Promise<void> {
     const run = await this.db.query.digestRuns.findFirst({
-      columns: { requestedStoryCount: true, status: true },
+      columns: { requestedStoryCount: true, status: true, trigger: true },
       where: eq(digestRuns.id, runId),
     });
     if (!run) throw new Error("Digest run not found");
 
     if (run.status === "pending" || run.status === "collecting") {
       try {
-        await ingestTopStories({
+        const ingestion = await ingestTopStories({
           storyCount: run.requestedStoryCount,
           minimumCommentCount: this.config.stories.minimumCommentCount,
           existingRunId: runId,
           client: this.hnClient,
           store: new PostgresDigestRunStore(this.db, true),
         });
+        if (run.trigger === "scheduled") {
+          console.info(
+            JSON.stringify({
+              event: "scheduled_story_exclusions_applied",
+              runId,
+              excludedStoryCount: ingestion.excludedHnItemIds.length,
+              excludedHnItemIds: ingestion.excludedHnItemIds,
+            }),
+          );
+        }
       } catch (error) {
         await this.failRun(runId, classifyError(error));
         return;
