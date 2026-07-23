@@ -209,7 +209,7 @@ Acceptance criteria:
   same effective readiness timestamp.
 - Integration coverage exercises the legacy null-marker path.
 
-### HD-108 — Match newsletter editions to the editorial digest [in progress]
+### HD-108 — Match newsletter editions to the editorial digest [complete]
 
 Dependencies: HD-103, HD-104, HD-107.
 
