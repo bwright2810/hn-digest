@@ -150,6 +150,38 @@ describe("ArticleExtractor", () => {
     });
   });
 
+  it("preserves GitHub repository paths with heading and line evidence", () => {
+    const extractor = new ArticleExtractor({
+      minimumCharacterCount: 0,
+      minimumParagraphCount: 0,
+    });
+    const markdown = extractor.extract(
+      "# Worker\n\nBounded repository fixture.",
+      `https://github.com/example/project/blob/${"a".repeat(40)}/README.md`,
+      "text/markdown",
+    );
+    expect(markdown).toMatchObject({
+      adapterId: "github-markdown-v1",
+      evidenceLocations: [
+        { kind: "file_path", path: "README.md" },
+        { kind: "heading", heading: "Worker", level: 1 },
+      ],
+    });
+
+    const source = extractor.extract(
+      "export const bounded = true;",
+      `https://github.com/example/project/blob/${"a".repeat(40)}/src/worker.ts`,
+      "text/plain",
+    );
+    expect(source).toMatchObject({
+      adapterId: "github-source-v1",
+      evidenceLocations: [
+        { kind: "file_path", path: "src/worker.ts" },
+        { kind: "line_range", startLine: 1, endLine: 1 },
+      ],
+    });
+  });
+
   it("returns an explicit empty result for an unregistered content type", () => {
     expect(
       new ArticleExtractor().extract(

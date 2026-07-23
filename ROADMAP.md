@@ -528,12 +528,27 @@ Acceptance criteria:
 - Existing fetch limits, SSRF checks, persistence behavior, and
   discussion-only fallback remain intact.
 
-### HD-077 — Add bounded public GitHub source support [gated by HD-081]
+### HD-077 — Add bounded public GitHub source support [complete]
 
-Implement repository README and curated source-file extraction only if HD-081
-selects GitHub sources. Do not clone or traverse repositories. This task must
-use bounded requests and preserve repository-relative paths and line/heading
-evidence.
+Resolve public repository roots to one README and explicit GitHub blob links to
+one allow-listed text file through the public GitHub Contents API. Do not clone,
+list, or traverse repositories. Preserve repository-relative paths and
+line/heading evidence.
+
+Acceptance criteria:
+
+- Repository URLs request only the preferred README; explicit blob URLs request
+  only their named curated text file, and branch names containing slashes remain
+  unsupported rather than triggering discovery.
+- GitHub API requests and redirects use the existing SSRF, timeout, redirect,
+  content-type, and response-size controls; decoded content is size-checked
+  again before extraction.
+- Malformed metadata, mismatched paths, invalid base64, binary text, unsafe
+  redirects, rate limits, and inaccessible repositories fail explicitly and
+  preserve discussion-only fallback.
+- Successful results use a commit-pinned canonical GitHub URL and retain the
+  repository-relative file path plus heading or line-range evidence.
+- No GitHub credential is required, logged, stored, or accepted by this path.
 
 ### HD-078 — Add bounded RSS and Atom support [gated by HD-081]
 
@@ -732,8 +747,10 @@ Acceptance criteria:
 
 The MVP implementation path is complete. Remaining work should proceed as:
 
-1. Keep HD-077, HD-078, and HD-079 gated; HD-081 selected no adapter.
-2. Revisit deferred work only when measured need justifies a decision-log
+1. Monitor HD-077's bounded unauthenticated GitHub API usage and extraction
+   outcomes without storing source bodies or complete URLs in metrics.
+2. Keep HD-078 and HD-079 gated; HD-081 selected no feed adapter.
+3. Revisit deferred work only when measured need justifies a decision-log
    change.
 
 ## Deferred from the private MVP
@@ -809,3 +826,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-23 | Replace HD-081's 30-run waiting period with an alternate bounded evidence review. | Combining the observed HD-075 baseline, a zero-LLM scan of up to 500 current top stories, and reviewed adversarial fixtures tests demand, recoverability, evidence fidelity, and parser safety without delaying the decision for additional scheduled runs. |
 | 2026-07-23 | Complete HD-081 without activating HD-077, HD-078, or HD-079. | The production baseline recovered all observed GitHub repository sources through HTML, while bounded discovery found no eligible feed, JSON Feed, or PDF candidates. No additional adapter demonstrated the required 20% incremental recovery value, so implementing and exposing a new parser would add risk without measured benefit. |
 | 2026-07-23 | Publish the repository under the MIT license after the final release review. | The owner explicitly approved the visibility change; anonymous access, license detection, private vulnerability reporting, Dependabot, secret scanning, code scanning, branch protection, and CI were enabled or verified as part of the release. |
+| 2026-07-23 | Activate HD-077 by explicit owner direction after HD-081 selected no adapter. | The owner chose to add narrowly bounded public GitHub support despite the absence of measured incremental recovery. The implementation remains limited to one README or one explicit curated text file per story and introduces no repository listing, traversal, cloning, credential, or fallback fetch path. |

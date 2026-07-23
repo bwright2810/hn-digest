@@ -74,3 +74,10 @@ HD-081 selects no adapter. None meets the required 20% expected incremental
 recovery threshold. Discovery and fixture planning supplement the production
 outcomes but do not replace them. HD-077 through HD-079 remain gated unless new
 measured evidence causes the roadmap decision log to be revised.
+
+## Subsequent owner decision
+
+On 2026-07-23 the owner explicitly activated HD-077 despite this review's
+selection result. The roadmap decision log records that override. HD-077 is
+limited to one public repository README or one explicitly linked curated text
+file per story; the evidence review continues to govern HD-078 and HD-079.
