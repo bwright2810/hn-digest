@@ -21,8 +21,9 @@ through stable `html-v1`, `plain-text-v1`, and `markdown-v1` adapters. The
 normalized extraction metadata records the adapter ID and bounded heading or
 line-range evidence locations. HD-075 uses a 10-run initial audit; HD-077
 (GitHub) was subsequently activated by explicit owner direction with a
-one-file policy. HD-078 (RSS/Atom) and HD-079 (JSON Feed) remain gated by the
-HD-081 evidence decision. PDF, OCR, and media processing remain deferred.
+one-file policy. HD-078 (RSS/Atom) was also activated later by explicit owner
+direction. HD-079 (JSON Feed) remains gated by the HD-081 evidence decision.
+PDF, OCR, and media processing remain deferred.
 
 HD-077 resolves only public GitHub repository roots and explicit blob links.
 Repository roots request one README; blob links request one allow-listed text
@@ -31,6 +32,12 @@ traverses a repository, clones content, follows embedded URLs, or uses a GitHub
 credential. Successful extraction records `github-markdown-v1` or
 `github-source-v1`, a commit-pinned canonical URL, the repository-relative file
 path, and bounded heading or line-range evidence.
+
+HD-078 accepts bounded RSS/Atom MIME types and XML feed candidates through the
+same SSRF-safe fetcher. It selects only the first direct RSS channel item or
+Atom entry, never follows links or enclosures, and records stable entry
+evidence. DTDs, entity declarations, XInclude, malformed XML, generic XML,
+sitemaps, recursive crawling, and parser networking fail explicitly.
 
 Run
 `pnpm source:baseline [from-iso-date] [to-iso-date] [minimum-run-count]` from a

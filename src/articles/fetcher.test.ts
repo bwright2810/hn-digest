@@ -68,6 +68,22 @@ describe("ArticleFetcher", () => {
     },
   );
 
+  it.each([
+    "application/rss+xml",
+    "application/atom+xml",
+    "application/xml",
+    "text/xml",
+  ])("fetches bounded feed candidate type %s", async (contentType) => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(
+        new Response("<feed/>", { headers: { "content-type": contentType } }),
+      );
+    await expect(
+      fetcher(fetch).fetch("https://example.com/feed"),
+    ).resolves.toMatchObject({ contentType });
+  });
+
   it("supports a narrowly configured metadata content type and headers", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       new Response('{"type":"file"}', {

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { acquireArticle, type ArticleFetchStore } from "./acquisition";
+import {
+  acquireArticle,
+  createSourceAwareArticleFetcher,
+  type ArticleFetchStore,
+} from "./acquisition";
 import { ArticleFetchError, type ArticleFetchResult } from "./fetcher";
 
 const fetchedAt = new Date("2026-07-22T12:00:00Z");
@@ -141,5 +145,60 @@ describe("acquireArticle", () => {
       }),
     ).rejects.toBe(databaseError);
     expect(fetchStore.recordFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("source-aware article fetcher", () => {
+  it("routes repository roots through the bounded GitHub API path", async () => {
+    const content = "# Fixture\n\nBounded README.";
+    const metadata = JSON.stringify({
+      type: "file",
+      encoding: "base64",
+      content: Buffer.from(content).toString("base64"),
+      size: Buffer.byteLength(content),
+      path: "README.md",
+      sha: "a".repeat(40),
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response(metadata, {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const sourceFetcher = createSourceAwareArticleFetcher({
+      timeoutMs: 1_000,
+      maximumBytes: 1_024,
+      maximumRedirects: 1,
+      fetch,
+      lookup: vi.fn().mockResolvedValue(["140.82.112.5"]),
+    });
+
+    await expect(
+      sourceFetcher.fetch("https://github.com/example/project"),
+    ).resolves.toMatchObject({
+      finalUrl: `https://github.com/example/project/blob/${"a".repeat(40)}/README.md`,
+      contentType: "text/markdown",
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      new URL("https://api.github.com/repos/example/project/readme"),
+      expect.anything(),
+    );
+  });
+
+  it("fetches named feed MIME types without enabling arbitrary JSON", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response("<rss><channel/></rss>", {
+        headers: { "content-type": "application/rss+xml" },
+      }),
+    );
+    const sourceFetcher = createSourceAwareArticleFetcher({
+      timeoutMs: 1_000,
+      maximumBytes: 1_024,
+      maximumRedirects: 1,
+      fetch,
+      lookup: vi.fn().mockResolvedValue(["93.184.216.34"]),
+    });
+    await expect(
+      sourceFetcher.fetch("https://example.com/feed"),
+    ).resolves.toMatchObject({ contentType: "application/rss+xml" });
   });
 });

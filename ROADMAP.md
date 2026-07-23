@@ -550,11 +550,25 @@ Acceptance criteria:
   repository-relative file path plus heading or line-range evidence.
 - No GitHub credential is required, logged, stored, or accepted by this path.
 
-### HD-078 — Add bounded RSS and Atom support [gated by HD-081]
+### HD-078 — Add bounded RSS and Atom support [complete]
 
-Implement hardened RSS/Atom parsing and deterministic entry selection only if
-HD-081 selects feeds. Generic XML, sitemaps, recursive crawling, DTDs, external
-entities, XInclude, and parser network access remain unsupported.
+Fetch bounded RSS/Atom documents through the existing safe article fetcher and
+select the first direct item/entry in document order. Generic XML, sitemaps,
+recursive crawling, DTDs, external entities, XInclude, and parser network access
+remain unsupported.
+
+Acceptance criteria:
+
+- Named RSS/Atom MIME types and XML feed candidates retain the existing timeout,
+  redirect, response-size, MIME, and per-redirect SSRF protections.
+- RSS selects the first direct channel item and Atom selects the first direct
+  namespaced entry; no link, enclosure, stylesheet, or embedded URL is fetched.
+- DTD and entity declarations are rejected before parsing, XInclude is rejected
+  after namespace-aware parsing, and malformed or generic XML fails explicitly.
+- Extracted entries retain a stable bounded entry ID, title, author,
+  publication time, content hash, and heading evidence when present.
+- The shared production pipeline uses the source-aware fetcher, with regression
+  coverage for both GitHub and feed acquisition paths.
 
 ### HD-079 — Add bounded JSON Feed support [gated by HD-081]
 
@@ -747,9 +761,9 @@ Acceptance criteria:
 
 The MVP implementation path is complete. Remaining work should proceed as:
 
-1. Monitor HD-077's bounded unauthenticated GitHub API usage and extraction
-   outcomes without storing source bodies or complete URLs in metrics.
-2. Keep HD-078 and HD-079 gated; HD-081 selected no feed adapter.
+1. Monitor HD-077 and HD-078 acquisition and extraction outcomes without
+   storing source bodies or complete URLs in metrics.
+2. Keep HD-079 gated; HD-081 selected no JSON Feed adapter.
 3. Revisit deferred work only when measured need justifies a decision-log
    change.
 
@@ -827,3 +841,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-23 | Complete HD-081 without activating HD-077, HD-078, or HD-079. | The production baseline recovered all observed GitHub repository sources through HTML, while bounded discovery found no eligible feed, JSON Feed, or PDF candidates. No additional adapter demonstrated the required 20% incremental recovery value, so implementing and exposing a new parser would add risk without measured benefit. |
 | 2026-07-23 | Publish the repository under the MIT license after the final release review. | The owner explicitly approved the visibility change; anonymous access, license detection, private vulnerability reporting, Dependabot, secret scanning, code scanning, branch protection, and CI were enabled or verified as part of the release. |
 | 2026-07-23 | Activate HD-077 by explicit owner direction after HD-081 selected no adapter. | The owner chose to add narrowly bounded public GitHub support despite the absence of measured incremental recovery. The implementation remains limited to one README or one explicit curated text file per story and introduces no repository listing, traversal, cloning, credential, or fallback fetch path. |
+| 2026-07-23 | Activate HD-078 by explicit owner direction after HD-081 selected no feed adapter. | The owner chose to add bounded RSS/Atom support. The adapter deterministically selects one direct entry and rejects generic XML, sitemaps, DTDs, entities, XInclude, parser networking, recursive crawling, and all embedded-resource fetching. |

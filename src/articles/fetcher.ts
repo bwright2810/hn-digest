@@ -9,6 +9,10 @@ export const SUPPORTED_ARTICLE_CONTENT_TYPES = new Set([
   "text/plain",
   "text/markdown",
   "text/x-markdown",
+  "application/rss+xml",
+  "application/atom+xml",
+  "application/xml",
+  "text/xml",
 ]);
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
