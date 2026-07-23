@@ -22,9 +22,9 @@ test("reads the latest digest and preserves source provenance", async ({
   );
   expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Today on Hacker News.",
-  );
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Today on Hacker News." }),
+  ).toBeVisible();
   await expect(page.getByRole("article")).toContainText(
     "The result is compelling",
   );
