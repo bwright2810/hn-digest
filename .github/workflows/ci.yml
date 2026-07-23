@@ -57,6 +57,9 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
+      - name: Audit production and development dependencies
+        run: pnpm audit --audit-level high
+
       - name: Lint
         run: pnpm lint
 

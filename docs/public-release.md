@@ -39,11 +39,15 @@ the result.
       investigate every match rather than relying only on allow-lists.
 - [ ] Inspect generated build and browser artifacts for secrets or unnecessarily
       complete source text, then remove those artifacts from the workspace.
-- [ ] Verify GitHub private vulnerability reporting is enabled and the link in
-      `SECURITY.md` works for an unauthenticated reporter.
+- [ ] Verify the private-contact fallback in `SECURITY.md` is available before
+      publication. GitHub private vulnerability reporting is unavailable while
+      this repository is private on its current plan; enable it and verify the
+      unauthenticated reporting link immediately after publication.
 - [ ] Review repository collaborators, deploy keys, Actions secrets,
       environments, webhooks, branch protections, and workflow permissions.
       Remove stale access without exposing or rotating credentials in Git.
+      If branch rules are unavailable on the current private-repository plan,
+      configure and verify them immediately after publication.
 - [ ] Confirm no open issue, pull request, commit, tag, branch, or release
       contains a private hostname, personal data, secret, or unnecessary copied
       source material.
@@ -53,7 +57,29 @@ the result.
 - [ ] Have the repository owner explicitly approve the release and use GitHub's
       visibility control. Do not automate or infer this approval.
 - [ ] After the repository is public, verify anonymous clone, README links,
-      license detection, security reporting, branch protection, and CI status.
+      license detection, security reporting, branch protection, Dependabot,
+      secret scanning, code scanning, and CI status. GitHub features that are
+      plan-gated while private must be enabled before announcing the release.
+
+## 2026-07-23 pre-publication security review
+
+- Full reachable history contains no matches for the reviewed private-key,
+  OpenAI, GitHub, AWS, or Slack credential patterns and no blob larger than
+  1 MiB.
+- The repository has one collaborator, one branch, no deploy keys, webhooks,
+  Actions secrets, environments, issues, pull requests, tags, or releases.
+- Actions are enabled with read-only default workflow permissions and cannot
+  approve pull-request reviews. CI passed at the reviewed commit, including
+  headless Playwright.
+- Dependabot vulnerability alerts and automated security fixes are enabled.
+- Direct `esbuild` is patched to 0.28.1. The remaining moderate audit finding
+  is `esbuild` 0.18.20 inside Drizzle Kit's deprecated development-only ESM
+  loader. HN Digest does not invoke that dependency as a development server;
+  forcing an unsupported transitive override is riskier than retaining the
+  build-only tool until Drizzle Kit removes it.
+- GitHub rejected private vulnerability reporting, secret scanning, code
+  scanning, and branch rules in the current private repository state. These
+  controls are post-visibility gates, not waived release requirements.
 
 If a secret is found in history, revoke or rotate it first. Rewriting Git
 history is optional cleanup and is never a substitute for credential rotation.
