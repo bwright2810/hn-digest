@@ -97,6 +97,10 @@ test("protects operator diagnostics with HTTP Basic authentication", async ({
   await expect(
     page.getByRole("heading", { name: "Digest operations." }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Delivery diagnostics" }),
+  ).toBeVisible();
+  await expect(page.getByText("sent: 18 · failed: 1")).toBeVisible();
   await expect(page.getByText("invalid_citation").first()).toBeVisible();
   await expect(
     page.getByText(/referenced comment evidence/).first(),

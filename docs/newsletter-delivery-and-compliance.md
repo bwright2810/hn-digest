@@ -260,6 +260,11 @@ and the [UK ICO electronic-mail marketing guidance](https://ico.org.uk/for-organ
 
 ## Launch review
 
+The executable owner sign-off sequence is maintained in
+[`newsletter-launch-checklist.md`](newsletter-launch-checklist.md). Store its
+dated evidence privately; this repository records the required controls but not
+credentials, subscriber data, or deployment account details.
+
 Public signup and production sending remain disabled until the owner records
 the date and outcome of every item below:
 

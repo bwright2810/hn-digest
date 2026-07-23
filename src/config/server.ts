@@ -172,6 +172,7 @@ const environmentSchema = z
     NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: positiveInteger,
     NEWSLETTER_POSTAL_ADDRESS: z.string().min(1).max(300),
     RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_WEBHOOK_SECRET: z.string().min(16).optional(),
     NEWSLETTER_FROM_EMAIL: z.email().optional(),
   })
   .superRefine((values, context) => {
@@ -200,6 +201,13 @@ const environmentSchema = z
           });
         }
       }
+    }
+    if (values.NEWSLETTER_DELIVERY_ENABLED && !values.RESEND_WEBHOOK_SECRET) {
+      context.addIssue({
+        code: "custom",
+        path: ["RESEND_WEBHOOK_SECRET"],
+        message: "is required when NEWSLETTER_DELIVERY_ENABLED=true",
+      });
     }
   });
 
@@ -278,6 +286,7 @@ export interface AppConfig {
     readonly signupRateLimit: number;
     readonly signupRateWindowMs: number;
     readonly resendApiKey: string | null;
+    readonly resendWebhookSecret: string | null;
     readonly fromEmail: string | null;
     readonly deliveryEnabled: boolean;
     readonly deliveryBatchSize: number;
@@ -409,6 +418,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       signupRateLimit: values.NEWSLETTER_SIGNUP_RATE_LIMIT,
       signupRateWindowMs: values.NEWSLETTER_SIGNUP_RATE_WINDOW_MS,
       resendApiKey: values.RESEND_API_KEY ?? null,
+      resendWebhookSecret: values.RESEND_WEBHOOK_SECRET ?? null,
       fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
       deliveryEnabled: values.NEWSLETTER_DELIVERY_ENABLED,
       deliveryBatchSize: values.NEWSLETTER_DELIVERY_BATCH_SIZE,

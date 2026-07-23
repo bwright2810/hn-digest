@@ -79,6 +79,7 @@ describe("loadConfig", () => {
       signupRateLimit: 3,
       signupRateWindowMs: 900_000,
       resendApiKey: null,
+      resendWebhookSecret: null,
       fromEmail: null,
       deliveryEnabled: false,
       deliveryBatchSize: 25,
@@ -178,5 +179,28 @@ describe("loadConfig", () => {
     });
     expect(config.newsletter.publicSignupEnabled).toBe(true);
     expect(config.newsletter.fromEmail).toBe("digest@example.com");
+  });
+
+  it("requires an independent webhook secret when delivery is enabled", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "development",
+        ...requiredSecrets,
+        NEWSLETTER_DELIVERY_ENABLED: "true",
+        RESEND_API_KEY: "resend-test-value",
+        NEWSLETTER_FROM_EMAIL: "digest@example.com",
+      }),
+    ).toThrowError(/RESEND_WEBHOOK_SECRET/s);
+
+    const config = loadConfig({
+      NODE_ENV: "development",
+      ...requiredSecrets,
+      NEWSLETTER_DELIVERY_ENABLED: "true",
+      RESEND_API_KEY: "resend-test-value",
+      RESEND_WEBHOOK_SECRET: "webhook-secret-value",
+      NEWSLETTER_FROM_EMAIL: "digest@example.com",
+    });
+    expect(config.newsletter.deliveryEnabled).toBe(true);
+    expect(config.newsletter.resendWebhookSecret).toBe("webhook-secret-value");
   });
 });

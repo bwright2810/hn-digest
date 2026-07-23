@@ -137,7 +137,7 @@ Acceptance criteria:
 - Provider calls, concurrency, and batch sizes are bounded and observable.
 - Tests use a fake provider and contain no real subscriber data.
 
-### HD-104 — Process delivery events and operate the newsletter [planned]
+### HD-104 — Process delivery events and operate the newsletter [complete]
 
 Dependencies: HD-103.
 
@@ -205,3 +205,4 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-100 with Resend as the initial newsletter delivery provider while PostgreSQL remains authoritative for subscribers and consent. | Resend provides signed replay-safe webhooks, send idempotency, custom one-click unsubscribe headers, suppression, and bounded entry pricing without adding AWS operational resources. Subscriber truth stays local, tracking stays disabled, provider storage is explicitly US-based and limited to its documented retention, and production remains gated on the recorded compliance and deliverability review. |
 | 2026-07-23 | Complete HD-101 with encrypted subscriber addresses, keyed lookup digests, and database-backed consent and action-token lifecycles. | AES-256-GCM keeps recoverable addresses authenticated and opaque at rest, separate versioned HMAC material supports uniqueness and token lookup without plaintext indexes, and PostgreSQL constraints plus per-address transaction locks make preference state and repeated lifecycle operations durable and idempotent. |
 | 2026-07-23 | Complete HD-102 with launch-gated public forms, Resend confirmation messages, same-origin mutation checks, and PostgreSQL-backed address/client throttling. | Generic signup outcomes resist subscriber enumeration, only confirmed tokens activate delivery, scoped preference tokens permit edition changes or unsubscribe without accounts, and direct database token seeding lets Playwright verify the complete mobile/desktop lifecycle without exposing test tokens through HTTP or contacting Resend. |
+| 2026-07-23 | Complete HD-104 with signed minimized Resend events, local suppression authority, and private delivery diagnostics. | Raw-body Svix verification and unique provider event IDs make at-least-once, out-of-order webhooks safe; hard bounces, complaints, provider suppressions, and unsubscribe events immediately block future sends without retaining payload addresses or content. Internal delivery IDs support diagnostics and alerts, while production remains gated on the owner-recorded launch checklist. |

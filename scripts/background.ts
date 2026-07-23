@@ -4,6 +4,7 @@ import { getConfig } from "../src/config/server";
 import { createDatabase } from "../src/db/client";
 import { DigestPipeline } from "../src/pipeline/digest-pipeline";
 import { NewsletterDeliveryWorker } from "../src/newsletter/delivery";
+import { refreshNewsletterAlerts } from "../src/newsletter/events";
 import { ResendDeliveryProvider } from "../src/newsletter/provider";
 import { runPollLoop } from "../src/runtime/poll-loop";
 import { ensureScheduledDigestRun } from "../src/scheduler/digest-scheduler";
@@ -85,6 +86,7 @@ async function workerIteration() {
 async function newsletterIteration() {
   if (!newsletterWorker) return;
   const result = await newsletterWorker.process();
+  await refreshNewsletterAlerts(connection.db);
   if (result.queued > 0 || result.claimed > 0) {
     log("newsletter_delivery_iteration", { ...result });
   }

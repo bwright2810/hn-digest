@@ -1,6 +1,11 @@
 import { getConfig } from "../../config/server";
 import { getDatabase } from "../../db/client";
-import { collectAdminRuns, type AdminRunView } from "../../operations/admin";
+import {
+  collectAdminRuns,
+  collectNewsletterDiagnostics,
+  type AdminRunView,
+  type NewsletterDiagnostics,
+} from "../../operations/admin";
 import { AdminAutoRefresh } from "./auto-refresh";
 import { ActivitySpinner, RunDigestForm } from "./live-controls";
 
@@ -26,15 +31,21 @@ export default async function AdminPage({
       <AdminDashboard
         runs={adminFixtureRuns}
         maximumStoryCount={config.stories.perRun}
+        newsletter={adminFixtureNewsletter}
         {...await searchParams}
       />
     );
   }
-  const runs = await collectAdminRuns(getDatabase());
+  const database = getDatabase();
+  const [runs, newsletter] = await Promise.all([
+    collectAdminRuns(database),
+    collectNewsletterDiagnostics(database),
+  ]);
   return (
     <AdminDashboard
       runs={runs}
       maximumStoryCount={config.stories.perRun}
+      newsletter={newsletter}
       {...await searchParams}
     />
   );
@@ -79,14 +90,24 @@ const adminFixtureRuns: readonly AdminRunView[] = [
   },
 ];
 
+const adminFixtureNewsletter: NewsletterDiagnostics = {
+  totals: [
+    { status: "sent", count: 18 },
+    { status: "failed", count: 1 },
+  ],
+  recent: [],
+};
+
 export function AdminDashboard({
   runs,
   maximumStoryCount,
+  newsletter,
   started,
   coalesced,
 }: {
   readonly runs: readonly AdminRunView[];
   readonly maximumStoryCount: number;
+  readonly newsletter: NewsletterDiagnostics;
   readonly started?: string;
   readonly coalesced?: string;
 }) {
@@ -109,6 +130,63 @@ export function AdminDashboard({
         </p>
       ) : null}
       <AdminAutoRefresh active={hasActiveRun} />
+
+      <section className="run-review" aria-labelledby="newsletter-deliveries">
+        <div className="section-heading">
+          <p className="eyebrow">Newsletter</p>
+          <h2 id="newsletter-deliveries">Delivery diagnostics</h2>
+        </div>
+        <p>
+          {newsletter.totals.length === 0
+            ? "No newsletter deliveries have been recorded."
+            : newsletter.totals
+                .map(({ status, count }) => `${status}: ${count}`)
+                .join(" · ")}
+        </p>
+        {newsletter.recent.length > 0 ? (
+          <div className="run-table-wrap">
+            <table className="run-table">
+              <thead>
+                <tr>
+                  <th>Updated</th>
+                  <th>Edition</th>
+                  <th>Status</th>
+                  <th>Delivery</th>
+                </tr>
+              </thead>
+              <tbody>
+                {newsletter.recent.map((delivery) => (
+                  <tr key={delivery.id}>
+                    <td>
+                      <time dateTime={delivery.updatedAt.toISOString()}>
+                        {dateFormatter.format(delivery.updatedAt)} ET
+                      </time>
+                    </td>
+                    <td>{delivery.edition}</td>
+                    <td>
+                      {delivery.status}
+                      {delivery.providerStatus
+                        ? ` · ${delivery.providerStatus}`
+                        : ""}
+                      {delivery.lastErrorCode
+                        ? ` · ${delivery.lastErrorCode}`
+                        : ""}
+                    </td>
+                    <td>
+                      <code>{delivery.id}</code>
+                      <code>Digest {delivery.digestRunId}</code>
+                      <span className="quiet">
+                        {delivery.attemptCount} attempt
+                        {delivery.attemptCount === 1 ? "" : "s"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </section>
 
       <section className="run-review" aria-labelledby="recent-runs">
         <div className="section-heading">
