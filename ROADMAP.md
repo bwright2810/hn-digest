@@ -228,7 +228,7 @@ Acceptance criteria:
 - Tests cover rendered analysis content, escaping, fallback content, and a
   worker-claimed reissue.
 
-### HD-109 — Refine newsletter takeaway reading rhythm [in progress]
+### HD-109 — Refine newsletter takeaway reading rhythm [complete]
 
 Dependencies: HD-108.
 
