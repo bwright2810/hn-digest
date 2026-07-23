@@ -108,6 +108,11 @@ The HD-072 threat review, trust boundaries, operator-access decision, secret and
 logging rules, and current retention/deletion behavior are documented in
 [`docs/security-and-privacy.md`](./docs/security-and-privacy.md).
 
+The HD-100 newsletter provider decision, confirmed-opt-in lifecycle, proposed
+subscriber data model, suppression and retention rules, and launch gates are
+documented in
+[`docs/newsletter-delivery-and-compliance.md`](./docs/newsletter-delivery-and-compliance.md).
+
 ## Deployment and recovery
 
 The Coolify deployment topology, complete runtime configuration, migration

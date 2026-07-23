@@ -48,7 +48,7 @@ stages. Subscribers may choose the morning edition, evening edition, or both.
 Newsletter work introduces subscriber personal data and an external email
 provider, but does not introduce general-purpose user accounts.
 
-### HD-100 — Design newsletter delivery and compliance boundaries [planned]
+### HD-100 — Design newsletter delivery and compliance boundaries [complete]
 
 Dependencies: none.
 
@@ -202,3 +202,4 @@ Acceptance criteria:
 | --- | --- | --- |
 | 2026-07-23 | Reset the post-MVP roadmap to HD-090, the HD-100 newsletter series, and HD-110. | The next product priorities are avoiding consecutive scheduled-story repetition, adding opt-in morning/evening newsletter delivery, and exposing bounded public digest access. |
 | 2026-07-23 | Complete HD-090 by excluding HN item IDs from the most recent earlier published scheduled digest. | Ordering by the scheduled slot makes retries deterministic; complete and partial published digests establish the baseline, while failed and on-demand runs do not. Persisting encountered exclusions gives operators an auditable count and ID list without retaining source content. |
+| 2026-07-23 | Complete HD-100 with Resend as the initial newsletter delivery provider while PostgreSQL remains authoritative for subscribers and consent. | Resend provides signed replay-safe webhooks, send idempotency, custom one-click unsubscribe headers, suppression, and bounded entry pricing without adding AWS operational resources. Subscriber truth stays local, tracking stays disabled, provider storage is explicitly US-based and limited to its documented retention, and production remains gated on the recorded compliance and deliverability review. |
