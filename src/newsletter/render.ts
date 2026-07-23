@@ -1,5 +1,6 @@
 import type { AnalysisOutput } from "../analysis/contract";
 import type { DigestRunView, DigestStoryView } from "../digests/reader";
+import { takeawayParagraphs } from "../digests/takeaway";
 
 export interface NewsletterLinks {
   readonly canonicalDigest: URL;
@@ -80,6 +81,7 @@ function renderStory(story: DigestStoryView): { html: string; text: string } {
   const takeaway =
     story.analysis?.combinedTakeaway.summary ??
     "A combined takeaway is unavailable for this story.";
+  const takeawayParts = takeawayParagraphs(takeaway);
   const articleLink = story.articleUrl
     ? `<a href="${escapeAttribute(story.articleUrl)}" style="color:${colors.accent};font-weight:700;text-decoration:none;">Read original</a>&nbsp;&nbsp;·&nbsp;&nbsp;`
     : "";
@@ -112,10 +114,10 @@ ${renderAnalysisSection("Article", article)}
 ${renderAnalysisSection("Discussion", discussion, evidence)}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin-top:24px;background:${colors.takeaway};"><tr><td style="padding:22px 24px;border-left:3px solid ${colors.accent};">
 <p style="margin:0 0 9px;color:${colors.accent};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">The takeaway</p>
-<p style="margin:0;color:${colors.ink};font-family:Georgia,'Times New Roman',serif;font-size:17px;line-height:1.6;">${escapeHtml(takeaway)}</p>
+${takeawayParts.map((paragraph, index) => `<p style="margin:${index === 0 ? "0" : "12px 0 0"};color:${colors.ink};font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;">${escapeHtml(paragraph)}</p>`).join("")}
 </td></tr></table>
 </td></tr>`,
-    text: `${String(story.rank).padStart(2, "0")}  ${story.title}\n${metadata}\n\nARTICLE\n${article}\n\nDISCUSSION\n${discussion}${textEvidence ? `\nEvidence: ${textEvidence}` : ""}\n\nTHE TAKEAWAY\n${takeaway}\n\n${story.articleUrl ? `Read original: ${story.articleUrl}\n` : ""}View HN discussion: ${story.hnUrl}`,
+    text: `${String(story.rank).padStart(2, "0")}  ${story.title}\n${metadata}\n\nARTICLE\n${article}\n\nDISCUSSION\n${discussion}${textEvidence ? `\nEvidence: ${textEvidence}` : ""}\n\nTHE TAKEAWAY\n${takeawayParts.join("\n\n")}\n\n${story.articleUrl ? `Read original: ${story.articleUrl}\n` : ""}View HN discussion: ${story.hnUrl}`,
   };
 }
 
