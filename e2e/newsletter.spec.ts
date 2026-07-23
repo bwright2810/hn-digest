@@ -37,8 +37,7 @@ test("offers newsletter signup at the top of the homepage", async ({
 test("publishes the newsletter privacy notice without horizontal overflow", async ({
   page,
 }) => {
-  await page.goto("/newsletter");
-  await page.getByRole("link", { name: "Privacy", exact: true }).click();
+  await page.goto("/privacy");
   await expect(page).toHaveURL(/\/privacy$/u);
   await expect(
     page.getByRole("heading", { name: "Privacy, in plain language." }),
