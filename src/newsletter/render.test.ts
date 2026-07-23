@@ -56,7 +56,8 @@ const digest: DigestRunView = {
           sourceQualityNotes: [],
         },
         combinedTakeaway: {
-          summary: "Useful guidance, provided its limits are understood.",
+          summary:
+            "Useful guidance, provided its limits are understood.\n\nApply it with care on narrower screens.",
           tensions: [],
           confidence: "high",
         },
@@ -88,6 +89,7 @@ describe("renderNewsletter", () => {
       "The article explains typed &lt;systems&gt;.",
       "Commenters value the practical examples &amp; caveats.",
       "Useful guidance, provided its limits are understood.",
+      "Apply it with care on narrower screens.",
       "Article",
       "Discussion",
       "The takeaway",
@@ -105,6 +107,7 @@ describe("renderNewsletter", () => {
       "The article explains typed <systems>.",
       "DISCUSSION",
       "THE TAKEAWAY",
+      "Useful guidance, provided its limits are understood.\n\nApply it with care on narrower screens.",
       "https://example.com/article?a=1&b=2",
       "https://news.ycombinator.com/item?id=42",
       "Manage preferences:",
@@ -112,6 +115,10 @@ describe("renderNewsletter", () => {
       "123 Example Street",
     ])
       expect(result.text).toContain(value);
+    expect(result.html).toContain("font-size:15px;line-height:1.55");
+    expect(
+      result.html.match(/font-size:15px;line-height:1\.55/gu),
+    ).toHaveLength(2);
   });
 
   it("refuses a digest that has not reached a deliverable state", () => {

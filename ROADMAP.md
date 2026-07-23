@@ -228,6 +228,22 @@ Acceptance criteria:
 - Tests cover rendered analysis content, escaping, fallback content, and a
   worker-claimed reissue.
 
+### HD-109 — Refine newsletter takeaway reading rhythm [in progress]
+
+Dependencies: HD-108.
+
+Reduce the visual weight of newsletter takeaways and share the web digest's
+bounded paragraphing behavior for long summaries.
+
+Acceptance criteria:
+
+- Newsletter takeaways use body-scale typography suitable for narrow mobile
+  email clients.
+- Explicit author paragraphs are preserved, while only sufficiently long
+  multi-sentence summaries are split into balanced paragraphs.
+- HTML and plain-text alternatives use the same paragraph boundaries.
+- Tests cover short, explicit, and automatically balanced takeaways.
+
 ## Milestone 3: Public digest API
 
 ### HD-110 — Expose a rate-limited public digest API [complete]
