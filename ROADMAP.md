@@ -283,6 +283,49 @@ Acceptance criteria:
   timezone boundaries, rate limits, spoofed forwarding headers, and accidental
   sensitive-field exposure.
 
+## Milestone 4: Sustainable newsletter sponsorship
+
+### HD-111 — Add bounded newsletter sponsorships [planned]
+
+Dependencies: HD-103, HD-108.
+
+Support one restrained, clearly disclosed sponsor placement in a newsletter
+edition without allowing advertising to influence digest selection, analysis,
+or subscriber privacy. Start with operator-approved direct or marketplace
+sponsorships; automated behavioral advertising is out of scope.
+
+Acceptance criteria:
+
+- An operator can attach at most one sponsorship to an eligible digest edition
+  before delivery, with a sponsor name, bounded plain-text copy, validated
+  public HTTPS destination, campaign identifier, and active time window.
+- The approved sponsorship is snapshotted with the edition so retries and
+  deliberate reissues remain deterministic and auditable; sponsor content is
+  never fetched dynamically during recipient delivery.
+- HTML and plain-text alternatives render the same sponsorship, visibly and
+  unambiguously labeled `Sponsored`, in a visually subordinate placement that
+  does not resemble editorial analysis.
+- Sponsor-provided HTML, scripts, images, redirects, and instructions are not
+  accepted. Copy and destination URLs are escaped, length-bounded, and reviewed
+  by the operator before use.
+- Sponsorship has no effect on HN story selection, ranking, extraction, prompt
+  construction, analysis, or takeaways, and sponsors receive no editorial
+  approval rights.
+- No subscriber-level targeting, tracking pixels, personalized URLs, internal
+  click redirects, or open tracking are introduced. Campaign-level UTM
+  parameters may identify the newsletter and edition without identifying a
+  subscriber.
+- Reporting is limited to aggregate eligible, attempted, and delivered message
+  counts already available through the privacy-bounded delivery lifecycle;
+  sponsors do not receive subscriber data.
+- Signup disclosures, the privacy notice, and the sponsorship policy clearly
+  explain that editions may contain labeled paid placements, and the launch
+  review covers applicable advertising, email, and provider requirements.
+- Unit and integration tests cover absent, valid, expired, and malicious
+  sponsorship input, deterministic retry/reissue rendering, HTML escaping, and
+  parity between HTML and plain-text output. Relevant mobile and desktop
+  Playwright checks verify disclosure clarity and horizontal overflow.
+
 ## Decision log
 
 | Date | Decision | Rationale |
@@ -294,3 +337,4 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-102 with launch-gated public forms, Resend confirmation messages, same-origin mutation checks, and PostgreSQL-backed address/client throttling. | Generic signup outcomes resist subscriber enumeration, only confirmed tokens activate delivery, scoped preference tokens permit edition changes or unsubscribe without accounts, and direct database token seeding lets Playwright verify the complete mobile/desktop lifecycle without exposing test tokens through HTTP or contacting Resend. |
 | 2026-07-23 | Complete HD-104 with signed minimized Resend events, local suppression authority, and private delivery diagnostics. | Raw-body Svix verification and unique provider event IDs make at-least-once, out-of-order webhooks safe; hard bounces, complaints, provider suppressions, and unsubscribe events immediately block future sends without retaining payload addresses or content. Internal delivery IDs support diagnostics and alerts, while production remains gated on the owner-recorded launch checklist. |
 | 2026-07-23 | Complete HD-110 with a versioned completed-edition API and PostgreSQL fixed-window limiting. | Named-zone schedule lookup keeps morning/evening dates correct across DST, explicit response mapping excludes internal and subscriber state, and a database-backed HMAC identity bucket enforces limits across processes before cache lookup. Forwarded addresses are accepted only behind configured proxy CIDRs; missing trust context collapses to a fail-safe shared bucket. |
+| 2026-07-23 | Add planned HD-111 for one operator-approved newsletter sponsorship per edition. | A clearly labeled, snapshotted text placement can test modest revenue without changing editorial selection or the tracking-disabled privacy boundary. Behavioral targeting, sponsor-provided markup, subscriber data sharing, and advertising influence over analysis remain out of scope. |
