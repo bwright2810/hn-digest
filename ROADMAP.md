@@ -326,6 +326,35 @@ Acceptance criteria:
   parity between HTML and plain-text output. Relevant mobile and desktop
   Playwright checks verify disclosure clarity and horizontal overflow.
 
+## Milestone 5: Editorial voice
+
+### HD-112 — Apply full-mode Unslop to reader-facing prose [complete]
+
+Dependencies: none.
+
+Remove generic LLM phrasing from generated digest analysis and public website
+copy without weakening source grounding, factual accuracy, or the single-call
+analysis architecture.
+
+Acceptance criteria:
+
+- The versioned analysis prompt includes the full-mode Unslop rules: strong
+  restructuring, varied cadence, concrete language, and removal of stock model
+  phrasing.
+- The style pass remains part of the existing structured request. It adds no
+  second provider call, retry loop, new model, or unmetered spend path.
+- Facts, quotations, confidence, citations, HN comment IDs, source boundaries,
+  technical terms, and genuine uncertainty take priority over style.
+- The prompt version changes so cached earlier analyses remain identifiable and
+  new work uses the revised editorial instructions.
+- Existing public-facing page copy receives a full-mode pass. Legal, privacy,
+  security, accessibility, and destructive-action text stays literal where the
+  skill's Auto-Clarity rule calls for it.
+- Repository agent instructions require the same full-mode review whenever
+  public-facing page text is added or edited during development.
+- Automated tests pin the prompt's grounding and Unslop requirements, and the
+  relevant mobile and desktop Playwright checks pass after the copy changes.
+
 ## Decision log
 
 | Date | Decision | Rationale |
@@ -338,3 +367,4 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-104 with signed minimized Resend events, local suppression authority, and private delivery diagnostics. | Raw-body Svix verification and unique provider event IDs make at-least-once, out-of-order webhooks safe; hard bounces, complaints, provider suppressions, and unsubscribe events immediately block future sends without retaining payload addresses or content. Internal delivery IDs support diagnostics and alerts, while production remains gated on the owner-recorded launch checklist. |
 | 2026-07-23 | Complete HD-110 with a versioned completed-edition API and PostgreSQL fixed-window limiting. | Named-zone schedule lookup keeps morning/evening dates correct across DST, explicit response mapping excludes internal and subscriber state, and a database-backed HMAC identity bucket enforces limits across processes before cache lookup. Forwarded addresses are accepted only behind configured proxy CIDRs; missing trust context collapses to a fail-safe shared bucket. |
 | 2026-07-23 | Add planned HD-111 for one operator-approved newsletter sponsorship per edition. | A clearly labeled, snapshotted text placement can test modest revenue without changing editorial selection or the tracking-disabled privacy boundary. Behavioral targeting, sponsor-provided markup, subscriber data sharing, and advertising influence over analysis remain out of scope. |
+| 2026-07-23 | Complete HD-112 by applying full-mode Unslop rules within the existing structured analysis prompt and to public page copy. | Keeping the editorial pass in the one bounded request improves voice without adding a model stage or bypassing cost controls. A new prompt version makes cache behavior explicit, while grounding rules and Auto-Clarity preserve facts, citations, legal meaning, and safety-critical wording. |

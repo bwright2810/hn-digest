@@ -16,13 +16,15 @@ test("offers newsletter signup at the top of the homepage", async ({
   await page.goto("/?fixture=complete");
 
   await expect(
-    page.getByRole("heading", { name: "Start and end the day well read." }),
+    page.getByRole("heading", { name: "Read the good part. Skip the trawl." }),
   ).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Join the digest" }),
   ).toBeVisible();
-  await expect(page.getByText("Today on Hacker News.")).toBeVisible();
+  await expect(
+    page.getByText("What Hacker News is talking about."),
+  ).toBeVisible();
 
   const newsletterTop = await page
     .locator(".homepage-newsletter")
@@ -101,7 +103,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
     await page.getByLabel("Evening").check();
     await page.getByRole("button", { name: "Save preferences" }).click();
     await expect(page.getByRole("status")).toContainText(
-      "preferences have been saved",
+      "schedule has been saved",
     );
 
     const unsubscribe = createSubscriberActionToken(lookupKey);
@@ -111,7 +113,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
     );
     await page.getByRole("button", { name: "Unsubscribe from all" }).click();
     await expect(page.getByRole("status")).toContainText(
-      "preferences have been saved",
+      "schedule has been saved",
     );
 
     const finalState = await client.query<{

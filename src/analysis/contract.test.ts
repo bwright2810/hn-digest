@@ -125,6 +125,10 @@ describe("analysis output contract", () => {
       "Every discussion claim must list one or more supporting Hacker News comment IDs",
     );
     expect(ANALYSIS_PROMPT).toContain("at most 900 characters");
+    expect(ANALYSIS_PROMPT).toContain("Full unslop editorial pass");
+    expect(ANALYSIS_PROMPT).toContain(
+      "Factual accuracy and source grounding override style",
+    );
     expect(ANALYSIS_PROMPT).toContain(ANALYSIS_PROMPT_VERSION);
     expect(ANALYSIS_PROMPT).toContain(ANALYSIS_SCHEMA_VERSION);
   });

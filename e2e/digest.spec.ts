@@ -23,7 +23,10 @@ test("reads the latest digest and preserves source provenance", async ({
   expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
 
   await expect(
-    page.getByRole("heading", { level: 2, name: "Today on Hacker News." }),
+    page.getByRole("heading", {
+      level: 2,
+      name: "What Hacker News is talking about.",
+    }),
   ).toBeVisible();
   await expect(page.getByRole("article")).toContainText(
     "The result is compelling",
@@ -145,7 +148,7 @@ test("explains partial and failed analysis without hiding sources", async ({
   await page.goto("/?fixture=partial");
   await expect(page.getByText("2 of 2 stories")).toBeVisible();
   const failedStory = page.locator(".story-state[role='alert']");
-  await expect(failedStory).toContainText("Analysis failed for this story");
+  await expect(failedStory).toContainText("We couldn't finish this analysis");
   await expect(failedStory).toContainText("ANALYSIS_TERMINAL");
   await expect(
     page.getByRole("link", { name: "View HN discussion" }),
@@ -156,7 +159,7 @@ test("explains partial and failed analysis without hiding sources", async ({
 test("renders empty and unavailable states", async ({ page }) => {
   await page.goto("/?fixture=empty");
   await expect(
-    page.getByRole("heading", { name: "The first digest is being prepared." }),
+    page.getByRole("heading", { name: "The first edition is on its way." }),
   ).toBeVisible();
   await page.goto("/?fixture=unavailable");
   await expect(
@@ -171,9 +174,11 @@ test("shows a useful loading state while a digest is streamed", async ({
 }) => {
   await page.goto("/?fixture=loading", { waitUntil: "commit" });
   await expect(
-    page.getByRole("heading", { name: "Opening the latest digest." }),
+    page.getByRole("heading", { name: "Fetching today’s reading." }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Today on Hacker News." }),
+    page.getByRole("heading", {
+      name: "What Hacker News is talking about.",
+    }),
   ).toBeVisible();
 });
