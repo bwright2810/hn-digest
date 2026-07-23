@@ -307,6 +307,32 @@ export const subscriberSignupLimits = pgTable(
   ],
 );
 
+export const publicApiRateLimits = pgTable(
+  "public_api_rate_limits",
+  {
+    keyDigest: varchar("key_digest", { length: 64 }).primaryKey(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    requestCount: integer("request_count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("public_api_rate_limits_expires_at_idx").on(table.expiresAt),
+    check(
+      "public_api_rate_limits_request_count_positive",
+      sql`${table.requestCount} > 0`,
+    ),
+    check(
+      "public_api_rate_limits_expiry_after_window",
+      sql`${table.expiresAt} > ${table.windowStartedAt}`,
+    ),
+  ],
+);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {

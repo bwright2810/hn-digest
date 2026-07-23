@@ -88,6 +88,12 @@ describe("loadConfig", () => {
       deliveryPollIntervalMs: 5_000,
       postalAddress: "Not configured — delivery disabled",
     });
+    expect(config.publicApi).toEqual({
+      maximumAgeDays: 30,
+      rateLimit: 10,
+      rateWindowMs: 60_000,
+      trustedProxyCidrs: ["127.0.0.1/32", "::1/128"],
+    });
   });
 
   it("requires secrets in every environment", () => {
@@ -202,5 +208,16 @@ describe("loadConfig", () => {
     });
     expect(config.newsletter.deliveryEnabled).toBe(true);
     expect(config.newsletter.resendWebhookSecret).toBe("webhook-secret-value");
+  });
+
+  it("validates public API limits and trusted proxy ranges", () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "development",
+        ...requiredSecrets,
+        PUBLIC_API_MAX_AGE_DAYS: "0",
+        PUBLIC_API_TRUSTED_PROXY_CIDRS: "not-a-network",
+      }),
+    ).toThrowError(/PUBLIC_API_MAX_AGE_DAYS.*PUBLIC_API_TRUSTED_PROXY_CIDRS/s);
   });
 });

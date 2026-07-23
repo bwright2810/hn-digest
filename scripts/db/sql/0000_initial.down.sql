@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS "llm_usage" CASCADE;
 DROP TABLE IF EXISTS "newsletter_provider_events" CASCADE;
 DROP TABLE IF EXISTS "newsletter_deliveries" CASCADE;
 DROP TABLE IF EXISTS "subscriber_signup_limits" CASCADE;
+DROP TABLE IF EXISTS "public_api_rate_limits" CASCADE;
 DROP TABLE IF EXISTS "subscriber_action_tokens" CASCADE;
 DROP TABLE IF EXISTS "subscriber_consent_events" CASCADE;
 DROP TABLE IF EXISTS "subscribers" CASCADE;

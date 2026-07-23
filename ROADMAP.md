@@ -159,7 +159,7 @@ Acceptance criteria:
 
 ## Milestone 3: Public digest API
 
-### HD-110 — Expose a rate-limited public digest API [planned]
+### HD-110 — Expose a rate-limited public digest API [complete]
 
 Dependencies: none.
 
@@ -206,3 +206,4 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-101 with encrypted subscriber addresses, keyed lookup digests, and database-backed consent and action-token lifecycles. | AES-256-GCM keeps recoverable addresses authenticated and opaque at rest, separate versioned HMAC material supports uniqueness and token lookup without plaintext indexes, and PostgreSQL constraints plus per-address transaction locks make preference state and repeated lifecycle operations durable and idempotent. |
 | 2026-07-23 | Complete HD-102 with launch-gated public forms, Resend confirmation messages, same-origin mutation checks, and PostgreSQL-backed address/client throttling. | Generic signup outcomes resist subscriber enumeration, only confirmed tokens activate delivery, scoped preference tokens permit edition changes or unsubscribe without accounts, and direct database token seeding lets Playwright verify the complete mobile/desktop lifecycle without exposing test tokens through HTTP or contacting Resend. |
 | 2026-07-23 | Complete HD-104 with signed minimized Resend events, local suppression authority, and private delivery diagnostics. | Raw-body Svix verification and unique provider event IDs make at-least-once, out-of-order webhooks safe; hard bounces, complaints, provider suppressions, and unsubscribe events immediately block future sends without retaining payload addresses or content. Internal delivery IDs support diagnostics and alerts, while production remains gated on the owner-recorded launch checklist. |
+| 2026-07-23 | Complete HD-110 with a versioned completed-edition API and PostgreSQL fixed-window limiting. | Named-zone schedule lookup keeps morning/evening dates correct across DST, explicit response mapping excludes internal and subscriber state, and a database-backed HMAC identity bucket enforces limits across processes before cache lookup. Forwarded addresses are accepted only behind configured proxy CIDRs; missing trust context collapses to a fail-safe shared bucket. |
