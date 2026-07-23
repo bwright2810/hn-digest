@@ -157,7 +157,7 @@ Acceptance criteria:
 - A launch checklist verifies sender authentication, unsubscribe behavior,
   provider production access, privacy text, and end-to-end delivery.
 
-### HD-105 — Complete newsletter launch safeguards [in progress]
+### HD-105 — Complete newsletter launch safeguards [complete]
 
 Dependencies: HD-104.
 
