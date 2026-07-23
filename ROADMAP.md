@@ -177,6 +177,23 @@ Acceptance criteria:
 - Automated tests cover Reply-To and destructive lifecycle boundaries, and the
   launch runbook identifies the commands and required evidence.
 
+### HD-106 — Bound first-subscriber digest delivery [complete]
+
+Dependencies: HD-103.
+
+Allow a newly confirmed subscriber to receive the single most recent scheduled
+digest as a welcome edition, without enqueueing the historical backlog.
+
+Acceptance criteria:
+
+- A subscriber with no prior delivery is eligible only for the most recent
+  deliverable scheduled digest.
+- After the first delivery is recorded, ordinary confirmed-at and edition
+  eligibility apply to future digests.
+- Tests cover a newly confirmed subscriber and an older deliverable run.
+- Existing delivery idempotency, edition preferences, and retries are
+  unchanged.
+
 ## Milestone 3: Public digest API
 
 ### HD-110 — Expose a rate-limited public digest API [complete]

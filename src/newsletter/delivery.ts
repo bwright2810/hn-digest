@@ -1,6 +1,17 @@
 import { createHmac } from "node:crypto";
 
-import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
@@ -90,15 +101,37 @@ export class NewsletterDeliveryWorker {
       .select({
         id: digestRuns.id,
         scheduleKey: digestRuns.scheduleKey,
+        newsletterReadyAt: digestRuns.newsletterReadyAt,
       })
       .from(digestRuns)
       .where(
         and(
           eq(digestRuns.trigger, "scheduled"),
           inArray(digestRuns.status, ["complete", "partial"]),
+          isNotNull(digestRuns.newsletterReadyAt),
           lte(digestRuns.newsletterReadyAt, now),
         ),
-      );
+      )
+      .orderBy(desc(digestRuns.newsletterReadyAt));
+    const mostRecentRunId = runs[0]?.id;
+    const latestDeliveryBySubscriber = new Map(
+      (
+        await this.database
+          .select({
+            subscriberId: newsletterDeliveries.subscriberId,
+            newsletterReadyAt: sql<Date>`max(${digestRuns.newsletterReadyAt})`,
+          })
+          .from(newsletterDeliveries)
+          .innerJoin(
+            digestRuns,
+            eq(newsletterDeliveries.digestRunId, digestRuns.id),
+          )
+          .groupBy(newsletterDeliveries.subscriberId)
+      ).map(({ subscriberId, newsletterReadyAt }) => [
+        subscriberId,
+        newsletterReadyAt,
+      ]),
+    );
     let count = 0;
     for (const run of runs) {
       const edition = editionFromScheduleKey(
@@ -108,11 +141,12 @@ export class NewsletterDeliveryWorker {
       );
       if (!edition) continue;
       const eligible = await this.database
-        .select({ id: subscribers.id })
+        .select({ id: subscribers.id, confirmedAt: subscribers.confirmedAt })
         .from(subscribers)
         .where(
           and(
             eq(subscribers.status, "confirmed"),
+            isNotNull(subscribers.confirmedAt),
             isNull(subscribers.suppressionReason),
             isNull(subscribers.unsubscribedAt),
             eq(
@@ -122,6 +156,16 @@ export class NewsletterDeliveryWorker {
               true,
             ),
           ),
+        )
+        .then((rows) =>
+          rows.filter((subscriber) => {
+            const latestDelivery = latestDeliveryBySubscriber.get(
+              subscriber.id,
+            );
+            return latestDelivery
+              ? latestDelivery < run.newsletterReadyAt!
+              : run.id === mostRecentRunId;
+          }),
         );
       if (eligible.length === 0) continue;
       const inserted = await this.database
