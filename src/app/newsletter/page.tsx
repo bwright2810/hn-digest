@@ -13,11 +13,11 @@ export default async function NewsletterPage({
     <main id="main-content" className="page newsletter-page" tabIndex={-1}>
       <header className="newsletter-heading">
         <p className="eyebrow">Morning, evening, or both</p>
-        <h1>HN Digest in your inbox.</h1>
+        <h1>Get the edition when you read.</h1>
         <p>
-          Receive the same source-grounded digest on the schedule that suits
-          you. Confirmed opt-in is required, and every edition includes simple
-          preference and unsubscribe controls.
+          Choose the morning edition, the evening one, or both. We send the same
+          sourced analysis you see here, with links to change your choices or
+          unsubscribe in every email.
         </p>
       </header>
 
@@ -32,14 +32,14 @@ export default async function NewsletterPage({
         </NewsletterNotice>
       ) : state === "unavailable" ? (
         <NewsletterNotice error>
-          Newsletter signup is not available yet. Please try again later.
+          Signup is unavailable right now. Please try again later.
         </NewsletterNotice>
       ) : null}
 
       {!enabled && !state ? (
         <NewsletterNotice>
-          Newsletter signup is not open yet. The reading digest remains
-          available here while launch checks are completed.
+          Email signup isn’t open yet. You can keep reading the digest here
+          while we finish the launch checks.
         </NewsletterNotice>
       ) : null}
 

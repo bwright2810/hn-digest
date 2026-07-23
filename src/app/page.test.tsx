@@ -87,7 +87,7 @@ describe("DigestPage", () => {
   it("puts an inviting email signup before the latest digest", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 
-    expect(html).toContain("Start and end the day well read.");
+    expect(html).toContain("Read the good part. Skip the trawl.");
     expect(html).toContain('action="/api/newsletter/signup"');
     expect(html).toContain('type="email"');
     expect(html).toContain('name="morning" value="1"');
@@ -130,7 +130,7 @@ describe("DigestPage", () => {
   it("keeps failed stories readable and linked to their HN source", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 
-    expect(html).toContain("Analysis failed for this story");
+    expect(html).toContain("We couldn&#x27;t finish this analysis");
     expect(html).toContain("ANALYSIS_TERMINAL");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000002"',
