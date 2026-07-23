@@ -187,13 +187,77 @@ a:hover {
 .page-intro {
   max-width: 58rem;
 }
+.homepage-newsletter {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+  gap: clamp(var(--space-6), 6vw, var(--space-8));
+  align-items: end;
+  margin-bottom: clamp(var(--space-7), 8vw, var(--space-8));
+  padding: clamp(var(--space-5), 5vw, var(--space-7));
+  border-top: 0.25rem solid var(--color-accent);
+  background: var(--color-paper-raised);
+}
+.homepage-newsletter__copy h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3.6rem);
+  line-height: 1.02;
+}
+.homepage-newsletter__copy > p:last-child {
+  max-width: 54ch;
+  margin: var(--space-4) 0 0;
+  color: var(--color-ink-soft);
+  line-height: 1.65;
+}
+.homepage-newsletter__form {
+  min-width: 0;
+}
+.homepage-newsletter__form > label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.homepage-newsletter__fields {
+  display: flex;
+}
+.homepage-newsletter__fields input[type="email"] {
+  min-width: 0;
+  min-height: 3.25rem;
+  flex: 1;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-rule);
+  border-right: 0;
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+}
+.homepage-newsletter__fields button {
+  min-height: 3.25rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-paper);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.homepage-newsletter__form > p {
+  margin: var(--space-3) 0 0;
+  color: var(--color-ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
 .digest-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: var(--space-7);
 }
-.digest-heading h1 {
+.digest-heading h2 {
   font-size: clamp(2.65rem, 7vw, 5.75rem);
 }
 .run-meta {
@@ -703,6 +767,17 @@ h1 {
   .digest-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .homepage-newsletter {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+  .homepage-newsletter__fields {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .homepage-newsletter__fields input[type="email"] {
+    border-right: 1px solid var(--color-rule);
   }
   .run-meta {
     padding-left: 0;

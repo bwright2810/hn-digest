@@ -10,6 +10,30 @@ import {
 
 const lookupKey = Buffer.alloc(32, 1);
 
+test("offers newsletter signup at the top of the homepage", async ({
+  page,
+}) => {
+  await page.goto("/?fixture=complete");
+
+  await expect(
+    page.getByRole("heading", { name: "Start and end the day well read." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Email address")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Join the digest" }),
+  ).toBeVisible();
+  await expect(page.getByText("Today on Hacker News.")).toBeVisible();
+
+  const newsletterTop = await page
+    .locator(".homepage-newsletter")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const digestTop = await page
+    .locator(".digest-heading")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  expect(newsletterTop).toBeLessThan(digestTop);
+  await expectNoHorizontalOverflow(page);
+});
+
 test("publishes the newsletter privacy notice without horizontal overflow", async ({
   page,
 }) => {

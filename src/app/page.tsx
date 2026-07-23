@@ -1,4 +1,5 @@
 import type { AnalysisOutput } from "../analysis/contract";
+import { getConfig } from "../config/server";
 import {
   PostgresDigestReader,
   type DigestRunView,
@@ -28,7 +29,12 @@ export default async function Home({
     const { e2eDigestScenario } = await import("./e2e-fixtures");
     const { fixture } = await searchParams;
     const view = await e2eDigestScenario(fixture);
-    return <DigestPage {...view} />;
+    return (
+      <DigestPage
+        {...view}
+        newsletterEnabled={getConfig().newsletter.publicSignupEnabled}
+      />
+    );
   }
 
   let run: DigestRunView | null = null;
@@ -39,22 +45,32 @@ export default async function Home({
     unavailable = true;
   }
 
-  return <DigestPage run={run} unavailable={unavailable} />;
+  return (
+    <DigestPage
+      run={run}
+      unavailable={unavailable}
+      newsletterEnabled={getConfig().newsletter.publicSignupEnabled}
+    />
+  );
 }
 
 export function DigestPage({
   run,
   unavailable = false,
+  newsletterEnabled = true,
 }: {
   readonly run: DigestRunView | null;
   readonly unavailable?: boolean;
+  readonly newsletterEnabled?: boolean;
 }) {
   return (
     <main id="main-content" className="page" tabIndex={-1}>
+      {newsletterEnabled ? <HomepageNewsletter /> : null}
+
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
           <p className="eyebrow">The latest edition</p>
-          <h1 id="page-title">Today on Hacker News.</h1>
+          <h2 id="page-title">Today on Hacker News.</h2>
         </div>
         {run ? (
           <div className="run-meta" aria-label="Digest run information">
@@ -102,6 +118,46 @@ export function DigestPage({
         </ol>
       )}
     </main>
+  );
+}
+
+function HomepageNewsletter() {
+  return (
+    <section className="homepage-newsletter" aria-labelledby="newsletter-title">
+      <div className="homepage-newsletter__copy">
+        <p className="eyebrow">A sharper HN, delivered</p>
+        <h1 id="newsletter-title">Start and end the day well read.</h1>
+        <p>
+          Get the stories worth your time, thoughtful summaries, and the best of
+          the discussion—delivered every morning and evening.
+        </p>
+      </div>
+      <form
+        className="homepage-newsletter__form"
+        action="/api/newsletter/signup"
+        method="post"
+      >
+        <label htmlFor="homepage-newsletter-email">Email address</label>
+        <div className="homepage-newsletter__fields">
+          <input
+            id="homepage-newsletter-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            maxLength={254}
+            required
+          />
+          <input type="hidden" name="morning" value="1" />
+          <input type="hidden" name="evening" value="1" />
+          <button type="submit">Join the digest</button>
+        </div>
+        <p>
+          Two editions a day. Confirm by email, unsubscribe anytime. Prefer just
+          one? <a href="/newsletter">Choose your schedule</a>.
+        </p>
+      </form>
+    </section>
   );
 }
 
