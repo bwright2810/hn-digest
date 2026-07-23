@@ -79,6 +79,8 @@ export const operationalAlertKind = pgEnum("operational_alert_kind", [
   "daily_spend_soft_limit",
   "monthly_spend_soft_limit",
   "scheduled_run_failed",
+  "newsletter_sustained_send_failures",
+  "newsletter_provider_rejection",
 ]);
 
 export const subscriberStatus = pgEnum("subscriber_status", [
@@ -127,6 +129,31 @@ export const newsletterDeliveryStatus = pgEnum("newsletter_delivery_status", [
   "sent",
   "failed",
 ]);
+
+export const newsletterProviderStatus = pgEnum("newsletter_provider_status", [
+  "sent",
+  "delivered",
+  "delayed",
+  "failed",
+  "bounced",
+  "complained",
+  "suppressed",
+  "unsubscribed",
+]);
+
+export const newsletterProviderEventType = pgEnum(
+  "newsletter_provider_event_type",
+  [
+    "email.sent",
+    "email.delivered",
+    "email.delivery_delayed",
+    "email.failed",
+    "email.bounced",
+    "email.complained",
+    "email.suppressed",
+    "email.unsubscribed",
+  ],
+);
 
 export const subscribers = pgTable(
   "subscribers",
@@ -338,6 +365,8 @@ export const newsletterDeliveries = pgTable(
     status: newsletterDeliveryStatus("status").default("pending").notNull(),
     attemptCount: integer("attempt_count").default(0).notNull(),
     providerMessageId: varchar("provider_message_id", { length: 160 }),
+    providerStatus: newsletterProviderStatus("provider_status"),
+    providerStatusAt: timestamp("provider_status_at", { withTimezone: true }),
     lastErrorCode: varchar("last_error_code", { length: 100 }),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
       .defaultNow()
@@ -361,6 +390,9 @@ export const newsletterDeliveries = pgTable(
       table.digestRunId,
       table.status,
     ),
+    index("newsletter_deliveries_provider_message_idx").on(
+      table.providerMessageId,
+    ),
     check(
       "newsletter_deliveries_attempt_count_nonnegative",
       sql`${table.attemptCount} >= 0`,
@@ -372,6 +404,40 @@ export const newsletterDeliveries = pgTable(
     check(
       "newsletter_deliveries_failed_state",
       sql`${table.status} <> 'failed' or ${table.failedAt} is not null`,
+    ),
+  ],
+);
+
+export const newsletterProviderEvents = pgTable(
+  "newsletter_provider_events",
+  {
+    id: bigint("id", { mode: "number" })
+      .primaryKey()
+      .generatedAlwaysAsIdentity(),
+    providerEventId: varchar("provider_event_id", { length: 160 }).notNull(),
+    deliveryId: uuid("delivery_id")
+      .notNull()
+      .references(() => newsletterDeliveries.id, { onDelete: "cascade" }),
+    type: newsletterProviderEventType("type").notNull(),
+    providerOccurredAt: timestamp("provider_occurred_at", {
+      withTimezone: true,
+    }).notNull(),
+    detailCode: varchar("detail_code", { length: 100 }),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("newsletter_provider_events_provider_id_unique").on(
+      table.providerEventId,
+    ),
+    index("newsletter_provider_events_delivery_time_idx").on(
+      table.deliveryId,
+      table.providerOccurredAt,
+    ),
+    index("newsletter_provider_events_type_time_idx").on(
+      table.type,
+      table.providerOccurredAt,
     ),
   ],
 );

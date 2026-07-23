@@ -250,6 +250,8 @@ export class NewsletterDeliveryWorker {
         .set({
           status: "sent",
           providerMessageId: result.messageId,
+          providerStatus: "sent",
+          providerStatusAt: now,
           sentAt: now,
           sendingStartedAt: null,
           lastErrorCode: null,

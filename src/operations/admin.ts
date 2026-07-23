@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
@@ -8,6 +8,7 @@ import {
   digestRuns,
   digestRunStories,
   storySnapshots,
+  newsletterDeliveries,
 } from "../db/schema";
 
 type Database = NodePgDatabase<typeof schema>;
@@ -35,6 +36,54 @@ export interface AdminRunView {
   readonly updatedAt: Date;
   readonly errorCode: string | null;
   readonly failures: readonly AdminFailureView[];
+}
+
+export interface NewsletterDiagnostics {
+  readonly totals: readonly {
+    readonly status: string;
+    readonly count: number;
+  }[];
+  readonly recent: readonly {
+    readonly id: string;
+    readonly digestRunId: string;
+    readonly edition: string;
+    readonly status: string;
+    readonly providerStatus: string | null;
+    readonly attemptCount: number;
+    readonly lastErrorCode: string | null;
+    readonly updatedAt: Date;
+  }[];
+}
+
+export async function collectNewsletterDiagnostics(
+  database: Database,
+  limit = 20,
+): Promise<NewsletterDiagnostics> {
+  const [totals, recent] = await Promise.all([
+    database
+      .select({
+        status: newsletterDeliveries.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(newsletterDeliveries)
+      .groupBy(newsletterDeliveries.status)
+      .orderBy(newsletterDeliveries.status),
+    database
+      .select({
+        id: newsletterDeliveries.id,
+        digestRunId: newsletterDeliveries.digestRunId,
+        edition: newsletterDeliveries.edition,
+        status: newsletterDeliveries.status,
+        providerStatus: newsletterDeliveries.providerStatus,
+        attemptCount: newsletterDeliveries.attemptCount,
+        lastErrorCode: newsletterDeliveries.lastErrorCode,
+        updatedAt: newsletterDeliveries.updatedAt,
+      })
+      .from(newsletterDeliveries)
+      .orderBy(desc(newsletterDeliveries.updatedAt))
+      .limit(limit),
+  ]);
+  return { totals, recent };
 }
 
 export async function collectAdminRuns(
