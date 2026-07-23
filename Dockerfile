@@ -31,6 +31,7 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/production.js ./produ
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/background.js ./background.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/migrate.js ./migrate.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/digest.js ./digest.js
+COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/subscribers.js ./subscribers.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/source-baseline.js ./source-baseline.js
 COPY --from=build --chown=nextjs:nodejs /app/.next/runtime/source-discovery.js ./source-discovery.js
 COPY --from=build --chown=nextjs:nodejs /app/drizzle ./drizzle

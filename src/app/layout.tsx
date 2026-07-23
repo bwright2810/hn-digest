@@ -54,6 +54,7 @@ export default function RootLayout({
             <p>A focused view of what Hacker News is reading and saying.</p>
             <nav aria-label="Footer">
               <Link href="/newsletter">Newsletter</Link>
+              <Link href="/privacy">Privacy</Link>
               <a href="https://news.ycombinator.com/">Visit Hacker News</a>
             </nav>
           </footer>

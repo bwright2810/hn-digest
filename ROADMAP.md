@@ -157,6 +157,26 @@ Acceptance criteria:
 - A launch checklist verifies sender authentication, unsubscribe behavior,
   provider production access, privacy text, and end-to-end delivery.
 
+### HD-105 — Complete newsletter launch safeguards [in progress]
+
+Dependencies: HD-104.
+
+Close the operational gaps found during the production launch review before
+public signup or scheduled delivery is enabled.
+
+Acceptance criteria:
+
+- Every provider request uses the monitored privacy mailbox as Reply-To.
+- A public privacy notice documents collection, processing, retention,
+  suppression, provider sharing, and subscriber rights.
+- An idempotent background lifecycle job enforces the documented token,
+  unconfirmed-subscriber, delivery-event, and unsubscribed-address retention
+  periods.
+- Private operator commands support verified subscriber export and deletion
+  while preserving the keyed do-not-contact record.
+- Automated tests cover Reply-To and destructive lifecycle boundaries, and the
+  launch runbook identifies the commands and required evidence.
+
 ## Milestone 3: Public digest API
 
 ### HD-110 — Expose a rate-limited public digest API [complete]

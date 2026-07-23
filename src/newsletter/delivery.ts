@@ -26,6 +26,7 @@ type Edition = "morning" | "evening";
 export interface NewsletterDeliveryOptions {
   readonly applicationUrl: URL;
   readonly fromEmail: string;
+  readonly replyToEmail: string;
   readonly postalAddress: string;
   readonly batchSize: number;
   readonly concurrency: number;
@@ -241,6 +242,7 @@ export class NewsletterDeliveryWorker {
           this.options.keys.emailEncryptionKey,
         ),
         from: this.options.fromEmail,
+        replyTo: this.options.replyToEmail,
         ...rendered,
         unsubscribeUrl: unsubscribe,
         idempotencyKey: `digest/${delivery.id}`,

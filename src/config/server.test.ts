@@ -81,11 +81,13 @@ describe("loadConfig", () => {
       resendApiKey: null,
       resendWebhookSecret: null,
       fromEmail: null,
+      replyToEmail: "privacy@example.com",
       deliveryEnabled: false,
       deliveryBatchSize: 25,
       deliveryConcurrency: 2,
       deliveryMaximumAttempts: 3,
       deliveryPollIntervalMs: 5_000,
+      retentionPollIntervalMs: 21_600_000,
       postalAddress: "Not configured — delivery disabled",
     });
     expect(config.publicApi).toEqual({

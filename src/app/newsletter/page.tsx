@@ -1,3 +1,7 @@
+import Link from "next/link";
+
+import { getConfig } from "../../config/server";
+
 export default async function NewsletterPage({
   searchParams,
 }: {
@@ -74,6 +78,8 @@ export default async function NewsletterPage({
           <p className="newsletter-consent">
             By subscribing, you agree to receive the selected HN Digest
             editions. You can change your choices or unsubscribe at any time.
+            See the <Link href="/privacy">privacy notice</Link> for how your
+            information is handled.
           </p>
           <button type="submit">Send confirmation</button>
         </form>
@@ -98,4 +104,3 @@ function NewsletterNotice({
     </p>
   );
 }
-import { getConfig } from "../../config/server";

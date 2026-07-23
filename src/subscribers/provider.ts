@@ -2,6 +2,7 @@ export interface ConfirmationMessage {
   readonly recipient: string;
   readonly confirmationUrl: URL;
   readonly fromEmail: string;
+  readonly replyToEmail: string;
   readonly apiKey: string;
 }
 
@@ -24,6 +25,7 @@ export async function sendConfirmationMessage(
     },
     body: JSON.stringify({
       from: message.fromEmail,
+      reply_to: message.replyToEmail,
       to: [message.recipient],
       subject: "Confirm your HN Digest subscription",
       text: confirmationText(message.confirmationUrl),

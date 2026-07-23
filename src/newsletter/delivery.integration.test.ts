@@ -124,6 +124,7 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
     const worker = new NewsletterDeliveryWorker(connection.db, provider, {
       applicationUrl: new URL("https://digest.example/"),
       fromEmail: "digest@example.com",
+      replyToEmail: "privacy@example.com",
       postalAddress: "123 Example Street",
       batchSize: 25,
       concurrency: 2,
