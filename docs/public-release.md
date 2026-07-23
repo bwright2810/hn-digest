@@ -31,35 +31,41 @@ The scans above are point-in-time evidence, not a permanent guarantee. Repeat
 them immediately before changing visibility because new commits may invalidate
 the result.
 
-## Required immediately before visibility changes
+## Final release verification
 
-- [ ] Pull the final `main` branch and rerun formatting, linting, type-checking,
+- [x] Pull the final `main` branch and rerun formatting, linting, type-checking,
       unit/integration tests, the production build, and headless Playwright.
-- [ ] Rerun dependency and full-history secret scans with current tooling;
+- [x] Rerun dependency and full-history secret scans with current tooling;
       investigate every match rather than relying only on allow-lists.
-- [ ] Inspect generated build and browser artifacts for secrets or unnecessarily
+- [x] Inspect generated build and browser artifacts for secrets or unnecessarily
       complete source text, then remove those artifacts from the workspace.
-- [ ] Verify the private-contact fallback in `SECURITY.md` is available before
+- [x] Verify the private-contact fallback in `SECURITY.md` is available before
       publication. GitHub private vulnerability reporting is unavailable while
       this repository is private on its current plan; enable it and verify the
       unauthenticated reporting link immediately after publication.
-- [ ] Review repository collaborators, deploy keys, Actions secrets,
+- [x] Review repository collaborators, deploy keys, Actions secrets,
       environments, webhooks, branch protections, and workflow permissions.
       Remove stale access without exposing or rotating credentials in Git.
       If branch rules are unavailable on the current private-repository plan,
       configure and verify them immediately after publication.
-- [ ] Confirm no open issue, pull request, commit, tag, branch, or release
+- [x] Confirm no open issue, pull request, commit, tag, branch, or release
       contains a private hostname, personal data, secret, or unnecessary copied
       source material.
-- [ ] Confirm CI passes from a clean checkout at the exact release commit.
-- [ ] Create a signed or annotated release tag if a versioned release is
-      desired; package publication remains out of scope.
-- [ ] Have the repository owner explicitly approve the release and use GitHub's
+- [x] Confirm CI passes from a clean checkout at the exact release commit.
+- [x] Confirm that no versioned release tag is requested for this publication;
+      package publication remains out of scope.
+- [x] Have the repository owner explicitly approve the release and use GitHub's
       visibility control. Do not automate or infer this approval.
-- [ ] After the repository is public, verify anonymous clone, README links,
+- [x] After the repository is public, verify anonymous clone, README links,
       license detection, security reporting, branch protection, Dependabot,
       secret scanning, code scanning, and CI status. GitHub features that are
       plan-gated while private must be enabled before announcing the release.
+
+The repository became public on 2026-07-23 after explicit owner approval.
+Anonymous access and the security-reporting page return successfully, GitHub
+detects the MIT license, `main` requires the `Validate` check, and the public
+security features above are enabled. The initial CodeQL analysis was queued as
+part of publication.
 
 ## 2026-07-23 pre-publication security review
 

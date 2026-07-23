@@ -24,9 +24,7 @@ Status labels mean:
 
 Immediate priorities, in order:
 
-1. Perform the owner-controlled repository visibility change when desired,
-   after a fresh public-release review.
-2. Revisit deferred work only when measured need justifies a decision-log
+1. Revisit deferred work only when measured need justifies a decision-log
    change.
 
 ## Product boundaries for the first release
@@ -700,8 +698,8 @@ Acceptance criteria:
 - Public setup, contribution, and security-reporting documentation are present.
 - Repository visibility is changed only after the release review passes.
 
-Completion of HD-074 covers repository preparation, not the owner-controlled
-visibility change itself.
+The owner-controlled visibility change and post-publication verification were
+completed on 2026-07-23.
 
 ### HD-081 — Complete the alternate source-adapter review [complete]
 
@@ -735,9 +733,7 @@ Acceptance criteria:
 The MVP implementation path is complete. Remaining work should proceed as:
 
 1. Keep HD-077, HD-078, and HD-079 gated; HD-081 selected no adapter.
-2. Perform the final repository visibility review and owner-controlled change
-   when public release is desired.
-3. Revisit deferred work only when measured need justifies a decision-log
+2. Revisit deferred work only when measured need justifies a decision-log
    change.
 
 ## Deferred from the private MVP
@@ -812,3 +808,4 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-23 | Remove HD-080 from the roadmap. | Off-server production backup work is no longer required as a tracked product task. |
 | 2026-07-23 | Replace HD-081's 30-run waiting period with an alternate bounded evidence review. | Combining the observed HD-075 baseline, a zero-LLM scan of up to 500 current top stories, and reviewed adversarial fixtures tests demand, recoverability, evidence fidelity, and parser safety without delaying the decision for additional scheduled runs. |
 | 2026-07-23 | Complete HD-081 without activating HD-077, HD-078, or HD-079. | The production baseline recovered all observed GitHub repository sources through HTML, while bounded discovery found no eligible feed, JSON Feed, or PDF candidates. No additional adapter demonstrated the required 20% incremental recovery value, so implementing and exposing a new parser would add risk without measured benefit. |
+| 2026-07-23 | Publish the repository under the MIT license after the final release review. | The owner explicitly approved the visibility change; anonymous access, license detection, private vulnerability reporting, Dependabot, secret scanning, code scanning, branch protection, and CI were enabled or verified as part of the release. |

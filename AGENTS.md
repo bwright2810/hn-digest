@@ -50,10 +50,10 @@ plans, commits, and pull requests where applicable.
 - Scheduled production runs default to 7:00 AM and 7:00 PM in the
   `America/New_York` IANA time zone. Persist timestamps in UTC and calculate
   schedules with the named zone so EST/EDT changes are handled correctly.
-- The repository starts private and is intended to become public under the MIT
-  license. Do not change visibility or claim that it is MIT-licensed until the
-  license file, metadata, documentation, secret/history review, and public
-  release checklist are complete.
+- The repository became public under the MIT license on 2026-07-23 after the
+  license, metadata, documentation, secret/history review, and public-release
+  checklist were completed. Keep public-release security controls enabled and
+  do not expose private deployment details in repository content.
 
 ## First-release boundaries
 
