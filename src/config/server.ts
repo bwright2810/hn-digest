@@ -36,10 +36,39 @@ const DEVELOPMENT_DEFAULTS = {
   SCHEDULER_POLL_INTERVAL_MS: "30000",
   WORKER_POLL_INTERVAL_MS: "5000",
   RUNTIME_SHUTDOWN_GRACE_MS: "30000",
+  SUBSCRIBER_KEY_VERSION: "1",
+  NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "false",
+  NEWSLETTER_CONSENT_POLICY_VERSION: "newsletter-v1",
+  NEWSLETTER_SIGNUP_RATE_LIMIT: "3",
+  NEWSLETTER_SIGNUP_RATE_WINDOW_MS: "900000",
+  NEWSLETTER_DELIVERY_ENABLED: "false",
+  NEWSLETTER_DELIVERY_BATCH_SIZE: "25",
+  NEWSLETTER_DELIVERY_CONCURRENCY: "2",
+  NEWSLETTER_DELIVERY_MAX_ATTEMPTS: "3",
+  NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: "5000",
+  NEWSLETTER_POSTAL_ADDRESS: "Not configured — delivery disabled",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
 const positiveMoney = z.coerce.number().positive().finite();
+const environmentBoolean = z
+  .enum(["true", "false"])
+  .transform((value) => value === "true");
+const base64Key = z.string().refine(
+  (value) => {
+    try {
+      const decoded = Buffer.from(value, "base64");
+      return (
+        /^[A-Za-z0-9+/]{43}=$/u.test(value) &&
+        decoded.length === 32 &&
+        decoded.toString("base64") === value
+      );
+    } catch {
+      return false;
+    }
+  },
+  { message: "must be a base64-encoded 32-byte key" },
+);
 
 const timeZone = z.string().refine(
   (value) => {
@@ -129,6 +158,21 @@ const environmentSchema = z
     SCHEDULER_POLL_INTERVAL_MS: positiveInteger,
     WORKER_POLL_INTERVAL_MS: positiveInteger,
     RUNTIME_SHUTDOWN_GRACE_MS: positiveInteger,
+    SUBSCRIBER_EMAIL_ENCRYPTION_KEY: base64Key,
+    SUBSCRIBER_LOOKUP_HMAC_KEY: base64Key,
+    SUBSCRIBER_KEY_VERSION: positiveInteger,
+    NEWSLETTER_PUBLIC_SIGNUP_ENABLED: environmentBoolean,
+    NEWSLETTER_CONSENT_POLICY_VERSION: z.string().min(1).max(80),
+    NEWSLETTER_SIGNUP_RATE_LIMIT: positiveInteger,
+    NEWSLETTER_SIGNUP_RATE_WINDOW_MS: positiveInteger,
+    NEWSLETTER_DELIVERY_ENABLED: environmentBoolean,
+    NEWSLETTER_DELIVERY_BATCH_SIZE: positiveInteger.max(100),
+    NEWSLETTER_DELIVERY_CONCURRENCY: positiveInteger.max(5),
+    NEWSLETTER_DELIVERY_MAX_ATTEMPTS: positiveInteger.max(5),
+    NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: positiveInteger,
+    NEWSLETTER_POSTAL_ADDRESS: z.string().min(1).max(300),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    NEWSLETTER_FROM_EMAIL: z.email().optional(),
   })
   .superRefine((values, context) => {
     for (const [softKey, hardKey] of [
@@ -141,6 +185,20 @@ const environmentSchema = z
           path: [softKey],
           message: `must not exceed ${hardKey}`,
         });
+      }
+    }
+    if (
+      values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED ||
+      values.NEWSLETTER_DELIVERY_ENABLED
+    ) {
+      for (const key of ["RESEND_API_KEY", "NEWSLETTER_FROM_EMAIL"] as const) {
+        if (!values[key]) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: "is required when NEWSLETTER_PUBLIC_SIGNUP_ENABLED=true",
+          });
+        }
       }
     }
   });
@@ -208,6 +266,25 @@ export interface AppConfig {
     readonly dailyHardLimitUsd: number;
     readonly monthlySoftLimitUsd: number;
     readonly monthlyHardLimitUsd: number;
+  };
+  readonly subscribers: {
+    readonly emailEncryptionKey: Buffer;
+    readonly lookupHmacKey: Buffer;
+    readonly keyVersion: number;
+  };
+  readonly newsletter: {
+    readonly publicSignupEnabled: boolean;
+    readonly consentPolicyVersion: string;
+    readonly signupRateLimit: number;
+    readonly signupRateWindowMs: number;
+    readonly resendApiKey: string | null;
+    readonly fromEmail: string | null;
+    readonly deliveryEnabled: boolean;
+    readonly deliveryBatchSize: number;
+    readonly deliveryConcurrency: number;
+    readonly deliveryMaximumAttempts: number;
+    readonly deliveryPollIntervalMs: number;
+    readonly postalAddress: string;
   };
 }
 
@@ -317,6 +394,28 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       dailyHardLimitUsd: values.LLM_DAILY_HARD_LIMIT_USD,
       monthlySoftLimitUsd: values.LLM_MONTHLY_SOFT_LIMIT_USD,
       monthlyHardLimitUsd: values.LLM_MONTHLY_HARD_LIMIT_USD,
+    }),
+    subscribers: Object.freeze({
+      emailEncryptionKey: Buffer.from(
+        values.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
+        "base64",
+      ),
+      lookupHmacKey: Buffer.from(values.SUBSCRIBER_LOOKUP_HMAC_KEY, "base64"),
+      keyVersion: values.SUBSCRIBER_KEY_VERSION,
+    }),
+    newsletter: Object.freeze({
+      publicSignupEnabled: values.NEWSLETTER_PUBLIC_SIGNUP_ENABLED,
+      consentPolicyVersion: values.NEWSLETTER_CONSENT_POLICY_VERSION,
+      signupRateLimit: values.NEWSLETTER_SIGNUP_RATE_LIMIT,
+      signupRateWindowMs: values.NEWSLETTER_SIGNUP_RATE_WINDOW_MS,
+      resendApiKey: values.RESEND_API_KEY ?? null,
+      fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
+      deliveryEnabled: values.NEWSLETTER_DELIVERY_ENABLED,
+      deliveryBatchSize: values.NEWSLETTER_DELIVERY_BATCH_SIZE,
+      deliveryConcurrency: values.NEWSLETTER_DELIVERY_CONCURRENCY,
+      deliveryMaximumAttempts: values.NEWSLETTER_DELIVERY_MAX_ATTEMPTS,
+      deliveryPollIntervalMs: values.NEWSLETTER_DELIVERY_POLL_INTERVAL_MS,
+      postalAddress: values.NEWSLETTER_POSTAL_ADDRESS,
     }),
   });
 }

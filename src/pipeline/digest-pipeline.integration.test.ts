@@ -90,6 +90,8 @@ describeDatabase("DigestPipeline", () => {
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
       OPENAI_API_KEY: "test-only",
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
+      SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
       DIGEST_MINIMUM_COMMENT_COUNT: "1",
     });
@@ -146,12 +148,14 @@ describeDatabase("DigestPipeline", () => {
     ).toBe(1);
     expect(providerCalls).toBe(2);
     expect(
-      (
-        await connection.db.query.digestRuns.findFirst({
-          where: eq(digestRuns.id, firstRunId),
-        })
-      )?.status,
-    ).toBe("complete");
+      await connection.db.query.digestRuns.findFirst({
+        columns: { status: true, newsletterReadyAt: true },
+        where: eq(digestRuns.id, firstRunId),
+      }),
+    ).toMatchObject({
+      status: "complete",
+      newsletterReadyAt: expect.any(Date),
+    });
     expect(
       await connection.db
         .select()
@@ -176,12 +180,11 @@ describeDatabase("DigestPipeline", () => {
     expect(reused[0]?.reusedFrom).toBeTruthy();
     expect(providerCalls).toBe(2);
     expect(
-      (
-        await connection.db.query.digestRuns.findFirst({
-          where: eq(digestRuns.id, secondRunId),
-        })
-      )?.status,
-    ).toBe("complete");
+      await connection.db.query.digestRuns.findFirst({
+        columns: { status: true, newsletterReadyAt: true },
+        where: eq(digestRuns.id, secondRunId),
+      }),
+    ).toEqual({ status: "complete", newsletterReadyAt: null });
   });
 
   async function createPendingRun(

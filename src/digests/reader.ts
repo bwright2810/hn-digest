@@ -1,4 +1,5 @@
 import { desc, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import {
   analysisOutputSchema,
@@ -14,6 +15,7 @@ import {
   stories as storyRecords,
   storySnapshots,
 } from "../db/schema";
+import * as schema from "../db/schema";
 
 export type DigestRunState =
   "pending" | "collecting" | "analyzing" | "complete" | "partial" | "failed";
@@ -51,9 +53,10 @@ export interface DigestRunView {
 
 export interface DigestReader {
   latest(): Promise<DigestRunView | null>;
+  byId(id: string): Promise<DigestRunView | null>;
 }
 
-type Database = ReturnType<typeof getDatabase>;
+type Database = NodePgDatabase<typeof schema>;
 
 export class PostgresDigestReader implements DigestReader {
   constructor(private readonly database: Database = getDatabase()) {}
@@ -66,7 +69,22 @@ export class PostgresDigestReader implements DigestReader {
       .limit(1);
 
     if (!run) return null;
+    return this.readRun(run);
+  }
 
+  async byId(id: string): Promise<DigestRunView | null> {
+    const [run] = await this.database
+      .select()
+      .from(digestRuns)
+      .where(eq(digestRuns.id, id))
+      .limit(1);
+    if (!run) return null;
+    return this.readRun(run);
+  }
+
+  private async readRun(
+    run: typeof digestRuns.$inferSelect,
+  ): Promise<DigestRunView> {
     const rows = await this.database
       .select({
         id: digestRunStories.id,

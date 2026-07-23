@@ -3,6 +3,8 @@ import { hostname } from "node:os";
 import { getConfig } from "../src/config/server";
 import { createDatabase } from "../src/db/client";
 import { DigestPipeline } from "../src/pipeline/digest-pipeline";
+import { NewsletterDeliveryWorker } from "../src/newsletter/delivery";
+import { ResendDeliveryProvider } from "../src/newsletter/provider";
 import { runPollLoop } from "../src/runtime/poll-loop";
 import { ensureScheduledDigestRun } from "../src/scheduler/digest-scheduler";
 import { AnalysisWorker } from "../src/worker/runner";
@@ -19,6 +21,26 @@ const worker = new AnalysisWorker(connection.db, {
   fetchConcurrencyPerHost: config.worker.fetchConcurrencyPerHost,
   spendLimits: config.spend,
 });
+const newsletterWorker =
+  config.newsletter.deliveryEnabled &&
+  config.newsletter.resendApiKey &&
+  config.newsletter.fromEmail
+    ? new NewsletterDeliveryWorker(
+        connection.db,
+        new ResendDeliveryProvider(config.newsletter.resendApiKey),
+        {
+          applicationUrl: config.application.url,
+          fromEmail: config.newsletter.fromEmail,
+          postalAddress: config.newsletter.postalAddress,
+          batchSize: config.newsletter.deliveryBatchSize,
+          concurrency: config.newsletter.deliveryConcurrency,
+          maximumAttempts: config.newsletter.deliveryMaximumAttempts,
+          morningTime: config.schedule.morningTime,
+          eveningTime: config.schedule.eveningTime,
+          keys: config.subscribers,
+        },
+      )
+    : null;
 
 function log(event: string, details: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ event, ...details }));
@@ -60,6 +82,14 @@ async function workerIteration() {
   if (processed > 0) log("analysis_jobs_processed", { count: processed });
 }
 
+async function newsletterIteration() {
+  if (!newsletterWorker) return;
+  const result = await newsletterWorker.process();
+  if (result.queued > 0 || result.claimed > 0) {
+    log("newsletter_delivery_iteration", { ...result });
+  }
+}
+
 async function main() {
   await connection.pool.query("SELECT 1");
   log("background_runtime_started", { workerId });
@@ -77,6 +107,13 @@ async function main() {
       signal: controller.signal,
       run: workerIteration,
       onError: (error) => logFailure("worker", error),
+    }),
+    runPollLoop({
+      name: "newsletter",
+      intervalMs: config.newsletter.deliveryPollIntervalMs,
+      signal: controller.signal,
+      run: newsletterIteration,
+      onError: (error) => logFailure("newsletter", error),
     }),
   ]);
 }

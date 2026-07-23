@@ -1,0 +1,1 @@
+ALTER TABLE "digest_runs" ADD COLUMN "newsletter_ready_at" timestamp with time zone;

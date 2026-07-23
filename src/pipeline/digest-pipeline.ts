@@ -720,7 +720,11 @@ export class DigestPipeline {
         .from(digestRunStories)
         .where(eq(digestRunStories.digestRunId, runId)),
       this.db.query.digestRuns.findFirst({
-        columns: { errorCode: true },
+        columns: {
+          errorCode: true,
+          trigger: true,
+          newsletterReadyAt: true,
+        },
         where: eq(digestRuns.id, runId),
       }),
     ]);
@@ -742,9 +746,20 @@ export class DigestPipeline {
       nextStatus === "failed"
         ? (run?.errorCode ?? "all_stories_failed")
         : run?.errorCode;
+    const updatedAt = new Date();
     await this.db
       .update(digestRuns)
-      .set({ status: nextStatus, errorCode, updatedAt: new Date() })
+      .set({
+        status: nextStatus,
+        errorCode,
+        newsletterReadyAt:
+          run?.newsletterReadyAt ??
+          (run?.trigger === "scheduled" &&
+          (nextStatus === "complete" || nextStatus === "partial")
+            ? updatedAt
+            : null),
+        updatedAt,
+      })
       .where(eq(digestRuns.id, runId));
   }
 

@@ -48,7 +48,7 @@ stages. Subscribers may choose the morning edition, evening edition, or both.
 Newsletter work introduces subscriber personal data and an external email
 provider, but does not introduce general-purpose user accounts.
 
-### HD-100 — Design newsletter delivery and compliance boundaries [planned]
+### HD-100 — Design newsletter delivery and compliance boundaries [complete]
 
 Dependencies: none.
 
@@ -74,7 +74,7 @@ Acceptance criteria:
 - Secrets remain runtime configuration and are never exposed to the client,
   logs, repository, or email links.
 
-### HD-101 — Implement subscriber and preference persistence [planned]
+### HD-101 — Implement subscriber and preference persistence [complete]
 
 Dependencies: HD-100.
 
@@ -94,7 +94,7 @@ Acceptance criteria:
   preference states.
 - Migrations and lifecycle behavior have automated tests.
 
-### HD-102 — Build signup, confirmation, and unsubscribe flows [planned]
+### HD-102 — Build signup, confirmation, and unsubscribe flows [complete]
 
 Dependencies: HD-101.
 
@@ -114,7 +114,7 @@ Acceptance criteria:
 - Headless Playwright covers the complete lifecycle without contacting a live
   email provider.
 
-### HD-103 — Render and send scheduled newsletter editions [planned]
+### HD-103 — Render and send scheduled newsletter editions [complete]
 
 Dependencies: HD-090, HD-100, HD-101, HD-102.
 
@@ -202,3 +202,6 @@ Acceptance criteria:
 | --- | --- | --- |
 | 2026-07-23 | Reset the post-MVP roadmap to HD-090, the HD-100 newsletter series, and HD-110. | The next product priorities are avoiding consecutive scheduled-story repetition, adding opt-in morning/evening newsletter delivery, and exposing bounded public digest access. |
 | 2026-07-23 | Complete HD-090 by excluding HN item IDs from the most recent earlier published scheduled digest. | Ordering by the scheduled slot makes retries deterministic; complete and partial published digests establish the baseline, while failed and on-demand runs do not. Persisting encountered exclusions gives operators an auditable count and ID list without retaining source content. |
+| 2026-07-23 | Complete HD-100 with Resend as the initial newsletter delivery provider while PostgreSQL remains authoritative for subscribers and consent. | Resend provides signed replay-safe webhooks, send idempotency, custom one-click unsubscribe headers, suppression, and bounded entry pricing without adding AWS operational resources. Subscriber truth stays local, tracking stays disabled, provider storage is explicitly US-based and limited to its documented retention, and production remains gated on the recorded compliance and deliverability review. |
+| 2026-07-23 | Complete HD-101 with encrypted subscriber addresses, keyed lookup digests, and database-backed consent and action-token lifecycles. | AES-256-GCM keeps recoverable addresses authenticated and opaque at rest, separate versioned HMAC material supports uniqueness and token lookup without plaintext indexes, and PostgreSQL constraints plus per-address transaction locks make preference state and repeated lifecycle operations durable and idempotent. |
+| 2026-07-23 | Complete HD-102 with launch-gated public forms, Resend confirmation messages, same-origin mutation checks, and PostgreSQL-backed address/client throttling. | Generic signup outcomes resist subscriber enumeration, only confirmed tokens activate delivery, scoped preference tokens permit edition changes or unsubscribe without accounts, and direct database token seeding lets Playwright verify the complete mobile/desktop lifecycle without exposing test tokens through HTTP or contacting Resend. |

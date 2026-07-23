@@ -52,9 +52,10 @@ packages to production. Playwright stays in CI or a dedicated test system.
 ## Required configuration
 
 Production has no non-secret defaults. Set every variable below in Coolify as a
-runtime variable. Mark `DATABASE_URL`, `OPENAI_API_KEY`, and `ADMIN_PASSWORD`
-secret and exclude
-them from build arguments, image layers, deployment logs, and previews.
+runtime variable. Mark `DATABASE_URL`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`,
+`SUBSCRIBER_EMAIL_ENCRYPTION_KEY`, and `SUBSCRIBER_LOOKUP_HMAC_KEY` secret and
+exclude them from build arguments, image layers, deployment logs, and previews.
+When newsletter signup is enabled, treat `RESEND_API_KEY` the same way.
 
 | Variable                                    | Production value or rule                                                                       |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -62,6 +63,15 @@ them from build arguments, image layers, deployment logs, and previews.
 | `DATABASE_URL`                              | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
 | `OPENAI_API_KEY`                            | project-scoped API key with the smallest practical permissions and spend controls              |
 | `ADMIN_PASSWORD`                            | unique random value of at least 16 characters for the `/admin` HTTP Basic prompt               |
+| `SUBSCRIBER_EMAIL_ENCRYPTION_KEY`           | random base64-encoded 32-byte key retained for subscriber email decryption                     |
+| `SUBSCRIBER_LOOKUP_HMAC_KEY`                | different random base64-encoded 32-byte key for address and action-token digests               |
+| `SUBSCRIBER_KEY_VERSION`                    | positive key version; start at `1` and increment only under a documented rotation              |
+| `NEWSLETTER_PUBLIC_SIGNUP_ENABLED`          | `false` until every HD-100 launch gate is recorded; set `true` only for reviewed launch        |
+| `NEWSLETTER_CONSENT_POLICY_VERSION`         | stable version identifying the exact signup consent copy                                       |
+| `NEWSLETTER_SIGNUP_RATE_LIMIT`              | maximum attempts per address and client in one window; initial value `3`                       |
+| `NEWSLETTER_SIGNUP_RATE_WINDOW_MS`          | signup throttling window; initial value `900000`                                               |
+| `RESEND_API_KEY`                            | runtime-only Resend credential; required only when public signup is enabled                    |
+| `NEWSLETTER_FROM_EMAIL`                     | verified sender address; required only when public signup is enabled                           |
 | `OPENAI_MODEL`                              | evaluated model from the roadmap decision log                                                  |
 | `OPENAI_REASONING_EFFORT`                   | `low` until evaluation justifies a change                                                      |
 | `OPENAI_REQUEST_TIMEOUT_MS`                 | `60000`                                                                                        |

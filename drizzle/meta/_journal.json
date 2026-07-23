@@ -64,6 +64,34 @@
       "when": 1784816788190,
       "tag": "0008_furry_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784820615811,
+      "tag": "0009_reflective_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784821279962,
+      "tag": "0010_crazy_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784822029118,
+      "tag": "0011_elite_daredevil",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784822318008,
+      "tag": "0012_ordinary_the_executioner",
+      "breakpoints": true
     }
   ]
 }

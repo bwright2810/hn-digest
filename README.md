@@ -19,7 +19,7 @@ pnpm dev
 
 The application listens on `http://localhost:3000`. Its health check is available at `GET /api/health` and returns `{ "status": "ok" }`.
 
-Replace the two secret placeholders in `.env.local` before startup. Development defaults are provided for non-secret settings. Production requires every documented setting explicitly; invalid configuration stops the server and reports field names without printing supplied values.
+Replace the secret placeholders in `.env.local` before startup. Subscriber email encryption and lookup use different random 32-byte keys encoded as base64; generate and retain them outside the repository. Development defaults are provided for non-secret settings. Production requires every documented setting explicitly; invalid configuration stops the server and reports field names without printing supplied values.
 
 Article fetching defaults to a 10-second total timeout, a 2 MiB response limit,
 and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,
@@ -107,6 +107,17 @@ spend plus concurrent reservations with the hard limits; denied jobs are marked
 The HD-072 threat review, trust boundaries, operator-access decision, secret and
 logging rules, and current retention/deletion behavior are documented in
 [`docs/security-and-privacy.md`](./docs/security-and-privacy.md).
+
+The HD-100 newsletter provider decision, confirmed-opt-in lifecycle, proposed
+subscriber data model, suppression and retention rules, and launch gates are
+documented in
+[`docs/newsletter-delivery-and-compliance.md`](./docs/newsletter-delivery-and-compliance.md).
+
+HD-102 newsletter signup remains disabled by default. Enabling it requires the
+documented Resend sender settings and does not bypass the HD-100 launch review.
+Signup, confirmation, preference changes, and unsubscribe are token-backed,
+rate-limited, same-origin public flows; subscriber status is never disclosed by
+the signup response.
 
 ## Deployment and recovery
 
