@@ -1,4 +1,9 @@
 DROP TABLE IF EXISTS "llm_usage" CASCADE;
+DROP TABLE IF EXISTS "newsletter_deliveries" CASCADE;
+DROP TABLE IF EXISTS "subscriber_signup_limits" CASCADE;
+DROP TABLE IF EXISTS "subscriber_action_tokens" CASCADE;
+DROP TABLE IF EXISTS "subscriber_consent_events" CASCADE;
+DROP TABLE IF EXISTS "subscribers" CASCADE;
 DROP TABLE IF EXISTS "operational_alerts" CASCADE;
 DROP TABLE IF EXISTS "analysis_cache_lookups" CASCADE;
 DROP TABLE IF EXISTS "analysis_job_attempts" CASCADE;
@@ -13,6 +18,13 @@ DROP TABLE IF EXISTS "stories" CASCADE;
 DROP TABLE IF EXISTS "digest_runs" CASCADE;
 
 DROP TYPE IF EXISTS "analysis_job_status";
+DROP TYPE IF EXISTS "newsletter_delivery_status";
+DROP TYPE IF EXISTS "newsletter_edition";
+DROP TYPE IF EXISTS "subscriber_action_token_purpose";
+DROP TYPE IF EXISTS "subscriber_consent_source";
+DROP TYPE IF EXISTS "subscriber_consent_event_kind";
+DROP TYPE IF EXISTS "subscriber_suppression_reason";
+DROP TYPE IF EXISTS "subscriber_status";
 DROP TYPE IF EXISTS "analysis_job_attempt_status";
 DROP TYPE IF EXISTS "operational_alert_kind";
 DROP TYPE IF EXISTS "digest_story_status";
