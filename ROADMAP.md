@@ -194,7 +194,7 @@ Acceptance criteria:
 - Existing delivery idempotency, edition preferences, and retries are
   unchanged.
 
-### HD-107 — Deliver the latest pre-launch scheduled digest [in progress]
+### HD-107 — Deliver the latest pre-launch scheduled digest [complete]
 
 Dependencies: HD-106.
 
