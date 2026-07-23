@@ -10,6 +10,7 @@ import {
   type ArticleFetchFailureCode,
   type ArticleFetchResult,
 } from "./fetcher";
+import { GitHubSourceFetcher } from "./github";
 
 export type ArticleAcquisitionOutcome =
   | { readonly status: "fetched"; readonly result: ArticleFetchResult }
@@ -180,10 +181,25 @@ export class PostgresArticleFetchStore implements ArticleFetchStore {
 
 export function createArticleAcquisition() {
   const config = getConfig();
-  const fetcher = new ArticleFetcher({
+  const articleFetcher = new ArticleFetcher({
     timeoutMs: config.articleFetch.timeoutMs,
     maximumBytes: config.articleFetch.maximumBytes,
     maximumRedirects: config.articleFetch.maximumRedirects,
+  });
+  const githubApiFetcher = new ArticleFetcher({
+    timeoutMs: config.articleFetch.timeoutMs,
+    maximumBytes: config.articleFetch.maximumBytes,
+    maximumRedirects: config.articleFetch.maximumRedirects,
+    supportedContentTypes: new Set(["application/json"]),
+    requestHeaders: {
+      accept: "application/vnd.github+json",
+      "x-github-api-version": "2022-11-28",
+    },
+  });
+  const fetcher = new GitHubSourceFetcher({
+    articleFetcher,
+    apiFetcher: githubApiFetcher,
+    maximumBytes: config.articleFetch.maximumBytes,
   });
   const store = new PostgresArticleFetchStore();
   return (storyId: number, sourceUrl: string) =>

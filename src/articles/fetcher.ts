@@ -22,7 +22,8 @@ export type ArticleFetchFailureCode =
   | "redirect_missing_location"
   | "redirect_limit"
   | "unsupported_content_type"
-  | "response_too_large";
+  | "response_too_large"
+  | "invalid_source_response";
 
 export class ArticleFetchError extends Error {
   constructor(
@@ -52,6 +53,8 @@ export interface ArticleFetcherOptions {
   readonly maximumBytes: number;
   readonly maximumRedirects: number;
   readonly timeoutMs: number;
+  readonly supportedContentTypes?: ReadonlySet<string>;
+  readonly requestHeaders?: Readonly<Record<string, string>>;
 }
 
 export class ArticleFetcher {
@@ -60,6 +63,8 @@ export class ArticleFetcher {
   private readonly maximumBytes: number;
   private readonly maximumRedirects: number;
   private readonly timeoutMs: number;
+  private readonly supportedContentTypes: ReadonlySet<string>;
+  private readonly requestHeaders: Readonly<Record<string, string>>;
 
   constructor(options: ArticleFetcherOptions) {
     this.fetchImplementation = options.fetch ?? globalThis.fetch;
@@ -71,6 +76,9 @@ export class ArticleFetcher {
       0,
     );
     this.timeoutMs = requireInteger(options.timeoutMs, "timeoutMs", 1);
+    this.supportedContentTypes =
+      options.supportedContentTypes ?? SUPPORTED_ARTICLE_CONTENT_TYPES;
+    this.requestHeaders = options.requestHeaders ?? {};
   }
 
   async fetch(source: string | URL): Promise<ArticleFetchResult> {
@@ -88,6 +96,7 @@ export class ArticleFetcher {
             accept:
               "text/html,application/xhtml+xml;q=0.9,text/markdown;q=0.8,text/plain;q=0.7",
             "user-agent": "HN-Digest/0.1 article fetcher",
+            ...this.requestHeaders,
           },
           redirect: "manual",
           signal,
@@ -129,7 +138,7 @@ export class ArticleFetcher {
       const contentType = parseContentType(
         response.headers.get("content-type"),
       );
-      if (!contentType || !SUPPORTED_ARTICLE_CONTENT_TYPES.has(contentType)) {
+      if (!contentType || !this.supportedContentTypes.has(contentType)) {
         response.body?.cancel().catch(() => undefined);
         throw new ArticleFetchError(
           "unsupported_content_type",

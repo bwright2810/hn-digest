@@ -26,6 +26,12 @@ and five redirects. Configure these with `ARTICLE_FETCH_TIMEOUT_MS`,
 `ARTICLE_FETCH_MAX_BYTES`, and `ARTICLE_FETCH_MAX_REDIRECTS`. Every redirect is
 resolved and checked against public IP ranges before it is requested.
 
+Public GitHub repository links resolve at most one README, and explicit GitHub
+blob links resolve at most one allow-listed text file through the unauthenticated
+Contents API. HN Digest does not clone, list, or traverse repositories, follow
+embedded URLs, or accept GitHub credentials. Extracted GitHub evidence retains
+the repository-relative path and a commit-pinned canonical link.
+
 ## Visual system
 
 The interface uses a restrained editorial system defined in

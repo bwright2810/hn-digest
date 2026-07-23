@@ -57,6 +57,30 @@ export class ArticleExtractor {
         extract: ({ body, sourceUrl }) => this.extractHtml(body, sourceUrl),
       },
       {
+        id: "github-markdown-v1",
+        contentTypes: new Set(["text/markdown"]),
+        matches: ({ sourceUrl }) => githubRepositoryPath(sourceUrl) !== null,
+        extract: ({ body, sourceUrl }) =>
+          this.extractText(
+            body,
+            true,
+            "github-markdown-v1",
+            githubRepositoryPath(sourceUrl) ?? undefined,
+          ),
+      },
+      {
+        id: "github-source-v1",
+        contentTypes: new Set(["text/plain"]),
+        matches: ({ sourceUrl }) => githubRepositoryPath(sourceUrl) !== null,
+        extract: ({ body, sourceUrl }) =>
+          this.extractText(
+            body,
+            false,
+            "github-source-v1",
+            githubRepositoryPath(sourceUrl) ?? undefined,
+          ),
+      },
+      {
         id: "plain-text-v1",
         contentTypes: new Set(["text/plain"]),
         matches: () => true,
@@ -165,6 +189,7 @@ export class ArticleExtractor {
     content: string | Uint8Array,
     markdown: boolean,
     adapterId: string,
+    repositoryPath?: string,
   ): ArticleExtraction {
     let decoded: string;
     try {
@@ -211,11 +236,32 @@ export class ArticleExtractor {
       characterCount: text.length,
       confidenceReasons,
       adapterId,
-      evidenceLocations: markdown
-        ? headingEvidence(headings)
-        : lineEvidence(text),
+      evidenceLocations: [
+        ...(repositoryPath
+          ? [{ kind: "file_path" as const, path: repositoryPath }]
+          : []),
+        ...(markdown ? headingEvidence(headings) : lineEvidence(text)),
+      ],
     };
   }
+}
+
+function githubRepositoryPath(url: URL): string | null {
+  if (url.hostname.toLowerCase() !== "github.com") return null;
+  let parts: string[];
+  try {
+    parts = url.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) => decodeURIComponent(part));
+  } catch {
+    return null;
+  }
+  if (parts.length < 5 || parts[2] !== "blob") return null;
+  const path = parts.slice(4).join("/");
+  return path && !path.split("/").some((part) => part === "." || part === "..")
+    ? path
+    : null;
 }
 
 function formatBlock(element: Element): string {

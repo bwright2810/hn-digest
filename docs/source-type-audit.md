@@ -20,9 +20,17 @@ HD-076 routes the currently approved HTML, plain-text, and Markdown formats
 through stable `html-v1`, `plain-text-v1`, and `markdown-v1` adapters. The
 normalized extraction metadata records the adapter ID and bounded heading or
 line-range evidence locations. HD-075 uses a 10-run initial audit; HD-077
-(GitHub), HD-078 (RSS/Atom), or HD-079 (JSON Feed) cannot be enabled before
-HD-081 combines that baseline with bounded discovery and reviewed fixtures.
-PDF, OCR, and media processing remain deferred.
+(GitHub) was subsequently activated by explicit owner direction with a
+one-file policy. HD-078 (RSS/Atom) and HD-079 (JSON Feed) remain gated by the
+HD-081 evidence decision. PDF, OCR, and media processing remain deferred.
+
+HD-077 resolves only public GitHub repository roots and explicit blob links.
+Repository roots request one README; blob links request one allow-listed text
+file and support only a single-segment ref. The path never lists directories,
+traverses a repository, clones content, follows embedded URLs, or uses a GitHub
+credential. Successful extraction records `github-markdown-v1` or
+`github-source-v1`, a commit-pinned canonical URL, the repository-relative file
+path, and bounded heading or line-range evidence.
 
 Run
 `pnpm source:baseline [from-iso-date] [to-iso-date] [minimum-run-count]` from a

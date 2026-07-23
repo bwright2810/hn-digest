@@ -68,6 +68,32 @@ describe("ArticleFetcher", () => {
     },
   );
 
+  it("supports a narrowly configured metadata content type and headers", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response('{"type":"file"}', {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    await expect(
+      fetcher(fetch, {
+        supportedContentTypes: new Set(["application/json"]),
+        requestHeaders: {
+          accept: "application/vnd.github+json",
+          "x-github-api-version": "2022-11-28",
+        },
+      }).fetch("https://api.github.com/repos/example/project/readme"),
+    ).resolves.toMatchObject({ contentType: "application/json" });
+    expect(fetch).toHaveBeenCalledWith(
+      new URL("https://api.github.com/repos/example/project/readme"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          accept: "application/vnd.github+json",
+          "x-github-api-version": "2022-11-28",
+        }),
+      }),
+    );
+  });
+
   it("revalidates redirects and rejects private destinations", async () => {
     const lookup = vi.fn(async (hostname: string) =>
       hostname === "example.com" ? ["93.184.216.34"] : ["127.0.0.1"],
