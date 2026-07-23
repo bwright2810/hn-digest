@@ -1,9 +1,10 @@
 # HD-075 initial source-adapter baseline
 
 Generated on 2026-07-22 from 10 production digest runs and 70 story
-occurrences. This report satisfies the initial HD-075 gate (`ready: true`,
-`roadmapReady: true`) but not the 30-run adapter-enablement gate
-(`extendedReady: false`). It contains no source bodies or complete URLs.
+occurrences. This report satisfies the HD-075 production-baseline gate
+(`ready: true`, `roadmapReady: true`). `extendedReady: false` is retained as
+informational run-count metadata, not an adapter-enablement gate. The report
+contains no source bodies or complete URLs.
 
 ## Aggregate outcomes
 
@@ -42,5 +43,9 @@ HD-075 is complete with no new format adapter selected from this initial
 sample. The next useful test is a
 reviewed, redistribution-safe fixture set for the seven access-restricted and
 four extraction-failure classes, using only bounded classifications and no
-production source bodies. The extended review remains due when 30 varied runs
-are available; it may supersede these rankings before any adapter is enabled.
+production source bodies. HD-081 will combine this observed baseline with
+bounded current-story discovery and reviewed safety/recovery fixtures before
+any adapter is enabled.
+
+That review is complete in `docs/source-adapter-review.md`; it selected no
+additional adapter.

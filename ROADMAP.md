@@ -24,12 +24,10 @@ Status labels mean:
 
 Immediate priorities, in order:
 
-1. HD-080: configure and restore-test off-server production backups.
-2. HD-081: complete the extended source-adapter evidence review over 30 varied
-   runs.
-3. Reassess HD-077 through HD-079 only from HD-081's evidence.
-4. Perform the owner-controlled repository visibility change when desired,
+1. Perform the owner-controlled repository visibility change when desired,
    after a fresh public-release review.
+2. Revisit deferred work only when measured need justifies a decision-log
+   change.
 
 ## Product boundaries for the first release
 
@@ -705,40 +703,28 @@ Acceptance criteria:
 Completion of HD-074 covers repository preparation, not the owner-controlled
 visibility change itself.
 
-### HD-080 — Configure and verify off-server production backups [active]
+### HD-081 — Complete the alternate source-adapter review [complete]
 
-Choose an off-server backup destination and retention policy, configure
-automated encrypted PostgreSQL backups for the production database, and prove
-recovery in an isolated environment. Do not record credentials, private
-hostnames, or backup object names in the repository.
-
-Acceptance criteria:
-
-- The destination, schedule, retention, encryption, and access-control policy
-  are explicitly chosen and documented without secrets.
-- A successful automated production backup is verified outside the Hetzner
-  server.
-- A selected backup is restored into an isolated PostgreSQL instance and the
-  application schema and representative records are verified.
-- The recurring restore-test cadence, alert path, and responsible operator are
-  documented.
-- Failure of the backup job is observable without relying only on transient
-  container logs.
-
-### HD-081 — Complete the extended source-adapter review [monitoring]
-
-Extend the HD-075 production baseline to at least 30 varied digest runs and
-repeat bounded, zero-LLM top-stories source discovery. Decide explicitly whether
-any gated source adapter has enough recoverable value to justify implementation.
+Evaluate candidate adapters without waiting for 30 varied production digest
+runs. Combine the completed HD-075 production baseline with bounded, zero-LLM
+top-stories discovery and reviewed, redistribution-safe fixtures that exercise
+each candidate's successful, malformed, oversized, and unsafe inputs. Decide
+explicitly whether any gated source adapter has enough recoverable value to
+justify implementation.
 
 Acceptance criteria:
 
-- The review covers at least 30 varied digest runs and reports both story
+- The review uses the completed HD-075 baseline and reports both story
   occurrences and distinct stories so repetition cannot inflate demand.
+- A discovery scan covers up to 500 current top stories and reports eligible
+  distinct candidates by coarse source type without fetching source bodies.
+- Reviewed fixtures demonstrate that each selected adapter can recover useful,
+  evidence-addressable content while preserving fetch, size, parser, and SSRF
+  boundaries.
 - Acquisition outcomes are ranked by frequency, expected recovery, evidence
   fidelity, implementation effort, and security risk.
-- Current top-stories discovery is used as supporting evidence, not as a
-  substitute for observed production acquisition outcomes.
+- Discovery and fixtures supplement rather than overwrite the observed
+  production acquisition outcomes.
 - Each selected adapter meets the 20% expected-recovery threshold and activates
   its existing stable task; otherwise HD-077 through HD-079 remain gated.
 - The decision and evidence summary are recorded without source bodies or
@@ -748,12 +734,10 @@ Acceptance criteria:
 
 The MVP implementation path is complete. Remaining work should proceed as:
 
-1. Complete HD-080 because a same-host volume is not disaster recovery.
-2. Continue normal production runs until HD-081's evidence threshold is met.
-3. Activate HD-077, HD-078, or HD-079 only if HD-081 selects them.
-4. Perform the final repository visibility review and owner-controlled change
+1. Keep HD-077, HD-078, and HD-079 gated; HD-081 selected no adapter.
+2. Perform the final repository visibility review and owner-controlled change
    when public release is desired.
-5. Revisit deferred work only when measured need justifies a decision-log
+3. Revisit deferred work only when measured need justifies a decision-log
    change.
 
 ## Deferred from the private MVP
@@ -782,10 +766,7 @@ can evolve independently later, but do not double the number of model calls.
 
 ## Open decisions
 
-- Off-server PostgreSQL backup destination, retention policy, and restore-test
-  cadence for HD-080
 - Whether and when to make the prepared repository public
-- Whether HD-081 evidence justifies any of HD-077 through HD-079
 - First post-MVP delivery channel if HD-062 is activated: email or RSS/Atom
 
 ## Resolved operating defaults
@@ -826,6 +807,8 @@ Record decisions here with the date, choice, and short rationale.
 | 2026-07-22 | Add bounded plain-text and Markdown extraction while keeping PDF and media sources discussion-only. | These text formats fit the existing SSRF and extraction-quality model; document and media parsing would add substantially different security and resource requirements. |
 | 2026-07-22 | Introduce HD-075 through HD-079 for discussion-only source reduction, implementing only the shared adapter foundation before production measurements select additional formats. | Stable gated tasks preserve the plan's measurement requirement and avoid authorizing GitHub, feed, JSON Feed, PDF, OCR, or media work from intuition alone. |
 | 2026-07-22 | After one citation-correction attempt, deterministically omit invalid discussion references instead of failing the story. | Preserving valid article analysis and grounded discussion claims gives readers a useful degraded result while never accepting invented comment IDs. |
-| 2026-07-22 | Complete the initial HD-075 audit at 10 runs and 50 source occurrences while retaining 30 varied runs as the adapter-enablement gate. | This allows the production review workflow to be exercised now without treating repeated stories from one day as sufficient evidence to enable a new parser. |
-| 2026-07-22 | Complete HD-075 without selecting an additional adapter and move the 30-run enablement review to HD-081. | The initial production baseline and a bounded scan of 500 current top stories found no unsupported format with enough distinct, eligible demand to justify implementation; a separate monitoring task keeps the completed audit distinct from future evidence collection. |
-| 2026-07-22 | Make verified off-server backup recovery the next active operational task under HD-080. | Deployment documentation and an isolated restore procedure exist, but disaster recovery is incomplete until production backups leave the host and a retained backup is restored successfully. |
+| 2026-07-22 | Complete the initial HD-075 audit at 10 runs and 50 source occurrences, with adapter enablement decided separately under HD-081. | This allows the production review workflow to be exercised without treating repeated stories from one day as sufficient evidence to enable a new parser. |
+| 2026-07-22 | Complete HD-075 without selecting an additional adapter and move adapter enablement review to HD-081. | The initial production baseline and a bounded scan of 500 current top stories found no unsupported format with enough distinct, eligible demand to justify implementation. |
+| 2026-07-23 | Remove HD-080 from the roadmap. | Off-server production backup work is no longer required as a tracked product task. |
+| 2026-07-23 | Replace HD-081's 30-run waiting period with an alternate bounded evidence review. | Combining the observed HD-075 baseline, a zero-LLM scan of up to 500 current top stories, and reviewed adversarial fixtures tests demand, recoverability, evidence fidelity, and parser safety without delaying the decision for additional scheduled runs. |
+| 2026-07-23 | Complete HD-081 without activating HD-077, HD-078, or HD-079. | The production baseline recovered all observed GitHub repository sources through HTML, while bounded discovery found no eligible feed, JSON Feed, or PDF candidates. No additional adapter demonstrated the required 20% incremental recovery value, so implementing and exposing a new parser would add risk without measured benefit. |

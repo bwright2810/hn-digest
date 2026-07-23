@@ -62,6 +62,7 @@ export interface SourceAcquisitionMetric {
 }
 
 export interface SourceAdapterBaselineMetric extends SourceAcquisitionMetric {
+  readonly distinctStoryCount: number;
   readonly medianCommentCount: number;
   readonly medianRank: number;
   readonly shareOfDiscussionOnly: number;
@@ -78,6 +79,7 @@ export interface SourceAdapterBaseline {
   readonly roadmapRequiredRunCount: 10;
   readonly extendedRequiredRunCount: 30;
   readonly occurrenceCount: number;
+  readonly distinctStoryCount: number;
   readonly discussionOnlyCount: number;
   readonly discussionOnlyShare: number;
   readonly metrics: readonly SourceAdapterBaselineMetric[];
@@ -287,6 +289,7 @@ export async function collectSourceAdapterBaseline(
     ), occurrences AS (
       SELECT
         drs.digest_run_id,
+        drs.story_id,
         drs.rank,
         snapshot.comment_count,
         document.status AS document_status,
@@ -305,6 +308,7 @@ export async function collectSourceAdapterBaseline(
     ), classified AS (
       SELECT
         digest_run_id,
+        story_id,
         rank,
         comment_count,
         CASE
@@ -338,6 +342,7 @@ export async function collectSourceAdapterBaseline(
       content_type,
       outcome,
       COUNT(*)::int AS count,
+      COUNT(DISTINCT story_id)::int AS distinct_story_count,
       PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY comment_count)::int AS median_comment_count,
       PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY rank)::int AS median_rank
     FROM classified
@@ -350,10 +355,15 @@ export async function collectSourceAdapterBaseline(
     contentType: String(metric.content_type),
     outcome: sourceOutcome(metric.outcome),
     count: number(metric.count),
+    distinctStoryCount: number(metric.distinct_story_count),
     medianCommentCount: number(metric.median_comment_count),
     medianRank: number(metric.median_rank),
   }));
   const occurrenceCount = rows.reduce((sum, metric) => sum + metric.count, 0);
+  const distinctStoryCount = rows.reduce(
+    (sum, metric) => sum + metric.distinctStoryCount,
+    0,
+  );
   const discussionOnlyCount = rows
     .filter((metric) => isDiscussionOnlyOutcome(metric.outcome))
     .reduce((sum, metric) => sum + metric.count, 0);
@@ -368,6 +378,7 @@ export async function collectSourceAdapterBaseline(
     roadmapRequiredRunCount: 10,
     extendedRequiredRunCount: 30,
     occurrenceCount,
+    distinctStoryCount,
     discussionOnlyCount,
     discussionOnlyShare:
       occurrenceCount === 0 ? 0 : discussionOnlyCount / occurrenceCount,

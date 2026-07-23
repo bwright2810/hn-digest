@@ -153,7 +153,8 @@ development schema.
   Run it as a trusted
   one-off command on the private database network; it emits no source URLs or
   bodies and exits with status 2 while fewer than the requested/default 10
-  qualifying runs exist; `extendedReady` tracks the 30-run adapter gate.
+  qualifying runs exist; `extendedReady` is informational run-count metadata
+  and is not the HD-081 adapter-enablement gate.
 - The zero-LLM source discovery command is `node source-discovery.js [limit]`.
   It scans up to 500 current HN `topstories` items and emits bounded aggregate
   URL-shape classifications without fetching linked article bodies.
