@@ -7,27 +7,29 @@ source-grounded summaries with an LLM.
 Task IDs are stable. Completed tasks remain in this file as the implementation
 record; active, gated, and deferred work is called out explicitly.
 
-## Current state and priorities
+## Current state
 
-The private MVP is deployed and operational. It collects scheduled and
-on-demand digests, performs bounded source acquisition and structured analysis,
-tracks usage and cost, and exposes authenticated operator and editorial reading
-surfaces. The production application uses its own private PostgreSQL resource.
+The MVP is deployed and operational, and the repository is public under the MIT
+license. The application collects scheduled and on-demand digests, performs
+bounded source acquisition and structured analysis, tracks usage and cost, and
+exposes authenticated operator and editorial reading surfaces. Production uses
+its own private PostgreSQL resource.
 
 Status labels mean:
 
 - **Complete:** implemented and validated against the task's acceptance criteria.
-- **Active:** the next work that can proceed now.
 - **Monitoring:** collecting production evidence before a decision.
 - **Gated:** authorized only if its stated evidence gate is met.
 - **Deferred:** outside the current release until the decision log changes.
 
-Immediate priorities, in order:
+There is no active implementation task. Remaining roadmap work is:
 
-1. Revisit deferred work only when measured need justifies a decision-log
-   change.
+1. Monitor the production outcomes of the HD-077 GitHub and HD-078 RSS/Atom
+   adapters.
+2. Keep HD-079 gated unless production evidence justifies JSON Feed support.
+3. Activate deferred work only through an explicit decision-log update.
 
-## Product boundaries for the first release
+## MVP product boundaries
 
 - Collect a configurable number of stories from Hacker News twice daily and on
   demand.
@@ -40,7 +42,7 @@ Immediate priorities, in order:
 - Use a modern, minimal, distinctive visual language that does not resemble a
   generic chatbot or interchangeable LLM dashboard.
 
-Not in the first release: native mobile apps, user accounts, personalized
+Not in the MVP: native mobile apps, user accounts, personalized
 ranking, embeddings, vector search, multiple LLM providers, and a separate
 model-based comment-ranking stage.
 
@@ -757,17 +759,7 @@ Acceptance criteria:
 - The decision and evidence summary are recorded without source bodies or
   complete URLs.
 
-## Current execution order
-
-The MVP implementation path is complete. Remaining work should proceed as:
-
-1. Monitor HD-077 and HD-078 acquisition and extraction outcomes without
-   storing source bodies or complete URLs in metrics.
-2. Keep HD-079 gated; HD-081 selected no JSON Feed adapter.
-3. Revisit deferred work only when measured need justifies a decision-log
-   change.
-
-## Deferred from the private MVP
+## Deferred work
 
 - HD-044: stronger-model routing and fallback
 - HD-052: Batch API processing
@@ -791,10 +783,9 @@ can evolve independently later, but do not double the number of model calls.
 - Treat web pages, HN posts, and comments as untrusted input.
 - Prefer measurable quality improvements over adding more model calls.
 
-## Open decisions
+## Open decision
 
-- Whether and when to make the prepared repository public
-- First post-MVP delivery channel if HD-062 is activated: email or RSS/Atom
+- First post-MVP delivery channel if HD-062 is activated: email or RSS/Atom.
 
 ## Resolved operating defaults
 
