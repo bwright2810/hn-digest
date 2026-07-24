@@ -63,7 +63,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
   try {
     await page.goto("/newsletter");
     await expect(
-      page.getByRole("heading", { name: "HN Digest in your inbox." }),
+      page.getByRole("heading", { name: "Get the edition when you read." }),
     ).toBeVisible();
     await page.getByLabel("Email address").fill(email);
     await page.getByLabel("Morning").check();
