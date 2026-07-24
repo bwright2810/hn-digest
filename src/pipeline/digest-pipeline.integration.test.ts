@@ -3,7 +3,10 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { AnalysisOutput } from "../analysis/contract";
+import {
+  ANALYSIS_PROMPT_VERSION,
+  type AnalysisOutput,
+} from "../analysis/contract";
 import type { OpenAIAnalysisClient } from "../analysis/openai-client";
 import { loadConfig } from "../config/server";
 import { createDatabase } from "../db/client";
@@ -210,7 +213,7 @@ function analysisOutput(commentId: number): AnalysisOutput {
     supportingCommentIds: [commentId],
   };
   return {
-    promptVersion: "analysis-prompt-v1",
+    promptVersion: ANALYSIS_PROMPT_VERSION,
     schemaVersion: "analysis-schema-v1",
     article: {
       thesis: {

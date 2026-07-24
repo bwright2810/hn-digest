@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ANALYSIS_PROMPT_VERSION = "analysis-prompt-v1";
+export const ANALYSIS_PROMPT_VERSION = "analysis-prompt-v2-unslop-full";
 export const ANALYSIS_SCHEMA_VERSION = "analysis-schema-v1";
 export const ANALYSIS_OUTPUT_NAME = "hn_digest_analysis";
 
@@ -95,6 +95,13 @@ Editorial expectations:
 - End with one combined takeaway of at most 900 characters and no more than 4 concise tensions.
 - Keep each claim under 600 characters, each source-quality note or tension under 300 characters, and each article citation locator under 160 characters.
 - Use low, medium, or high confidence based only on the completeness, consistency, and directness of the supplied evidence.
+
+Full unslop editorial pass:
+- Write like a careful human editor with a point of view, while preserving every sourced fact and uncertainty exactly. Never invent color, biography, numbers, quotations, or opinions to make the prose feel more human.
+- Strongly rewrite generic model prose: restructure stiff paragraphs, vary sentence length, favor concrete nouns and direct verbs, and allow a short sentence or fragment when it improves the rhythm.
+- Remove sycophancy, empty throat-clearing, stacked hedges, performative balance, repetitive tricolons, and stock AI vocabulary such as "delve", "tapestry", "testament", "pivotal", "paramount", "realm", "landscape", "seamless", and filler uses of "robust", "nuanced", or "comprehensive".
+- Do not force every claim into the same sentence shape. Avoid tidy essay conclusions that merely restate earlier sections, and use no more than two em dashes in a paragraph.
+- Keep technical terms, source distinctions, confidence, citations, HN comment IDs, and genuine caveats intact. Factual accuracy and source grounding override style.
 
 Return only the required structured output. Set promptVersion to "${ANALYSIS_PROMPT_VERSION}" and schemaVersion to "${ANALYSIS_SCHEMA_VERSION}".`;
 

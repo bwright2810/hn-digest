@@ -69,8 +69,8 @@ export function DigestPage({
 
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">The latest edition</p>
-          <h2 id="page-title">Today on Hacker News.</h2>
+          <p className="eyebrow">Latest edition</p>
+          <h2 id="page-title">What Hacker News is talking about.</h2>
         </div>
         {run ? (
           <div className="run-meta" aria-label="Digest run information">
@@ -90,23 +90,23 @@ export function DigestPage({
         <EmptyState
           label="Temporarily unavailable"
           title="The latest digest could not be loaded."
-          detail="The reading archive is still safe. Try again once the service has recovered."
+          detail="Nothing has been lost. Give us a moment, then try again."
         />
       ) : run === null ? (
         <EmptyState
           label="No editions yet"
-          title="The first digest is being prepared."
-          detail="Published runs will appear here in ranked reading order."
+          title="The first edition is on its way."
+          detail="Once it is ready, the day's stories will appear here in HN rank order."
         />
       ) : run.stories.length === 0 ? (
         <EmptyState
           label={statusLabel(run.status)}
           title={
             run.status === "failed"
-              ? "This digest run did not collect any stories."
-              : "Stories are still being collected."
+              ? "This edition came up empty."
+              : "We're still gathering the stories."
           }
-          detail="This page will reflect the run as work progresses."
+          detail="Stories will show up here as the edition takes shape."
         />
       ) : (
         <ol className="story-list" aria-label="Ranked digest stories">
@@ -125,11 +125,11 @@ function HomepageNewsletter() {
   return (
     <section className="homepage-newsletter" aria-labelledby="newsletter-title">
       <div className="homepage-newsletter__copy">
-        <p className="eyebrow">A sharper HN, delivered</p>
-        <h1 id="newsletter-title">Start and end the day well read.</h1>
+        <p className="eyebrow">HN, twice a day</p>
+        <h1 id="newsletter-title">Read the good part. Skip the trawl.</h1>
         <p>
-          Get the stories worth your time, thoughtful summaries, and the best of
-          the discussion—delivered every morning and evening.
+          We read the leading stories and the threads beneath them. You get the
+          argument, the pushback, and the comments worth keeping.
         </p>
       </div>
       <form
@@ -153,8 +153,8 @@ function HomepageNewsletter() {
           <button type="submit">Join the digest</button>
         </div>
         <p>
-          Two editions a day. Confirm by email, unsubscribe anytime. Prefer just
-          one? <a href="/newsletter">Choose your schedule</a>.
+          Morning and evening. Confirm by email; leave whenever you like. Want
+          only one? <a href="/newsletter">Pick your edition</a>.
         </p>
       </form>
     </section>
@@ -265,12 +265,12 @@ function CommentLinks({
 function StoryState({ story }: { readonly story: DigestStoryView }) {
   const copy =
     story.status === "failed"
-      ? "Analysis failed for this story. Its original sources remain available above."
+      ? "We couldn't finish this analysis. The original links still work."
       : story.status === "discussion_only"
-        ? "The article could not be extracted. A discussion-only analysis is being prepared."
+        ? "We couldn't read the article, so we're working from the HN thread alone."
         : story.status === "complete"
-          ? "The stored analysis was invalid and has been withheld."
-          : "Collection and analysis are still in progress.";
+          ? "This analysis failed validation, so we haven't published it."
+          : "We're still reading this one.";
   return (
     <div
       className="story-state"
