@@ -16,14 +16,19 @@ test("offers newsletter signup at the top of the homepage", async ({
   await page.goto("/?fixture=complete");
 
   await expect(
-    page.getByRole("heading", { name: "Read the good part. Skip the trawl." }),
+    page.getByRole("heading", {
+      name: "Get the gist of what Hacker News is talking about.",
+    }),
   ).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Join the digest" }),
   ).toBeVisible();
   await expect(
-    page.getByText("What Hacker News is talking about."),
+    page.getByRole("heading", {
+      name: "What Hacker News is talking about.",
+      exact: true,
+    }),
   ).toBeVisible();
 
   const newsletterTop = await page

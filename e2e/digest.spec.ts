@@ -179,6 +179,7 @@ test("shows a useful loading state while a digest is streamed", async ({
   await expect(
     page.getByRole("heading", {
       name: "What Hacker News is talking about.",
+      exact: true,
     }),
   ).toBeVisible();
 });
