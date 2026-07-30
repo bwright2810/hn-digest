@@ -52,13 +52,13 @@ export function renderNewsletter(
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${escapeHtml(subject)}</title>
 <style>@media only screen and (max-width:620px){.email-shell{width:100%!important}.email-pad{padding-left:20px!important;padding-right:20px!important}.story-title{font-size:25px!important}.digest-title{font-size:34px!important}}a:hover{text-decoration:underline!important}</style></head>
 <body style="margin:0;padding:0;background:${colors.background};color:${colors.ink};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">The leading Hacker News stories, articles, and discussion—distilled.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Today's Hacker News stories, with the discussion underneath them.</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:${colors.background};"><tr><td align="center" style="padding:28px 10px;">
 <table role="presentation" class="email-shell" width="680" cellspacing="0" cellpadding="0" border="0" style="width:680px;max-width:680px;background:${colors.canvas};">
 <tr><td class="email-pad" style="padding:38px 42px 30px;border-top:5px solid ${colors.accent};">
 <p style="margin:0 0 16px;color:${colors.accent};font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;">${escapeHtml(label)} edition · ${escapeHtml(storyCount)}</p>
 <h1 class="digest-title" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:42px;line-height:1.05;font-weight:500;letter-spacing:-1px;">HN Digest</h1>
-<p style="margin:14px 0 0;color:${colors.muted};font-family:Georgia,'Times New Roman',serif;font-size:17px;line-height:1.55;">What Hacker News is reading, debating, and taking away.</p>
+<p style="margin:14px 0 0;color:${colors.muted};font-family:Georgia,'Times New Roman',serif;font-size:17px;line-height:1.55;">The stories HN is reading, plus what the comments get right.</p>
 </td></tr>
 ${stories.map((story) => story.html).join("")}
 <tr><td class="email-pad" style="padding:34px 42px;text-align:center;border-top:1px solid ${colors.rule};">
