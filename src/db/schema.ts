@@ -349,6 +349,7 @@ export const digestRuns = pgTable(
       .notNull(),
     status: digestRunStatus("status").default("pending").notNull(),
     newsletterReadyAt: timestamp("newsletter_ready_at", { withTimezone: true }),
+    humanizedAt: timestamp("humanized_at", { withTimezone: true }),
     errorCode: varchar("error_code", { length: 100 }),
     ...timestampColumns,
   },
@@ -813,6 +814,7 @@ export const discussionAnalyses = pgTable(
     schemaVersion: varchar("schema_version", { length: 80 }).notNull(),
     model: varchar("model", { length: 120 }).notNull(),
     result: jsonb("result").$type<Record<string, unknown>>().notNull(),
+    humanizedResult: jsonb("humanized_result").$type<Record<string, unknown>>(),
     citedCommentIds: jsonb("cited_comment_ids")
       .$type<number[]>()
       .default([])
@@ -842,9 +844,12 @@ export const llmUsage = pgTable(
   "llm_usage",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    analysisJobId: uuid("analysis_job_id")
-      .notNull()
-      .references(() => analysisJobs.id, { onDelete: "cascade" }),
+    analysisJobId: uuid("analysis_job_id").references(() => analysisJobs.id, {
+      onDelete: "cascade",
+    }),
+    digestRunId: uuid("digest_run_id").references(() => digestRuns.id, {
+      onDelete: "cascade",
+    }),
     attempt: integer("attempt").notNull(),
     providerRequestId: varchar("provider_request_id", { length: 160 }),
     model: varchar("model", { length: 120 }).notNull(),
@@ -867,10 +872,12 @@ export const llmUsage = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("llm_usage_job_attempt_unique").on(
-      table.analysisJobId,
-      table.attempt,
-    ),
+    uniqueIndex("llm_usage_job_attempt_unique")
+      .on(table.analysisJobId, table.attempt)
+      .where(sql`${table.analysisJobId} is not null`),
+    uniqueIndex("llm_usage_run_attempt_unique")
+      .on(table.digestRunId, table.attempt)
+      .where(sql`${table.digestRunId} is not null`),
     uniqueIndex("llm_usage_provider_request_unique")
       .on(table.providerRequestId)
       .where(sql`${table.providerRequestId} is not null`),
@@ -891,6 +898,10 @@ export const llmUsage = pgTable(
     check(
       "llm_usage_actual_cost_nonnegative",
       sql`${table.actualCostUsd} is null or ${table.actualCostUsd} >= 0`,
+    ),
+    check(
+      "llm_usage_exactly_one_attribution",
+      sql`(${table.analysisJobId} is not null) <> (${table.digestRunId} is not null)`,
     ),
   ],
 );

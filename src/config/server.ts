@@ -31,6 +31,7 @@ const DEVELOPMENT_DEFAULTS = {
   LLM_DAILY_HARD_LIMIT_USD: "3",
   LLM_MONTHLY_SOFT_LIMIT_USD: "30",
   LLM_MONTHLY_HARD_LIMIT_USD: "40",
+  HUMANIZER_ENABLED: "false",
   WORKER_FETCH_CONCURRENCY_PER_HOST: "2",
   WORKER_LLM_CONCURRENCY: "1",
   WORKER_LEASE_MS: "300000",
@@ -174,6 +175,7 @@ const environmentSchema = z
     LLM_DAILY_HARD_LIMIT_USD: positiveMoney,
     LLM_MONTHLY_SOFT_LIMIT_USD: positiveMoney,
     LLM_MONTHLY_HARD_LIMIT_USD: positiveMoney,
+    HUMANIZER_ENABLED: environmentBoolean,
     WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
     WORKER_LLM_CONCURRENCY: positiveInteger,
     WORKER_LEASE_MS: positiveInteger,
@@ -302,6 +304,9 @@ export interface AppConfig {
     readonly dailyHardLimitUsd: number;
     readonly monthlySoftLimitUsd: number;
     readonly monthlyHardLimitUsd: number;
+  };
+  readonly humanizer: {
+    readonly enabled: boolean;
   };
   readonly subscribers: {
     readonly emailEncryptionKey: Buffer;
@@ -439,6 +444,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       dailyHardLimitUsd: values.LLM_DAILY_HARD_LIMIT_USD,
       monthlySoftLimitUsd: values.LLM_MONTHLY_SOFT_LIMIT_USD,
       monthlyHardLimitUsd: values.LLM_MONTHLY_HARD_LIMIT_USD,
+    }),
+    humanizer: Object.freeze({
+      enabled: values.HUMANIZER_ENABLED,
     }),
     subscribers: Object.freeze({
       emailEncryptionKey: Buffer.from(
