@@ -25,7 +25,10 @@ test("offers newsletter signup at the top of the homepage", async ({
     page.getByRole("button", { name: "Join the digest" }),
   ).toBeVisible();
   await expect(
-    page.getByText("What Hacker News is talking about."),
+    page.getByRole("heading", {
+      name: "What Hacker News is talking about.",
+      exact: true,
+    }),
   ).toBeVisible();
 
   const newsletterTop = await page
