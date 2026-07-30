@@ -8,7 +8,7 @@ import { ThemeToggle } from "./theme-toggle";
 export const metadata: Metadata = {
   title: {
     default: "HN Digest",
-    template: "%s — HN Digest",
+    template: "%s · HN Digest",
   },
   description: "The day's Hacker News stories, read closely and sourced.",
 };
