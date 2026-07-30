@@ -126,7 +126,9 @@ function HomepageNewsletter() {
     <section className="homepage-newsletter" aria-labelledby="newsletter-title">
       <div className="homepage-newsletter__copy">
         <p className="eyebrow">HN, twice a day</p>
-        <h1 id="newsletter-title">Read the good part. Skip the trawl.</h1>
+        <h1 id="newsletter-title">
+          Get the gist of what Hacker News is talking about.
+        </h1>
         <p>
           We read the leading stories and the threads beneath them. You get the
           argument, the pushback, and the comments worth keeping.

@@ -87,7 +87,9 @@ describe("DigestPage", () => {
   it("puts an inviting email signup before the latest digest", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 
-    expect(html).toContain("Read the good part. Skip the trawl.");
+    expect(html).toContain(
+      "Get the gist of what Hacker News is talking about.",
+    );
     expect(html).toContain('action="/api/newsletter/signup"');
     expect(html).toContain('type="email"');
     expect(html).toContain('name="morning" value="1"');
