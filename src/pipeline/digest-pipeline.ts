@@ -21,6 +21,7 @@ import {
   analysisOutputSchema,
   type AnalysisOutput,
 } from "../analysis/contract";
+import { HumanizerClient } from "../analysis/humanizer-client";
 import {
   HUMANIZER_PROMPT_VERSION,
   type HumanizerItem,
@@ -30,10 +31,9 @@ import {
   HumanizerRequestBudgetError,
 } from "../analysis/humanizer-request";
 import {
-  LlmAnalysisClient,
+  OpenAIAnalysisClient,
   type AnalysisResponseOutcome,
-} from "../analysis/llm-analysis-client";
-import { HumanizerClient } from "../analysis/llm-humanizer-client";
+} from "../analysis/openai-client";
 import {
   assembleAnalysisRequest,
   type AssembledAnalysisRequest,
@@ -97,21 +97,17 @@ interface StoredJobContext {
 
 export interface DigestPipelineDependencies {
   readonly hnClient?: HackerNewsClient;
-  readonly openaiClient?: LlmAnalysisClient;
+  readonly openaiClient?: OpenAIAnalysisClient;
   readonly humanizerClient?: HumanizerClient;
   readonly articleFetcher?: FetchArticleClient;
 }
 
 export class DigestPipeline {
   private readonly hnClient: HackerNewsClient;
-  private readonly openaiClient: LlmAnalysisClient;
+  private readonly openaiClient: OpenAIAnalysisClient;
   private readonly humanizerClient: HumanizerClient;
   private readonly prices: LlmPriceAssumptions;
   private readonly articleFetcher: FetchArticleClient;
-  private readonly activeLlm: {
-    readonly model: string;
-    readonly reasoningEffort: string;
-  };
 
   constructor(
     private readonly db: Database,
@@ -122,14 +118,10 @@ export class DigestPipeline {
     this.articleFetcher =
       dependencies.articleFetcher ??
       createSourceAwareArticleFetcher(config.articleFetch);
-    this.activeLlm =
-      config.llm.provider === "openrouter"
-        ? config.llm.openrouter
-        : config.llm.openai;
     this.openaiClient =
       dependencies.openaiClient ??
-      new LlmAnalysisClient({
-        ...config.llm,
+      new OpenAIAnalysisClient({
+        ...config.openai,
         logger: {
           info: (event) => console.log(JSON.stringify(event)),
           warn: (event) => console.error(JSON.stringify(event)),
@@ -138,7 +130,7 @@ export class DigestPipeline {
     this.humanizerClient =
       dependencies.humanizerClient ??
       new HumanizerClient({
-        ...config.llm,
+        ...config.openai,
         logger: {
           info: (event) => console.log(JSON.stringify(event)),
           warn: (event) => console.error(JSON.stringify(event)),
@@ -147,7 +139,7 @@ export class DigestPipeline {
     this.prices = {
       version: LLM_PRICE_ASSUMPTIONS_VERSION,
       currency: "USD",
-      ...config.llm.prices,
+      ...config.openai.prices,
     };
   }
 
@@ -438,8 +430,8 @@ export class DigestPipeline {
       selectedCommentHash,
       promptVersion: ANALYSIS_PROMPT_VERSION,
       schemaVersion: ANALYSIS_SCHEMA_VERSION,
-      model: this.activeLlm.model,
-      reasoningConfig: { effort: this.activeLlm.reasoningEffort },
+      model: this.config.openai.model,
+      reasoningConfig: { effort: this.config.openai.reasoningEffort },
     } as const;
     const cache = await resolveAnalysisCache(
       this.db,
@@ -611,8 +603,8 @@ export class DigestPipeline {
       selectedCommentHash: job.selectedCommentHash,
       promptVersion: ANALYSIS_PROMPT_VERSION,
       schemaVersion: ANALYSIS_SCHEMA_VERSION,
-      model: this.activeLlm.model,
-      reasoningConfig: { effort: this.activeLlm.reasoningEffort },
+      model: this.config.openai.model,
+      reasoningConfig: { effort: this.config.openai.reasoningEffort },
     });
 
     await this.db.transaction(async (transaction) => {
@@ -624,7 +616,7 @@ export class DigestPipeline {
           contentHash: job.articleContentHash,
           promptVersion: ANALYSIS_PROMPT_VERSION,
           schemaVersion: ANALYSIS_SCHEMA_VERSION,
-          model: this.activeLlm.model,
+          model: this.config.openai.model,
           result: {
             promptVersion: persistedOutput.promptVersion,
             schemaVersion: persistedOutput.schemaVersion,
@@ -640,7 +632,7 @@ export class DigestPipeline {
         selectedCommentHash: job.selectedCommentHash,
         promptVersion: ANALYSIS_PROMPT_VERSION,
         schemaVersion: ANALYSIS_SCHEMA_VERSION,
-        model: this.activeLlm.model,
+        model: this.config.openai.model,
         result: { ...persistedOutput },
         citedCommentIds: citedCommentIds(persistedOutput),
       });

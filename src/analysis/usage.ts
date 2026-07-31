@@ -3,7 +3,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
 import { analysisJobs, digestRunStories, llmUsage } from "../db/schema";
-import type { AnalysisUsage } from "./llm-analysis-client";
+import type { AnalysisUsage } from "./openai-client";
 
 export const LLM_PRICE_ASSUMPTIONS_VERSION = "llm-prices-v1";
 

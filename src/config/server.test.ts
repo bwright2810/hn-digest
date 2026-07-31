@@ -4,7 +4,7 @@ import { ConfigurationError, loadConfig } from "./server";
 
 const requiredSecrets = {
   DATABASE_URL: "postgresql://digest:database-secret@localhost:5432/hn_digest",
-  LLM_OPENROUTER_API_KEY: "openrouter-secret-value",
+  OPENAI_API_KEY: "openai-secret-value",
   SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString("base64"),
   SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 23).toString("base64"),
 };
@@ -29,26 +29,17 @@ describe("loadConfig", () => {
       maximumBytes: 2_097_152,
       maximumRedirects: 5,
     });
-    expect(config.llm).toEqual({
-      provider: "openrouter",
-      openai: {
-        apiKey: "",
-        model: "gpt-5.6-luna",
-        reasoningEffort: "low",
-      },
-      openrouter: {
-        apiKey: requiredSecrets.LLM_OPENROUTER_API_KEY,
-        model: "deepseek/deepseek-v4-flash",
-        reasoningEffort: "high",
-        baseUrl: "https://openrouter.ai/api/v1",
-      },
+    expect(config.openai).toEqual({
+      apiKey: requiredSecrets.OPENAI_API_KEY,
+      model: "gpt-5.6-luna",
+      reasoningEffort: "low",
       timeoutMs: 60_000,
       maximumRetries: 2,
       prices: {
-        inputUsdPerMillionTokens: 0.1,
-        cachedReadUsdPerMillionTokens: 0.002,
-        cacheWriteUsdPerMillionTokens: 0.1,
-        outputUsdPerMillionTokens: 0.2,
+        inputUsdPerMillionTokens: 1,
+        cachedReadUsdPerMillionTokens: 0.1,
+        cacheWriteUsdPerMillionTokens: 1.25,
+        outputUsdPerMillionTokens: 6,
       },
     });
     expect(config.tokens).toEqual({
@@ -109,7 +100,7 @@ describe("loadConfig", () => {
 
   it("requires secrets in every environment", () => {
     expect(() => loadConfig({ NODE_ENV: "development" })).toThrowError(
-      /DATABASE_URL.*SUBSCRIBER_EMAIL_ENCRYPTION_KEY.*SUBSCRIBER_LOOKUP_HMAC_KEY/s,
+      /DATABASE_URL.*OPENAI_API_KEY.*SUBSCRIBER_EMAIL_ENCRYPTION_KEY.*SUBSCRIBER_LOOKUP_HMAC_KEY/s,
     );
   });
 
@@ -117,13 +108,13 @@ describe("loadConfig", () => {
     expect(() =>
       loadConfig({ NODE_ENV: "production", ...requiredSecrets }),
     ).toThrowError(
-      /ADMIN_PASSWORD.*LLM_PROVIDER.*LLM_OPENAI_MODEL.*LLM_OPENAI_REASONING_EFFORT.*LLM_OPENROUTER_MODEL.*LLM_OPENROUTER_REASONING_EFFORT.*LLM_OPENROUTER_BASE_URL.*LLM_REQUEST_TIMEOUT_MS.*LLM_MAX_RETRIES.*LLM_INPUT_USD_PER_MILLION_TOKENS.*LLM_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS.*SUBSCRIBER_KEY_VERSION.*NEWSLETTER_PUBLIC_SIGNUP_ENABLED.*NEWSLETTER_CONSENT_POLICY_VERSION.*NEWSLETTER_SIGNUP_RATE_LIMIT.*NEWSLETTER_SIGNUP_RATE_WINDOW_MS/s,
+      /ADMIN_PASSWORD.*OPENAI_MODEL.*OPENAI_REASONING_EFFORT.*OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*OPENAI_INPUT_USD_PER_MILLION_TOKENS.*OPENAI_OUTPUT_USD_PER_MILLION_TOKENS.*APP_URL.*DIGEST_TIME_ZONE.*DIGEST_STORY_COUNT.*DIGEST_MINIMUM_COMMENT_COUNT.*DIGEST_MISSED_RUN_GRACE_MS.*ARTICLE_FETCH_TIMEOUT_MS.*LLM_OUTPUT_TOKEN_LIMIT.*LLM_MAX_REQUEST_COST_USD.*COMMENT_SELECTION_MAXIMUM.*WORKER_FETCH_CONCURRENCY_PER_HOST.*WORKER_LLM_CONCURRENCY.*WORKER_LEASE_MS.*SCHEDULER_POLL_INTERVAL_MS.*WORKER_POLL_INTERVAL_MS.*RUNTIME_SHUTDOWN_GRACE_MS.*SUBSCRIBER_KEY_VERSION.*NEWSLETTER_PUBLIC_SIGNUP_ENABLED.*NEWSLETTER_CONSENT_POLICY_VERSION.*NEWSLETTER_SIGNUP_RATE_LIMIT.*NEWSLETTER_SIGNUP_RATE_WINDOW_MS/s,
     );
   });
 
   it("never includes supplied secret values in validation errors", () => {
     const databaseSecret = "do-not-log-this-database-secret";
-    const openrouterSecret = "do-not-log-this-openrouter-secret";
+    const openaiSecret = "do-not-log-this-openai-secret";
     const encryptionSecret = "do-not-log-this-encryption-secret";
     const lookupSecret = "do-not-log-this-lookup-secret";
 
@@ -132,7 +123,7 @@ describe("loadConfig", () => {
       loadConfig({
         NODE_ENV: "development",
         DATABASE_URL: databaseSecret,
-        LLM_OPENROUTER_API_KEY: openrouterSecret,
+        OPENAI_API_KEY: openaiSecret,
         SUBSCRIBER_EMAIL_ENCRYPTION_KEY: encryptionSecret,
         SUBSCRIBER_LOOKUP_HMAC_KEY: lookupSecret,
         DIGEST_STORY_COUNT: "not-a-number",
@@ -143,7 +134,7 @@ describe("loadConfig", () => {
 
     expect(error).toBeInstanceOf(ConfigurationError);
     expect(String(error)).not.toContain(databaseSecret);
-    expect(String(error)).not.toContain(openrouterSecret);
+    expect(String(error)).not.toContain(openaiSecret);
     expect(String(error)).not.toContain(encryptionSecret);
     expect(String(error)).not.toContain(lookupSecret);
   });
@@ -158,12 +149,12 @@ describe("loadConfig", () => {
         ARTICLE_FETCH_MAX_BYTES: "0",
         ARTICLE_FETCH_MAX_REDIRECTS: "-1",
         LLM_ARTICLE_TOKEN_LIMIT: "0",
-        LLM_REQUEST_TIMEOUT_MS: "0",
-        LLM_MAX_RETRIES: "-1",
+        OPENAI_REQUEST_TIMEOUT_MS: "0",
+        OPENAI_MAX_RETRIES: "-1",
         LLM_DAILY_SOFT_LIMIT_USD: "0",
       }),
     ).toThrowError(
-      /LLM_REQUEST_TIMEOUT_MS.*LLM_MAX_RETRIES.*DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT.*LLM_DAILY_SOFT_LIMIT_USD/s,
+      /OPENAI_REQUEST_TIMEOUT_MS.*OPENAI_MAX_RETRIES.*DIGEST_TIME_ZONE.*DIGEST_MORNING_TIME.*ARTICLE_FETCH_MAX_BYTES.*ARTICLE_FETCH_MAX_REDIRECTS.*LLM_ARTICLE_TOKEN_LIMIT.*LLM_DAILY_SOFT_LIMIT_USD/s,
     );
   });
 
@@ -176,33 +167,6 @@ describe("loadConfig", () => {
         LLM_DAILY_HARD_LIMIT_USD: "3",
       }),
     ).toThrowError(/LLM_DAILY_SOFT_LIMIT_USD.*LLM_DAILY_HARD_LIMIT_USD/s);
-  });
-
-  it("requires only the API key matching the active LLM_PROVIDER", () => {
-    expect(() =>
-      loadConfig({
-        NODE_ENV: "development",
-        DATABASE_URL: requiredSecrets.DATABASE_URL,
-        SUBSCRIBER_EMAIL_ENCRYPTION_KEY:
-          requiredSecrets.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
-        SUBSCRIBER_LOOKUP_HMAC_KEY: requiredSecrets.SUBSCRIBER_LOOKUP_HMAC_KEY,
-        LLM_PROVIDER: "openai",
-        LLM_OPENROUTER_API_KEY: "openrouter-value-only",
-      }),
-    ).toThrowError(/LLM_OPENAI_API_KEY: is required when LLM_PROVIDER=openai/);
-
-    const config = loadConfig({
-      NODE_ENV: "development",
-      DATABASE_URL: requiredSecrets.DATABASE_URL,
-      SUBSCRIBER_EMAIL_ENCRYPTION_KEY:
-        requiredSecrets.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
-      SUBSCRIBER_LOOKUP_HMAC_KEY: requiredSecrets.SUBSCRIBER_LOOKUP_HMAC_KEY,
-      LLM_PROVIDER: "openai",
-      LLM_OPENAI_API_KEY: "openai-value-only",
-    });
-    expect(config.llm.provider).toBe("openai");
-    expect(config.llm.openai.apiKey).toBe("openai-value-only");
-    expect(config.llm.openrouter.apiKey).toBe("");
   });
 
   it("requires provider settings only when public newsletter signup is enabled", () => {

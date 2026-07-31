@@ -19,8 +19,8 @@ export function classifyOperationalError(
   if (!isErrorLike(error)) return fallback;
 
   const providerCode = stringProperty(error, "code");
-  if (error.name === "LlmAnalysisError" && providerCode) {
-    return boundedCode(`llm_${providerCode}`);
+  if (error.name === "OpenAIAnalysisError" && providerCode) {
+    return boundedCode(`openai_${providerCode}`);
   }
   if (providerCode && POSTGRES_ERROR_CODE.test(providerCode)) {
     return `postgres_${providerCode.toLowerCase()}`;

@@ -5,10 +5,6 @@ import type {
   ResponseCreateParamsNonStreaming,
   ResponseUsage,
 } from "openai/resources/responses/responses";
-import type {
-  ChatCompletion,
-  ChatCompletionCreateParamsNonStreaming,
-} from "openai/resources/chat/completions";
 
 import {
   ANALYSIS_OUTPUT_NAME,
@@ -17,40 +13,20 @@ import {
   type AnalysisOutput,
 } from "./contract";
 import type { AssembledAnalysisRequest } from "./request";
-import {
-  buildChatCompletionParams,
-  classifyChatCompletionResponse,
-  mapChatCompletionUsage,
-} from "./chat-completion-provider";
-
-const WATCHDOG_GRACE_MS = 5_000;
 
 type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
-export interface LlmProviderCredentials {
+export interface OpenAIAnalysisClientOptions {
   readonly apiKey: string;
   readonly model: string;
   readonly reasoningEffort: ReasoningEffort;
-}
-
-export interface OpenRouterProviderCredentials extends LlmProviderCredentials {
-  readonly baseUrl: string;
-}
-
-export interface LlmAnalysisClientOptions {
-  readonly provider: "openai" | "openrouter";
-  readonly openai: LlmProviderCredentials;
-  readonly openrouter: OpenRouterProviderCredentials;
   readonly timeoutMs: number;
   readonly maximumRetries: number;
   readonly logger?: AnalysisClientLogger;
   readonly createResponse?: (
     request: ResponseCreateParamsNonStreaming,
   ) => Promise<Response>;
-  readonly createCompletion?: (
-    request: ChatCompletionCreateParamsNonStreaming,
-  ) => Promise<ChatCompletion>;
   readonly sleep?: (milliseconds: number) => Promise<void>;
 }
 
@@ -91,7 +67,7 @@ export type AnalysisResponseOutcome =
       readonly code: string;
     });
 
-export class LlmAnalysisError extends Error {
+export class OpenAIAnalysisError extends Error {
   constructor(
     readonly code: string,
     readonly retryable: boolean,
@@ -99,64 +75,36 @@ export class LlmAnalysisError extends Error {
     readonly requestId: string | null,
     options?: ErrorOptions,
   ) {
-    super(`LLM analysis request failed (${code})`, options);
-    this.name = "LlmAnalysisError";
+    super(`OpenAI analysis request failed (${code})`, options);
+    this.name = "OpenAIAnalysisError";
   }
 }
 
-export class LlmAnalysisClient {
-  private readonly invoke: (
-    request: AssembledAnalysisRequest,
-  ) => Promise<AnalysisResponseOutcome>;
+export class OpenAIAnalysisClient {
+  private readonly createResponse: (
+    request: ResponseCreateParamsNonStreaming,
+  ) => Promise<Response>;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly logger: AnalysisClientLogger;
 
-  constructor(private readonly options: LlmAnalysisClientOptions) {
+  constructor(private readonly options: OpenAIAnalysisClientOptions) {
     requirePositiveInteger(options.timeoutMs, "timeoutMs");
     requireNonnegativeInteger(options.maximumRetries, "maximumRetries");
     if (options.maximumRetries > 5) {
       throw new RangeError("maximumRetries must not exceed 5");
     }
-    const active =
-      options.provider === "openrouter" ? options.openrouter : options.openai;
-    if (!active.model.trim()) throw new RangeError("model must not be empty");
-    if (!active.apiKey) throw new RangeError("apiKey must not be empty");
+    if (!options.model.trim()) throw new RangeError("model must not be empty");
+    if (!options.apiKey) throw new RangeError("apiKey must not be empty");
 
-    if (options.provider === "openrouter") {
-      const createCompletion =
-        options.createCompletion ??
-        ((request) =>
-          new OpenAI({
-            apiKey: options.openrouter.apiKey,
-            baseURL: options.openrouter.baseUrl,
-            timeout: options.timeoutMs,
-            maxRetries: 0,
-          }).chat.completions.create(request));
-      this.invoke = (request) =>
-        createCompletion(
-          buildChatCompletionParams({
-            model: options.openrouter.model,
-            reasoningEffort: options.openrouter.reasoningEffort,
-            instructions: request.instructions,
-            content: `${request.articleData}\n\n${request.commentData}`,
-            maximumOutputTokens: request.tokens.maximumOutput,
-            outputName: ANALYSIS_OUTPUT_NAME,
-            outputSchema: analysisOutputJsonSchema,
-          }),
-        ).then(classifyCompletionResponse);
+    if (options.createResponse) {
+      this.createResponse = options.createResponse;
     } else {
-      const createResponse =
-        options.createResponse ??
-        ((request) =>
-          new OpenAI({
-            apiKey: options.openai.apiKey,
-            timeout: options.timeoutMs,
-            maxRetries: 0,
-          }).responses.create(request));
-      this.invoke = (request) =>
-        createResponse(this.responsesParameters(request)).then(
-          classifyResponsesResponse,
-        );
+      const openai = new OpenAI({
+        apiKey: options.apiKey,
+        timeout: options.timeoutMs,
+        maxRetries: 0,
+      });
+      this.createResponse = (request) => openai.responses.create(request);
     }
     this.sleep = options.sleep ?? defaultSleep;
     this.logger = options.logger ?? { info: () => {}, warn: () => {} };
@@ -165,26 +113,23 @@ export class LlmAnalysisClient {
   async analyze(
     request: AssembledAnalysisRequest,
   ): Promise<AnalysisResponseOutcome> {
-    const active =
-      this.options.provider === "openrouter"
-        ? this.options.openrouter
-        : this.options.openai;
+    const parameters = this.parameters(request);
     const maximumAttempts = this.options.maximumRetries + 1;
 
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
       this.logger.info({
-        event: "llm_analysis_attempt",
+        event: "openai_analysis_attempt",
         attempt,
         maximumAttempts,
-        provider: this.options.provider,
-        model: active.model,
+        model: this.options.model,
         estimatedInputTokens: request.tokens.totalInput,
         maximumOutputTokens: request.tokens.maximumOutput,
       });
       try {
-        const outcome = await this.invokeWithWatchdog(request);
+        const response = await this.createResponse(parameters);
+        const outcome = classifyResponse(response);
         this.logger.info({
-          event: "llm_analysis_outcome",
+          event: "openai_analysis_outcome",
           attempt,
           kind: outcome.kind,
           responseId: outcome.responseId,
@@ -192,10 +137,10 @@ export class LlmAnalysisClient {
         });
         return outcome;
       } catch (error) {
-        const classified = classifyLlmError(error);
+        const classified = classifyOpenAIError(error);
         const willRetry = classified.retryable && attempt < maximumAttempts;
         this.logger.warn({
-          event: "llm_analysis_error",
+          event: "openai_analysis_error",
           attempt,
           code: classified.code,
           status: classified.status,
@@ -208,43 +153,15 @@ export class LlmAnalysisClient {
       }
     }
 
-    throw new Error("LLM analysis retry loop ended unexpectedly");
+    throw new Error("OpenAI retry loop ended unexpectedly");
   }
 
-  // Backstop for a provider request that never settles even though the
-  // OpenAI SDK was given `timeout: options.timeoutMs` (observed in
-  // production against OpenRouter/DeepSeek: a single request hung well past
-  // its configured timeout, wedging the whole worker since
-  // WORKER_LLM_CONCURRENCY processes one job at a time). This guarantees the
-  // worker always moves on, independent of why the underlying request hung.
-  private invokeWithWatchdog(
-    request: AssembledAnalysisRequest,
-  ): Promise<AnalysisResponseOutcome> {
-    const invocation = this.invoke(request);
-    // Prevent an unhandled rejection if the invocation loses the race and
-    // later rejects on its own.
-    invocation.catch(() => {});
-
-    let watchdog: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      watchdog = setTimeout(() => {
-        reject(
-          new LlmAnalysisError("request_watchdog_timeout", true, null, null),
-        );
-      }, this.options.timeoutMs + WATCHDOG_GRACE_MS);
-    });
-
-    return Promise.race([invocation, timeout]).finally(() => {
-      clearTimeout(watchdog);
-    });
-  }
-
-  private responsesParameters(
+  private parameters(
     request: AssembledAnalysisRequest,
   ): ResponseCreateParamsNonStreaming {
     return {
-      model: this.options.openai.model,
-      reasoning: { effort: this.options.openai.reasoningEffort },
+      model: this.options.model,
+      reasoning: { effort: this.options.reasoningEffort },
       instructions: request.instructions,
       input: `${request.articleData}\n\n${request.commentData}`,
       max_output_tokens: request.tokens.maximumOutput,
@@ -263,14 +180,14 @@ export class LlmAnalysisClient {
   }
 }
 
-export function classifyLlmError(error: unknown): LlmAnalysisError {
-  if (error instanceof LlmAnalysisError) return error;
+export function classifyOpenAIError(error: unknown): OpenAIAnalysisError {
+  if (error instanceof OpenAIAnalysisError) return error;
   if (error instanceof OpenAI.APIConnectionError) {
     const code =
       error instanceof OpenAI.APIConnectionTimeoutError
         ? "request_timeout"
         : "connection_error";
-    return new LlmAnalysisError(code, true, null, null, { cause: error });
+    return new OpenAIAnalysisError(code, true, null, null, { cause: error });
   }
   if (error instanceof OpenAI.APIError) {
     const status = error.status ?? null;
@@ -279,7 +196,7 @@ export function classifyLlmError(error: unknown): LlmAnalysisError {
       status === 409 ||
       status === 429 ||
       (status !== null && status >= 500);
-    return new LlmAnalysisError(
+    return new OpenAIAnalysisError(
       safeErrorCode(error),
       retryable,
       status,
@@ -287,39 +204,16 @@ export function classifyLlmError(error: unknown): LlmAnalysisError {
       { cause: error },
     );
   }
-  return new LlmAnalysisError("unexpected_error", false, null, null, {
+  return new OpenAIAnalysisError("unexpected_error", false, null, null, {
     cause: error,
   });
 }
 
-function classifyCompletionResponse(
-  response: ChatCompletion,
-): AnalysisResponseOutcome {
+function classifyResponse(response: Response): AnalysisResponseOutcome {
   const base: OutcomeBase = {
     responseId: response.id,
     model: response.model,
-    usage: mapChatCompletionUsage(response.usage),
-  };
-  try {
-    const outcome = classifyChatCompletionResponse(
-      response,
-      parseAnalysisOutput,
-    );
-    return { ...base, ...outcome };
-  } catch (error) {
-    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
-      cause: error,
-    });
-  }
-}
-
-function classifyResponsesResponse(
-  response: Response,
-): AnalysisResponseOutcome {
-  const base: OutcomeBase = {
-    responseId: response.id,
-    model: response.model,
-    usage: mapResponsesUsage(response.usage),
+    usage: mapUsage(response.usage),
   };
   const refusal = response.output
     .filter((item) => item.type === "message")
@@ -356,15 +250,17 @@ function classifyResponsesResponse(
       output: parseAnalysisOutput(JSON.parse(response.output_text)),
     };
   } catch (error) {
-    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
-      cause: error,
-    });
+    throw new OpenAIAnalysisError(
+      "invalid_structured_output",
+      false,
+      null,
+      null,
+      { cause: error },
+    );
   }
 }
 
-function mapResponsesUsage(
-  usage: ResponseUsage | undefined,
-): AnalysisUsage | null {
+function mapUsage(usage: ResponseUsage | undefined): AnalysisUsage | null {
   if (!usage) return null;
   return {
     inputTokens: usage.input_tokens,
