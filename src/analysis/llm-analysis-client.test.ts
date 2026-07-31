@@ -421,6 +421,30 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
     expect(sleep).toHaveBeenCalledWith(250);
   });
 
+  it("gives up on a provider request that never settles", async () => {
+    vi.useFakeTimers();
+    try {
+      const createCompletion = vi.fn(
+        () => new Promise<ChatCompletion>(() => {}),
+      );
+
+      const outcome = openRouterClient(createCompletion, {
+        maximumRetries: 0,
+      }).analyze(assembledRequest());
+      const assertion = expect(outcome).rejects.toMatchObject({
+        name: "LlmAnalysisError",
+        code: "request_watchdog_timeout",
+        retryable: true,
+      });
+
+      await vi.advanceTimersByTimeAsync(35_000);
+      await assertion;
+      expect(createCompletion).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not retry terminal API errors", async () => {
     const terminal = OpenAI.APIError.generate(
       400,
