@@ -4,30 +4,39 @@ import type {
   ResponseCreateParamsNonStreaming,
   ResponseUsage,
 } from "openai/resources/responses/responses";
+import type {
+  ChatCompletion,
+  ChatCompletionCreateParamsNonStreaming,
+} from "openai/resources/chat/completions";
 
 import {
   HUMANIZER_OUTPUT_NAME,
   parseHumanizerOutput,
   type HumanizerOutput,
 } from "./humanizer-contract";
-import { classifyOpenAIError, OpenAIAnalysisError } from "./openai-client";
+import {
+  classifyLlmError,
+  LlmAnalysisError,
+  type LlmAnalysisClientOptions,
+} from "./llm-analysis-client";
 import type { AssembledHumanizerRequest } from "./humanizer-request";
+import {
+  buildChatCompletionParams,
+  classifyChatCompletionResponse,
+  mapChatCompletionUsage,
+} from "./chat-completion-provider";
 
-type ReasoningEffort =
-  "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-
-export interface HumanizerClientOptions {
-  readonly apiKey: string;
-  readonly model: string;
-  readonly reasoningEffort: ReasoningEffort;
-  readonly timeoutMs: number;
-  readonly maximumRetries: number;
-  readonly logger?: HumanizerClientLogger;
+export type HumanizerClientOptions = Omit<
+  LlmAnalysisClientOptions,
+  "createResponse" | "createCompletion"
+> & {
   readonly createResponse?: (
     request: ResponseCreateParamsNonStreaming,
   ) => Promise<Response>;
-  readonly sleep?: (milliseconds: number) => Promise<void>;
-}
+  readonly createCompletion?: (
+    request: ChatCompletionCreateParamsNonStreaming,
+  ) => Promise<ChatCompletion>;
+};
 
 export interface HumanizerClientLogger {
   info(event: Readonly<Record<string, unknown>>): void;
@@ -67,9 +76,9 @@ export type HumanizerResponseOutcome =
     });
 
 export class HumanizerClient {
-  private readonly createResponse: (
-    request: ResponseCreateParamsNonStreaming,
-  ) => Promise<Response>;
+  private readonly invoke: (
+    request: AssembledHumanizerRequest,
+  ) => Promise<HumanizerResponseOutcome>;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly logger: HumanizerClientLogger;
 
@@ -79,18 +88,46 @@ export class HumanizerClient {
     if (options.maximumRetries > 5) {
       throw new RangeError("maximumRetries must not exceed 5");
     }
-    if (!options.model.trim()) throw new RangeError("model must not be empty");
-    if (!options.apiKey) throw new RangeError("apiKey must not be empty");
+    const active =
+      options.provider === "openrouter" ? options.openrouter : options.openai;
+    if (!active.model.trim()) throw new RangeError("model must not be empty");
+    if (!active.apiKey) throw new RangeError("apiKey must not be empty");
 
-    if (options.createResponse) {
-      this.createResponse = options.createResponse;
+    if (options.provider === "openrouter") {
+      const createCompletion =
+        options.createCompletion ??
+        ((request) =>
+          new OpenAI({
+            apiKey: options.openrouter.apiKey,
+            baseURL: options.openrouter.baseUrl,
+            timeout: options.timeoutMs,
+            maxRetries: 0,
+          }).chat.completions.create(request));
+      this.invoke = (request) =>
+        createCompletion(
+          buildChatCompletionParams({
+            model: options.openrouter.model,
+            reasoningEffort: options.openrouter.reasoningEffort,
+            instructions: request.instructions,
+            content: request.inputData,
+            maximumOutputTokens: request.tokens.maximumOutput,
+            outputName: HUMANIZER_OUTPUT_NAME,
+            outputSchema: request.outputSchema,
+          }),
+        ).then(classifyCompletionResponse);
     } else {
-      const openai = new OpenAI({
-        apiKey: options.apiKey,
-        timeout: options.timeoutMs,
-        maxRetries: 0,
-      });
-      this.createResponse = (request) => openai.responses.create(request);
+      const createResponse =
+        options.createResponse ??
+        ((request) =>
+          new OpenAI({
+            apiKey: options.openai.apiKey,
+            timeout: options.timeoutMs,
+            maxRetries: 0,
+          }).responses.create(request));
+      this.invoke = (request) =>
+        createResponse(this.responsesParameters(request)).then(
+          classifyResponsesResponse,
+        );
     }
     this.sleep = options.sleep ?? defaultSleep;
     this.logger = options.logger ?? { info: () => {}, warn: () => {} };
@@ -99,7 +136,10 @@ export class HumanizerClient {
   async humanize(
     request: AssembledHumanizerRequest,
   ): Promise<HumanizerResponseOutcome> {
-    const parameters = this.parameters(request);
+    const active =
+      this.options.provider === "openrouter"
+        ? this.options.openrouter
+        : this.options.openai;
     const maximumAttempts = this.options.maximumRetries + 1;
 
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
@@ -107,13 +147,13 @@ export class HumanizerClient {
         event: "humanizer_attempt",
         attempt,
         maximumAttempts,
-        model: this.options.model,
+        provider: this.options.provider,
+        model: active.model,
         estimatedInputTokens: request.tokens.totalInput,
         maximumOutputTokens: request.tokens.maximumOutput,
       });
       try {
-        const response = await this.createResponse(parameters);
-        const outcome = classifyResponse(response);
+        const outcome = await this.invoke(request);
         this.logger.info({
           event: "humanizer_outcome",
           attempt,
@@ -123,7 +163,7 @@ export class HumanizerClient {
         });
         return outcome;
       } catch (error) {
-        const classified = classifyOpenAIError(error);
+        const classified = classifyLlmError(error);
         const willRetry = classified.retryable && attempt < maximumAttempts;
         this.logger.warn({
           event: "humanizer_error",
@@ -142,12 +182,12 @@ export class HumanizerClient {
     throw new Error("Humanizer retry loop ended unexpectedly");
   }
 
-  private parameters(
+  private responsesParameters(
     request: AssembledHumanizerRequest,
   ): ResponseCreateParamsNonStreaming {
     return {
-      model: this.options.model,
-      reasoning: { effort: this.options.reasoningEffort },
+      model: this.options.openai.model,
+      reasoning: { effort: this.options.openai.reasoningEffort },
       instructions: request.instructions,
       input: request.inputData,
       max_output_tokens: request.tokens.maximumOutput,
@@ -166,11 +206,34 @@ export class HumanizerClient {
   }
 }
 
-function classifyResponse(response: Response): HumanizerResponseOutcome {
+function classifyCompletionResponse(
+  response: ChatCompletion,
+): HumanizerResponseOutcome {
   const base: OutcomeBase = {
     responseId: response.id,
     model: response.model,
-    usage: mapUsage(response.usage),
+    usage: mapChatCompletionUsage(response.usage),
+  };
+  try {
+    const outcome = classifyChatCompletionResponse(
+      response,
+      parseHumanizerOutput,
+    );
+    return { ...base, ...outcome };
+  } catch (error) {
+    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
+      cause: error,
+    });
+  }
+}
+
+function classifyResponsesResponse(
+  response: Response,
+): HumanizerResponseOutcome {
+  const base: OutcomeBase = {
+    responseId: response.id,
+    model: response.model,
+    usage: mapResponsesUsage(response.usage),
   };
   const refusal = response.output
     .filter((item) => item.type === "message")
@@ -207,17 +270,15 @@ function classifyResponse(response: Response): HumanizerResponseOutcome {
       output: parseHumanizerOutput(JSON.parse(response.output_text)),
     };
   } catch (error) {
-    throw new OpenAIAnalysisError(
-      "invalid_structured_output",
-      false,
-      null,
-      null,
-      { cause: error },
-    );
+    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
+      cause: error,
+    });
   }
 }
 
-function mapUsage(usage: ResponseUsage | undefined): HumanizerUsage | null {
+function mapResponsesUsage(
+  usage: ResponseUsage | undefined,
+): HumanizerUsage | null {
   if (!usage) return null;
   return {
     inputTokens: usage.input_tokens,
