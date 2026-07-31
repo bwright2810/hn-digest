@@ -49,8 +49,15 @@ export function buildChatCompletionParams(
         schema: options.outputSchema,
       },
     },
+    // OpenRouter otherwise may silently route to an underlying endpoint that
+    // doesn't actually support strict Structured Outputs (or the reasoning
+    // param), treating the schema as a hint and returning JSON that fails
+    // our zod validation. This restricts routing to endpoints that support
+    // every parameter in the request.
+    provider: { require_parameters: true },
   } as ChatCompletionCreateParamsNonStreaming & {
     reasoning: { effort: string };
+    provider: { require_parameters: boolean };
   };
 }
 
