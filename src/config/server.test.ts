@@ -189,9 +189,7 @@ describe("loadConfig", () => {
         LLM_PROVIDER: "openai",
         LLM_OPENROUTER_API_KEY: "openrouter-value-only",
       }),
-    ).toThrowError(
-      /LLM_OPENAI_API_KEY: is required when LLM_PROVIDER=openai/,
-    );
+    ).toThrowError(/LLM_OPENAI_API_KEY: is required when LLM_PROVIDER=openai/);
 
     const config = loadConfig({
       NODE_ENV: "development",
