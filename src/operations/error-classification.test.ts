@@ -6,11 +6,11 @@ describe("classifyOperationalError", () => {
   it("preserves provider and PostgreSQL codes without persisting messages", () => {
     expect(
       classifyOperationalError({
-        name: "LlmAnalysisError",
+        name: "OpenAIAnalysisError",
         message: "request failed with sensitive details",
         code: "rate_limit_exceeded",
       }),
-    ).toBe("llm_rate_limit_exceeded");
+    ).toBe("openai_rate_limit_exceeded");
     expect(
       classifyOperationalError({
         name: "error",

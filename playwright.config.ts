@@ -18,7 +18,7 @@ export default defineConfig({
       DATABASE_URL:
         process.env.DATABASE_URL ??
         "postgresql://fixture:fixture@127.0.0.1:5432/fixture",
-      LLM_OPENROUTER_API_KEY: "playwright-placeholder",
+      OPENAI_API_KEY: "playwright-placeholder",
       ADMIN_PASSWORD: "playwright-admin-password",
       SUBSCRIBER_EMAIL_ENCRYPTION_KEY:
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
