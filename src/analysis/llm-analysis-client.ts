@@ -23,6 +23,8 @@ import {
   mapChatCompletionUsage,
 } from "./chat-completion-provider";
 
+const WATCHDOG_GRACE_MS = 5_000;
+
 type ReasoningEffort =
   "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -180,7 +182,7 @@ export class LlmAnalysisClient {
         maximumOutputTokens: request.tokens.maximumOutput,
       });
       try {
-        const outcome = await this.invoke(request);
+        const outcome = await this.invokeWithWatchdog(request);
         this.logger.info({
           event: "llm_analysis_outcome",
           attempt,
@@ -207,6 +209,34 @@ export class LlmAnalysisClient {
     }
 
     throw new Error("LLM analysis retry loop ended unexpectedly");
+  }
+
+  // Backstop for a provider request that never settles even though the
+  // OpenAI SDK was given `timeout: options.timeoutMs` (observed in
+  // production against OpenRouter/DeepSeek: a single request hung well past
+  // its configured timeout, wedging the whole worker since
+  // WORKER_LLM_CONCURRENCY processes one job at a time). This guarantees the
+  // worker always moves on, independent of why the underlying request hung.
+  private invokeWithWatchdog(
+    request: AssembledAnalysisRequest,
+  ): Promise<AnalysisResponseOutcome> {
+    const invocation = this.invoke(request);
+    // Prevent an unhandled rejection if the invocation loses the race and
+    // later rejects on its own.
+    invocation.catch(() => {});
+
+    let watchdog: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      watchdog = setTimeout(() => {
+        reject(
+          new LlmAnalysisError("request_watchdog_timeout", true, null, null),
+        );
+      }, this.options.timeoutMs + WATCHDOG_GRACE_MS);
+    });
+
+    return Promise.race([invocation, timeout]).finally(() => {
+      clearTimeout(watchdog);
+    });
   }
 
   private responsesParameters(
