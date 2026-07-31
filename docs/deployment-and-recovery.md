@@ -52,16 +52,20 @@ packages to production. Playwright stays in CI or a dedicated test system.
 ## Required configuration
 
 Production has no non-secret defaults. Set every variable below in Coolify as a
-runtime variable. Mark `DATABASE_URL`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`,
-`SUBSCRIBER_EMAIL_ENCRYPTION_KEY`, and `SUBSCRIBER_LOOKUP_HMAC_KEY` secret and
-exclude them from build arguments, image layers, deployment logs, and previews.
-When newsletter signup is enabled, treat `RESEND_API_KEY` the same way.
+runtime variable. Mark `DATABASE_URL`, `LLM_OPENAI_API_KEY`,
+`LLM_OPENROUTER_API_KEY`, `ADMIN_PASSWORD`, `SUBSCRIBER_EMAIL_ENCRYPTION_KEY`,
+and `SUBSCRIBER_LOOKUP_HMAC_KEY` secret and exclude them from build arguments,
+image layers, deployment logs, and previews. When newsletter signup is
+enabled, treat `RESEND_API_KEY` the same way.
+
+`LLM_PROVIDER` selects which of the two credential blocks below is active;
+only the matching provider's API key is required, but switching providers
+without a redeploy requires both keys to already be set.
 
 | Variable                                    | Production value or rule                                                                       |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `NODE_ENV`                                  | `production`                                                                                   |
 | `DATABASE_URL`                              | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
-| `OPENAI_API_KEY`                            | project-scoped API key with the smallest practical permissions and spend controls              |
 | `ADMIN_PASSWORD`                            | unique random value of at least 16 characters for the `/admin` HTTP Basic prompt               |
 | `SUBSCRIBER_EMAIL_ENCRYPTION_KEY`           | random base64-encoded 32-byte key retained for subscriber email decryption                     |
 | `SUBSCRIBER_LOOKUP_HMAC_KEY`                | different random base64-encoded 32-byte key for address and action-token digests               |
@@ -72,14 +76,20 @@ When newsletter signup is enabled, treat `RESEND_API_KEY` the same way.
 | `NEWSLETTER_SIGNUP_RATE_WINDOW_MS`          | signup throttling window; initial value `900000`                                               |
 | `RESEND_API_KEY`                            | runtime-only Resend credential; required only when public signup is enabled                    |
 | `NEWSLETTER_FROM_EMAIL`                     | verified sender address; required only when public signup is enabled                           |
-| `OPENAI_MODEL`                              | evaluated model from the roadmap decision log                                                  |
-| `OPENAI_REASONING_EFFORT`                   | `low` until evaluation justifies a change                                                      |
-| `OPENAI_REQUEST_TIMEOUT_MS`                 | `60000`                                                                                        |
-| `OPENAI_MAX_RETRIES`                        | `2`                                                                                            |
-| `OPENAI_INPUT_USD_PER_MILLION_TOKENS`       | current standard-processing input price for the configured model                               |
-| `OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS` | current cached-input price for the configured model                                            |
-| `OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS` | current cache-write price for the configured model                                             |
-| `OPENAI_OUTPUT_USD_PER_MILLION_TOKENS`      | current standard-processing output price for the configured model                              |
+| `LLM_PROVIDER`                              | `openai` or `openrouter`; selects the active credential block below                            |
+| `LLM_OPENAI_API_KEY`                        | project-scoped OpenAI API key; required when `LLM_PROVIDER=openai`                             |
+| `LLM_OPENAI_MODEL`                          | evaluated OpenAI model from the roadmap decision log                                            |
+| `LLM_OPENAI_REASONING_EFFORT`               | `low` until evaluation justifies a change                                                      |
+| `LLM_OPENROUTER_API_KEY`                    | OpenRouter API key; required when `LLM_PROVIDER=openrouter`                                    |
+| `LLM_OPENROUTER_MODEL`                      | `deepseek/deepseek-v4-flash`                                                                    |
+| `LLM_OPENROUTER_REASONING_EFFORT`           | `high`; DeepSeek V4 Flash only supports `high`/`xhigh` on OpenRouter                            |
+| `LLM_OPENROUTER_BASE_URL`                   | `https://openrouter.ai/api/v1`                                                                  |
+| `LLM_REQUEST_TIMEOUT_MS`                    | `60000`                                                                                        |
+| `LLM_MAX_RETRIES`                           | `2`                                                                                            |
+| `LLM_INPUT_USD_PER_MILLION_TOKENS`          | current standard-processing input price for the active provider's model                        |
+| `LLM_CACHED_READ_USD_PER_MILLION_TOKENS`    | current cached-input price for the active provider's model                                      |
+| `LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS`    | current cache-write price for the active provider's model (OpenRouter has no separate write tier; set equal to the input price) |
+| `LLM_OUTPUT_USD_PER_MILLION_TOKENS`         | current standard-processing output price for the active provider's model                        |
 | `APP_URL`                                   | final `https://<hn-digest-hostname>` URL                                                       |
 | `DIGEST_TIME_ZONE`                          | `America/New_York`                                                                             |
 | `DIGEST_MORNING_TIME`                       | `07:00`                                                                                        |

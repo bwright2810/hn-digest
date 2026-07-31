@@ -13,14 +13,18 @@ const DEVELOPMENT_DEFAULTS = {
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
   ARTICLE_FETCH_MAX_REDIRECTS: "5",
-  OPENAI_MODEL: "gpt-5.6-luna",
-  OPENAI_REASONING_EFFORT: "low",
-  OPENAI_REQUEST_TIMEOUT_MS: "60000",
-  OPENAI_MAX_RETRIES: "2",
-  OPENAI_INPUT_USD_PER_MILLION_TOKENS: "1",
-  OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: "0.1",
-  OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: "1.25",
-  OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: "6",
+  LLM_PROVIDER: "openrouter",
+  LLM_OPENAI_MODEL: "gpt-5.6-luna",
+  LLM_OPENAI_REASONING_EFFORT: "low",
+  LLM_OPENROUTER_MODEL: "deepseek/deepseek-v4-flash",
+  LLM_OPENROUTER_REASONING_EFFORT: "high",
+  LLM_OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1",
+  LLM_REQUEST_TIMEOUT_MS: "60000",
+  LLM_MAX_RETRIES: "2",
+  LLM_INPUT_USD_PER_MILLION_TOKENS: "0.1",
+  LLM_CACHED_READ_USD_PER_MILLION_TOKENS: "0.002",
+  LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS: "0.1",
+  LLM_OUTPUT_USD_PER_MILLION_TOKENS: "0.2",
   LLM_INSTRUCTION_TOKEN_LIMIT: "2000",
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
@@ -129,28 +133,36 @@ const cidrList = z.string().refine(
   { message: "must be a comma-separated list of IP CIDR ranges" },
 );
 
+const reasoningEffortSchema = z.enum([
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]),
     DATABASE_URL: postgresUrl,
-    OPENAI_API_KEY: z.string().min(1, "is required"),
     ADMIN_PASSWORD: z.string().min(16, "must contain at least 16 characters"),
-    OPENAI_MODEL: z.string().min(1),
-    OPENAI_REASONING_EFFORT: z.enum([
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-    ]),
-    OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
-    OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
-    OPENAI_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_PROVIDER: z.enum(["openai", "openrouter"]),
+    LLM_OPENAI_API_KEY: z.string().min(1).optional(),
+    LLM_OPENAI_MODEL: z.string().min(1),
+    LLM_OPENAI_REASONING_EFFORT: reasoningEffortSchema,
+    LLM_OPENROUTER_API_KEY: z.string().min(1).optional(),
+    LLM_OPENROUTER_MODEL: z.string().min(1),
+    LLM_OPENROUTER_REASONING_EFFORT: reasoningEffortSchema,
+    LLM_OPENROUTER_BASE_URL: applicationUrl,
+    LLM_REQUEST_TIMEOUT_MS: positiveInteger,
+    LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
+    LLM_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_CACHED_READ_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_OUTPUT_USD_PER_MILLION_TOKENS: positiveMoney,
     APP_URL: applicationUrl,
     DIGEST_TIME_ZONE: timeZone,
     DIGEST_MORNING_TIME: z
@@ -206,6 +218,17 @@ const environmentSchema = z
     PUBLIC_API_TRUSTED_PROXY_CIDRS: cidrList,
   })
   .superRefine((values, context) => {
+    const activeProviderKey =
+      values.LLM_PROVIDER === "openai"
+        ? "LLM_OPENAI_API_KEY"
+        : "LLM_OPENROUTER_API_KEY";
+    if (!values[activeProviderKey]) {
+      context.addIssue({
+        code: "custom",
+        path: [activeProviderKey],
+        message: `is required when LLM_PROVIDER=${values.LLM_PROVIDER}`,
+      });
+    }
     for (const [softKey, hardKey] of [
       ["LLM_DAILY_SOFT_LIMIT_USD", "LLM_DAILY_HARD_LIMIT_USD"],
       ["LLM_MONTHLY_SOFT_LIMIT_USD", "LLM_MONTHLY_HARD_LIMIT_USD"],
@@ -250,11 +273,19 @@ export interface AppConfig {
   readonly database: {
     readonly url: string;
   };
-  readonly openai: {
-    readonly apiKey: string;
-    readonly model: string;
-    readonly reasoningEffort:
-      "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+  readonly llm: {
+    readonly provider: "openai" | "openrouter";
+    readonly openai: {
+      readonly apiKey: string;
+      readonly model: string;
+      readonly reasoningEffort: ReasoningEffort;
+    };
+    readonly openrouter: {
+      readonly apiKey: string;
+      readonly model: string;
+      readonly reasoningEffort: ReasoningEffort;
+      readonly baseUrl: string;
+    };
     readonly timeoutMs: number;
     readonly maximumRetries: number;
     readonly prices: {
@@ -389,19 +420,28 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       adminPassword: values.ADMIN_PASSWORD,
     }),
     database: Object.freeze({ url: values.DATABASE_URL }),
-    openai: Object.freeze({
-      apiKey: values.OPENAI_API_KEY,
-      model: values.OPENAI_MODEL,
-      reasoningEffort: values.OPENAI_REASONING_EFFORT,
-      timeoutMs: values.OPENAI_REQUEST_TIMEOUT_MS,
-      maximumRetries: values.OPENAI_MAX_RETRIES,
+    llm: Object.freeze({
+      provider: values.LLM_PROVIDER,
+      openai: Object.freeze({
+        apiKey: values.LLM_OPENAI_API_KEY ?? "",
+        model: values.LLM_OPENAI_MODEL,
+        reasoningEffort: values.LLM_OPENAI_REASONING_EFFORT,
+      }),
+      openrouter: Object.freeze({
+        apiKey: values.LLM_OPENROUTER_API_KEY ?? "",
+        model: values.LLM_OPENROUTER_MODEL,
+        reasoningEffort: values.LLM_OPENROUTER_REASONING_EFFORT,
+        baseUrl: values.LLM_OPENROUTER_BASE_URL,
+      }),
+      timeoutMs: values.LLM_REQUEST_TIMEOUT_MS,
+      maximumRetries: values.LLM_MAX_RETRIES,
       prices: Object.freeze({
-        inputUsdPerMillionTokens: values.OPENAI_INPUT_USD_PER_MILLION_TOKENS,
+        inputUsdPerMillionTokens: values.LLM_INPUT_USD_PER_MILLION_TOKENS,
         cachedReadUsdPerMillionTokens:
-          values.OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS,
+          values.LLM_CACHED_READ_USD_PER_MILLION_TOKENS,
         cacheWriteUsdPerMillionTokens:
-          values.OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS,
-        outputUsdPerMillionTokens: values.OPENAI_OUTPUT_USD_PER_MILLION_TOKENS,
+          values.LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS,
+        outputUsdPerMillionTokens: values.LLM_OUTPUT_USD_PER_MILLION_TOKENS,
       }),
     }),
     schedule: Object.freeze({
