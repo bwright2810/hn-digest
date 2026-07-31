@@ -380,7 +380,6 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
         type: "json_schema",
         json_schema: { name: "hn_digest_analysis", strict: true },
       },
-      provider: { require_parameters: true },
     });
     expect(JSON.stringify(sentParams?.messages)).toContain(copyrightedSource);
     expect(outcome).toMatchObject({
