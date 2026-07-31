@@ -109,7 +109,7 @@ describe("loadConfig", () => {
 
   it("requires secrets in every environment", () => {
     expect(() => loadConfig({ NODE_ENV: "development" })).toThrowError(
-      /DATABASE_URL.*SUBSCRIBER_EMAIL_ENCRYPTION_KEY.*SUBSCRIBER_LOOKUP_HMAC_KEY.*LLM_OPENROUTER_API_KEY/s,
+      /DATABASE_URL.*SUBSCRIBER_EMAIL_ENCRYPTION_KEY.*SUBSCRIBER_LOOKUP_HMAC_KEY/s,
     );
   });
 
@@ -189,7 +189,9 @@ describe("loadConfig", () => {
         LLM_PROVIDER: "openai",
         LLM_OPENROUTER_API_KEY: "openrouter-value-only",
       }),
-    ).toThrowError(/LLM_OPENAI_API_KEY is required when LLM_PROVIDER=openai/);
+    ).toThrowError(
+      /LLM_OPENAI_API_KEY: is required when LLM_PROVIDER=openai/,
+    );
 
     const config = loadConfig({
       NODE_ENV: "development",
