@@ -69,7 +69,10 @@ export function classifyChatCompletionResponse<T>(
       refusal: choice.message.refusal ?? "content_filter",
     };
   }
-  if (choice.finish_reason !== "stop" && choice.finish_reason !== "tool_calls") {
+  if (
+    choice.finish_reason !== "stop" &&
+    choice.finish_reason !== "tool_calls"
+  ) {
     return { kind: "incomplete", reason: choice.finish_reason };
   }
 

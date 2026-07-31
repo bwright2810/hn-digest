@@ -62,60 +62,60 @@ enabled, treat `RESEND_API_KEY` the same way.
 only the matching provider's API key is required, but switching providers
 without a redeploy requires both keys to already be set.
 
-| Variable                                    | Production value or rule                                                                       |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                  | `production`                                                                                   |
-| `DATABASE_URL`                              | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration |
-| `ADMIN_PASSWORD`                            | unique random value of at least 16 characters for the `/admin` HTTP Basic prompt               |
-| `SUBSCRIBER_EMAIL_ENCRYPTION_KEY`           | random base64-encoded 32-byte key retained for subscriber email decryption                     |
-| `SUBSCRIBER_LOOKUP_HMAC_KEY`                | different random base64-encoded 32-byte key for address and action-token digests               |
-| `SUBSCRIBER_KEY_VERSION`                    | positive key version; start at `1` and increment only under a documented rotation              |
-| `NEWSLETTER_PUBLIC_SIGNUP_ENABLED`          | `false` until every HD-100 launch gate is recorded; set `true` only for reviewed launch        |
-| `NEWSLETTER_CONSENT_POLICY_VERSION`         | stable version identifying the exact signup consent copy                                       |
-| `NEWSLETTER_SIGNUP_RATE_LIMIT`              | maximum attempts per address and client in one window; initial value `3`                       |
-| `NEWSLETTER_SIGNUP_RATE_WINDOW_MS`          | signup throttling window; initial value `900000`                                               |
-| `RESEND_API_KEY`                            | runtime-only Resend credential; required only when public signup is enabled                    |
-| `NEWSLETTER_FROM_EMAIL`                     | verified sender address; required only when public signup is enabled                           |
-| `LLM_PROVIDER`                              | `openai` or `openrouter`; selects the active credential block below                            |
-| `LLM_OPENAI_API_KEY`                        | project-scoped OpenAI API key; required when `LLM_PROVIDER=openai`                             |
-| `LLM_OPENAI_MODEL`                          | evaluated OpenAI model from the roadmap decision log                                            |
-| `LLM_OPENAI_REASONING_EFFORT`               | `low` until evaluation justifies a change                                                      |
-| `LLM_OPENROUTER_API_KEY`                    | OpenRouter API key; required when `LLM_PROVIDER=openrouter`                                    |
-| `LLM_OPENROUTER_MODEL`                      | `deepseek/deepseek-v4-flash`                                                                    |
-| `LLM_OPENROUTER_REASONING_EFFORT`           | `high`; DeepSeek V4 Flash only supports `high`/`xhigh` on OpenRouter                            |
-| `LLM_OPENROUTER_BASE_URL`                   | `https://openrouter.ai/api/v1`                                                                  |
-| `LLM_REQUEST_TIMEOUT_MS`                    | `60000`                                                                                        |
-| `LLM_MAX_RETRIES`                           | `2`                                                                                            |
-| `LLM_INPUT_USD_PER_MILLION_TOKENS`          | current standard-processing input price for the active provider's model                        |
-| `LLM_CACHED_READ_USD_PER_MILLION_TOKENS`    | current cached-input price for the active provider's model                                      |
-| `LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS`    | current cache-write price for the active provider's model (OpenRouter has no separate write tier; set equal to the input price) |
-| `LLM_OUTPUT_USD_PER_MILLION_TOKENS`         | current standard-processing output price for the active provider's model                        |
-| `APP_URL`                                   | final `https://<hn-digest-hostname>` URL                                                       |
-| `DIGEST_TIME_ZONE`                          | `America/New_York`                                                                             |
-| `DIGEST_MORNING_TIME`                       | `07:00`                                                                                        |
-| `DIGEST_EVENING_TIME`                       | `19:00`                                                                                        |
-| `DIGEST_STORY_COUNT`                        | reviewed private-MVP count                                                                     |
-| `DIGEST_MINIMUM_COMMENT_COUNT`              | `10`; minimum HN discussion size before a story is selected                                    |
-| `DIGEST_MISSED_RUN_GRACE_MS`                | `21600000`                                                                                     |
-| `ARTICLE_FETCH_TIMEOUT_MS`                  | `10000`                                                                                        |
-| `ARTICLE_FETCH_MAX_BYTES`                   | `2097152`                                                                                      |
-| `ARTICLE_FETCH_MAX_REDIRECTS`               | `5`                                                                                            |
-| `LLM_INSTRUCTION_TOKEN_LIMIT`               | reviewed token allowance                                                                       |
-| `LLM_ARTICLE_TOKEN_LIMIT`                   | reviewed token allowance                                                                       |
-| `LLM_COMMENT_TOKEN_LIMIT`                   | reviewed token allowance                                                                       |
-| `LLM_OUTPUT_TOKEN_LIMIT`                    | reviewed token allowance                                                                       |
-| `LLM_MAX_REQUEST_COST_USD`                  | owner-approved worst-case ceiling for one story request                                        |
-| `COMMENT_SELECTION_MAXIMUM`                 | `30`                                                                                           |
-| `LLM_DAILY_SOFT_LIMIT_USD`                  | owner-approved warning threshold                                                               |
-| `LLM_DAILY_HARD_LIMIT_USD`                  | owner-approved daily ceiling                                                                   |
-| `LLM_MONTHLY_SOFT_LIMIT_USD`                | owner-approved warning threshold                                                               |
-| `LLM_MONTHLY_HARD_LIMIT_USD`                | owner-approved monthly ceiling                                                                 |
-| `WORKER_FETCH_CONCURRENCY_PER_HOST`         | `2`                                                                                            |
-| `WORKER_LLM_CONCURRENCY`                    | `1`                                                                                            |
-| `WORKER_LEASE_MS`                           | `300000`                                                                                       |
-| `SCHEDULER_POLL_INTERVAL_MS`                | `30000`                                                                                        |
-| `WORKER_POLL_INTERVAL_MS`                   | `5000`                                                                                         |
-| `RUNTIME_SHUTDOWN_GRACE_MS`                 | `30000`                                                                                        |
+| Variable                                 | Production value or rule                                                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                               | `production`                                                                                                                    |
+| `DATABASE_URL`                           | Coolify private PostgreSQL URL; require TLS if supported by the private resource configuration                                  |
+| `ADMIN_PASSWORD`                         | unique random value of at least 16 characters for the `/admin` HTTP Basic prompt                                                |
+| `SUBSCRIBER_EMAIL_ENCRYPTION_KEY`        | random base64-encoded 32-byte key retained for subscriber email decryption                                                      |
+| `SUBSCRIBER_LOOKUP_HMAC_KEY`             | different random base64-encoded 32-byte key for address and action-token digests                                                |
+| `SUBSCRIBER_KEY_VERSION`                 | positive key version; start at `1` and increment only under a documented rotation                                               |
+| `NEWSLETTER_PUBLIC_SIGNUP_ENABLED`       | `false` until every HD-100 launch gate is recorded; set `true` only for reviewed launch                                         |
+| `NEWSLETTER_CONSENT_POLICY_VERSION`      | stable version identifying the exact signup consent copy                                                                        |
+| `NEWSLETTER_SIGNUP_RATE_LIMIT`           | maximum attempts per address and client in one window; initial value `3`                                                        |
+| `NEWSLETTER_SIGNUP_RATE_WINDOW_MS`       | signup throttling window; initial value `900000`                                                                                |
+| `RESEND_API_KEY`                         | runtime-only Resend credential; required only when public signup is enabled                                                     |
+| `NEWSLETTER_FROM_EMAIL`                  | verified sender address; required only when public signup is enabled                                                            |
+| `LLM_PROVIDER`                           | `openai` or `openrouter`; selects the active credential block below                                                             |
+| `LLM_OPENAI_API_KEY`                     | project-scoped OpenAI API key; required when `LLM_PROVIDER=openai`                                                              |
+| `LLM_OPENAI_MODEL`                       | evaluated OpenAI model from the roadmap decision log                                                                            |
+| `LLM_OPENAI_REASONING_EFFORT`            | `low` until evaluation justifies a change                                                                                       |
+| `LLM_OPENROUTER_API_KEY`                 | OpenRouter API key; required when `LLM_PROVIDER=openrouter`                                                                     |
+| `LLM_OPENROUTER_MODEL`                   | `deepseek/deepseek-v4-flash`                                                                                                    |
+| `LLM_OPENROUTER_REASONING_EFFORT`        | `high`; DeepSeek V4 Flash only supports `high`/`xhigh` on OpenRouter                                                            |
+| `LLM_OPENROUTER_BASE_URL`                | `https://openrouter.ai/api/v1`                                                                                                  |
+| `LLM_REQUEST_TIMEOUT_MS`                 | `60000`                                                                                                                         |
+| `LLM_MAX_RETRIES`                        | `2`                                                                                                                             |
+| `LLM_INPUT_USD_PER_MILLION_TOKENS`       | current standard-processing input price for the active provider's model                                                         |
+| `LLM_CACHED_READ_USD_PER_MILLION_TOKENS` | current cached-input price for the active provider's model                                                                      |
+| `LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS` | current cache-write price for the active provider's model (OpenRouter has no separate write tier; set equal to the input price) |
+| `LLM_OUTPUT_USD_PER_MILLION_TOKENS`      | current standard-processing output price for the active provider's model                                                        |
+| `APP_URL`                                | final `https://<hn-digest-hostname>` URL                                                                                        |
+| `DIGEST_TIME_ZONE`                       | `America/New_York`                                                                                                              |
+| `DIGEST_MORNING_TIME`                    | `07:00`                                                                                                                         |
+| `DIGEST_EVENING_TIME`                    | `19:00`                                                                                                                         |
+| `DIGEST_STORY_COUNT`                     | reviewed private-MVP count                                                                                                      |
+| `DIGEST_MINIMUM_COMMENT_COUNT`           | `10`; minimum HN discussion size before a story is selected                                                                     |
+| `DIGEST_MISSED_RUN_GRACE_MS`             | `21600000`                                                                                                                      |
+| `ARTICLE_FETCH_TIMEOUT_MS`               | `10000`                                                                                                                         |
+| `ARTICLE_FETCH_MAX_BYTES`                | `2097152`                                                                                                                       |
+| `ARTICLE_FETCH_MAX_REDIRECTS`            | `5`                                                                                                                             |
+| `LLM_INSTRUCTION_TOKEN_LIMIT`            | reviewed token allowance                                                                                                        |
+| `LLM_ARTICLE_TOKEN_LIMIT`                | reviewed token allowance                                                                                                        |
+| `LLM_COMMENT_TOKEN_LIMIT`                | reviewed token allowance                                                                                                        |
+| `LLM_OUTPUT_TOKEN_LIMIT`                 | reviewed token allowance                                                                                                        |
+| `LLM_MAX_REQUEST_COST_USD`               | owner-approved worst-case ceiling for one story request                                                                         |
+| `COMMENT_SELECTION_MAXIMUM`              | `30`                                                                                                                            |
+| `LLM_DAILY_SOFT_LIMIT_USD`               | owner-approved warning threshold                                                                                                |
+| `LLM_DAILY_HARD_LIMIT_USD`               | owner-approved daily ceiling                                                                                                    |
+| `LLM_MONTHLY_SOFT_LIMIT_USD`             | owner-approved warning threshold                                                                                                |
+| `LLM_MONTHLY_HARD_LIMIT_USD`             | owner-approved monthly ceiling                                                                                                  |
+| `WORKER_FETCH_CONCURRENCY_PER_HOST`      | `2`                                                                                                                             |
+| `WORKER_LLM_CONCURRENCY`                 | `1`                                                                                                                             |
+| `WORKER_LEASE_MS`                        | `300000`                                                                                                                        |
+| `SCHEDULER_POLL_INTERVAL_MS`             | `30000`                                                                                                                         |
+| `WORKER_POLL_INTERVAL_MS`                | `5000`                                                                                                                          |
+| `RUNTIME_SHUTDOWN_GRACE_MS`              | `30000`                                                                                                                         |
 
 The application intentionally fails startup when any production variable is
 missing or invalid. Configuration errors identify field names and constraints,

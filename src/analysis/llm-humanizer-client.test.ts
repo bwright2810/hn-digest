@@ -100,7 +100,9 @@ function response(overrides: Partial<Response> = {}): Response {
   } as Response;
 }
 
-function chatCompletion(overrides: Partial<ChatCompletion> = {}): ChatCompletion {
+function chatCompletion(
+  overrides: Partial<ChatCompletion> = {},
+): ChatCompletion {
   return {
     id: "chatcmpl_123",
     object: "chat.completion",
@@ -182,9 +184,8 @@ describe("HumanizerClient (openai provider, Responses API)", () => {
         return response();
       },
     );
-    const outcome = await openaiClient(createResponse).humanize(
-      assembledRequest(),
-    );
+    const outcome =
+      await openaiClient(createResponse).humanize(assembledRequest());
 
     expect(createResponse).toHaveBeenCalledOnce();
     expect(createResponse.mock.calls[0]?.[0]).toMatchObject({
@@ -305,9 +306,9 @@ describe("HumanizerClient (openai provider, Responses API)", () => {
 
   it("rejects invalid structured output as a terminal classified error", async () => {
     await expect(
-      openaiClient(async () =>
-        response({ output_text: "not JSON" }),
-      ).humanize(assembledRequest()),
+      openaiClient(async () => response({ output_text: "not JSON" })).humanize(
+        assembledRequest(),
+      ),
     ).rejects.toMatchObject({
       code: "invalid_structured_output",
       retryable: false,
@@ -348,9 +349,8 @@ describe("HumanizerClient (openrouter provider, Chat Completions API)", () => {
         return chatCompletion();
       },
     );
-    const outcome = await openRouterClient(createCompletion).humanize(
-      assembledRequest(),
-    );
+    const outcome =
+      await openRouterClient(createCompletion).humanize(assembledRequest());
 
     expect(createCompletion).toHaveBeenCalledOnce();
     const sentParams = createCompletion.mock.calls[0]?.[0];
@@ -363,9 +363,7 @@ describe("HumanizerClient (openrouter provider, Chat Completions API)", () => {
         json_schema: { name: "hn_digest_humanized_prose", strict: true },
       },
     });
-    expect(JSON.stringify(sentParams?.messages)).toContain(
-      copyrightedSource,
-    );
+    expect(JSON.stringify(sentParams?.messages)).toContain(copyrightedSource);
     expect(outcome).toMatchObject({
       kind: "completed",
       responseId: "chatcmpl_123",

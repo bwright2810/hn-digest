@@ -118,7 +118,9 @@ function response(overrides: Partial<Response> = {}): Response {
   } as Response;
 }
 
-function chatCompletion(overrides: Partial<ChatCompletion> = {}): ChatCompletion {
+function chatCompletion(
+  overrides: Partial<ChatCompletion> = {},
+): ChatCompletion {
   return {
     id: "chatcmpl_123",
     object: "chat.completion",
@@ -200,9 +202,8 @@ describe("LlmAnalysisClient (openai provider, Responses API)", () => {
         return response();
       },
     );
-    const outcome = await openaiClient(createResponse).analyze(
-      assembledRequest(),
-    );
+    const outcome =
+      await openaiClient(createResponse).analyze(assembledRequest());
 
     expect(createResponse).toHaveBeenCalledOnce();
     expect(createResponse.mock.calls[0]?.[0]).toMatchObject({
@@ -323,9 +324,9 @@ describe("LlmAnalysisClient (openai provider, Responses API)", () => {
 
   it("rejects invalid structured output as a terminal classified error", async () => {
     await expect(
-      openaiClient(async () =>
-        response({ output_text: "not JSON" }),
-      ).analyze(assembledRequest()),
+      openaiClient(async () => response({ output_text: "not JSON" })).analyze(
+        assembledRequest(),
+      ),
     ).rejects.toMatchObject({
       code: "invalid_structured_output",
       retryable: false,
@@ -366,9 +367,8 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
         return chatCompletion();
       },
     );
-    const outcome = await openRouterClient(createCompletion).analyze(
-      assembledRequest(),
-    );
+    const outcome =
+      await openRouterClient(createCompletion).analyze(assembledRequest());
 
     expect(createCompletion).toHaveBeenCalledOnce();
     const sentParams = createCompletion.mock.calls[0]?.[0];
@@ -381,9 +381,7 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
         json_schema: { name: "hn_digest_analysis", strict: true },
       },
     });
-    expect(JSON.stringify(sentParams?.messages)).toContain(
-      copyrightedSource,
-    );
+    expect(JSON.stringify(sentParams?.messages)).toContain(copyrightedSource);
     expect(outcome).toMatchObject({
       kind: "completed",
       responseId: "chatcmpl_123",
@@ -416,9 +414,7 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
     const sleep = vi.fn(async () => {});
 
     await expect(
-      openRouterClient(createCompletion, { sleep }).analyze(
-        assembledRequest(),
-      ),
+      openRouterClient(createCompletion, { sleep }).analyze(assembledRequest()),
     ).resolves.toMatchObject({ kind: "completed" });
     expect(createCompletion).toHaveBeenCalledTimes(2);
     expect(sleep).toHaveBeenCalledWith(250);
@@ -460,9 +456,7 @@ describe("LlmAnalysisClient (openrouter provider, Chat Completions API)", () => 
     });
 
     await expect(
-      openRouterClient(async () => refusalResponse).analyze(
-        assembledRequest(),
-      ),
+      openRouterClient(async () => refusalResponse).analyze(assembledRequest()),
     ).resolves.toMatchObject({
       kind: "refusal",
       refusal: "Unable to analyze.",

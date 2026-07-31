@@ -271,7 +271,10 @@ function classifyCompletionResponse(
     usage: mapChatCompletionUsage(response.usage),
   };
   try {
-    const outcome = classifyChatCompletionResponse(response, parseAnalysisOutput);
+    const outcome = classifyChatCompletionResponse(
+      response,
+      parseAnalysisOutput,
+    );
     return { ...base, ...outcome };
   } catch (error) {
     throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
@@ -280,7 +283,9 @@ function classifyCompletionResponse(
   }
 }
 
-function classifyResponsesResponse(response: Response): AnalysisResponseOutcome {
+function classifyResponsesResponse(
+  response: Response,
+): AnalysisResponseOutcome {
   const base: OutcomeBase = {
     responseId: response.id,
     model: response.model,
@@ -327,7 +332,9 @@ function classifyResponsesResponse(response: Response): AnalysisResponseOutcome 
   }
 }
 
-function mapResponsesUsage(usage: ResponseUsage | undefined): AnalysisUsage | null {
+function mapResponsesUsage(
+  usage: ResponseUsage | undefined,
+): AnalysisUsage | null {
   if (!usage) return null;
   return {
     inputTokens: usage.input_tokens,

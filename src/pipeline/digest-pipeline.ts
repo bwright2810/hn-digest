@@ -108,7 +108,10 @@ export class DigestPipeline {
   private readonly humanizerClient: HumanizerClient;
   private readonly prices: LlmPriceAssumptions;
   private readonly articleFetcher: FetchArticleClient;
-  private readonly activeLlm: { readonly model: string; readonly reasoningEffort: string };
+  private readonly activeLlm: {
+    readonly model: string;
+    readonly reasoningEffort: string;
+  };
 
   constructor(
     private readonly db: Database,
