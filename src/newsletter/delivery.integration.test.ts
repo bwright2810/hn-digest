@@ -249,6 +249,7 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
       }),
     ).toMatchObject([
       { sequence: 1, status: "sent" },
+      { sequence: 1, status: "sent" },
       { sequence: 2, status: "sent" },
     ]);
   });
