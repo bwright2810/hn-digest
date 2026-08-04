@@ -753,6 +753,7 @@ export class DigestPipeline {
         columns: {
           errorCode: true,
           trigger: true,
+          requestedStoryCount: true,
           newsletterReadyAt: true,
           humanizedAt: true,
         },
@@ -763,16 +764,11 @@ export class DigestPipeline {
       await this.failRun(runId, "no_stories_collected");
       return;
     }
-    const active = statuses.some(({ status }) =>
-      ["pending", "collecting", "analyzing"].includes(status),
-    );
-    const nextStatus = active
-      ? "analyzing"
-      : statuses.every(({ status }) => status === "failed")
-        ? "failed"
-        : statuses.some(({ status }) => status === "failed") || run?.errorCode
-          ? "partial"
-          : "complete";
+    const { status: nextStatus, errorCode } = determineDigestRunStatus({
+      storyStatuses: statuses.map(({ status }) => status),
+      requestedStoryCount: run?.requestedStoryCount ?? statuses.length,
+      runErrorCode: run?.errorCode ?? null,
+    });
     if (
       (nextStatus === "complete" || nextStatus === "partial") &&
       !run?.humanizedAt
@@ -781,10 +777,6 @@ export class DigestPipeline {
       // completing or the newsletter from sending with the original text.
       await this.humanizeRun(runId);
     }
-    const errorCode =
-      nextStatus === "failed"
-        ? (run?.errorCode ?? "all_stories_failed")
-        : run?.errorCode;
     const updatedAt = new Date();
     await this.db
       .update(digestRuns)
@@ -982,6 +974,48 @@ export class DigestPipeline {
       .set({ status: "failed", errorCode, updatedAt: new Date() })
       .where(eq(digestRuns.id, runId));
   }
+}
+
+export function determineDigestRunStatus(options: {
+  readonly storyStatuses: readonly string[];
+  readonly requestedStoryCount: number;
+  readonly runErrorCode: string | null;
+}): {
+  readonly status: "analyzing" | "complete" | "partial" | "failed";
+  readonly errorCode: string | null;
+} {
+  const active = options.storyStatuses.some((status) =>
+    ["pending", "collecting", "analyzing"].includes(status),
+  );
+  if (active) return { status: "analyzing", errorCode: options.runErrorCode };
+
+  const allFailed = options.storyStatuses.every(
+    (status) => status === "failed",
+  );
+  if (allFailed) {
+    return {
+      status: "failed",
+      errorCode: options.runErrorCode ?? "all_stories_failed",
+    };
+  }
+
+  const hasFailedStory = options.storyStatuses.some(
+    (status) => status === "failed",
+  );
+  const hasShortfall =
+    options.storyStatuses.length < options.requestedStoryCount;
+  const hasBlockingRunError =
+    hasShortfall &&
+    (options.runErrorCode === "STORY_ITEM_FAILURES" ||
+      options.runErrorCode === "TOP_STORIES_SHORTFALL");
+
+  if (hasFailedStory || hasBlockingRunError) {
+    return { status: "partial", errorCode: options.runErrorCode };
+  }
+
+  // Clear legacy ingestion errors once the requested number of usable stories
+  // has been collected and all story analyses are in usable terminal states.
+  return { status: "complete", errorCode: null };
 }
 
 export function hasArticleContent(

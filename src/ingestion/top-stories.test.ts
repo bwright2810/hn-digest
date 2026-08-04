@@ -238,6 +238,41 @@ describe("ingestTopStories", () => {
     });
   });
 
+  it("completes when failed candidates are skipped and the requested count is met", async () => {
+    const runStore = store();
+    const failure = {
+      itemId: 200,
+      error: new HackerNewsClientError("invalid-response", "invalid item", 200),
+    };
+    const client = {
+      getTopStoryIds: vi.fn().mockResolvedValue([100, 200, 300]),
+      getItems: vi
+        .fn()
+        .mockResolvedValue([
+          firstStory,
+          failure,
+          story({ id: 300, title: "Third" }),
+        ]),
+    };
+
+    const result = await ingestTopStories({
+      storyCount: 2,
+      client,
+      store: runStore,
+    });
+
+    expect(result).toMatchObject({
+      status: "complete",
+      collectedStoryCount: 2,
+    });
+    expect(runStore.finishRun).toHaveBeenCalledWith(
+      "run-1",
+      "complete",
+      expect.any(Date),
+      null,
+    );
+  });
+
   it("records a partial run when Hacker News returns fewer stories than requested", async () => {
     const runStore = store();
     const client = {

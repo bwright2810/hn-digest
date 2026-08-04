@@ -6,10 +6,33 @@ import {
   type AnalysisOutput,
 } from "../analysis/contract";
 import {
+  determineDigestRunStatus,
   hasArticleContent,
   patchHumanizedAnalysis,
   selectDisplayedDiscussionClaim,
 } from "./digest-pipeline";
+
+describe("determineDigestRunStatus", () => {
+  it("clears a stale story-item ingestion error after the requested stories are usable", () => {
+    expect(
+      determineDigestRunStatus({
+        storyStatuses: ["complete", "discussion_only", "complete"],
+        requestedStoryCount: 3,
+        runErrorCode: "STORY_ITEM_FAILURES",
+      }),
+    ).toEqual({ status: "complete", errorCode: null });
+  });
+
+  it("keeps a genuine shortfall partial", () => {
+    expect(
+      determineDigestRunStatus({
+        storyStatuses: ["complete"],
+        requestedStoryCount: 2,
+        runErrorCode: "TOP_STORIES_SHORTFALL",
+      }),
+    ).toEqual({ status: "partial", errorCode: "TOP_STORIES_SHORTFALL" });
+  });
+});
 
 describe("article discussion-only fallback", () => {
   it("requires actual extracted text rather than only a document row", () => {
