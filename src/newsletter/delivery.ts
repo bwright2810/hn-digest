@@ -113,7 +113,8 @@ export class NewsletterDeliveryWorker {
         ),
       )
       .orderBy(desc(effectiveReadyAt));
-    const mostRecentRunId = runs[0]?.id;
+    const run = runs[0];
+    if (!run) return 0;
     const latestDeliveryBySubscriber = new Map(
       (
         await this.database
@@ -129,59 +130,51 @@ export class NewsletterDeliveryWorker {
           .groupBy(newsletterDeliveries.subscriberId)
       ).map(({ subscriberId, readyAt }) => [subscriberId, readyAt]),
     );
-    let count = 0;
-    for (const run of runs) {
-      const edition = editionFromScheduleKey(
-        run.scheduleKey,
-        this.options.morningTime,
-        this.options.eveningTime,
-      );
-      if (!edition) continue;
-      const eligible = await this.database
-        .select({ id: subscribers.id, confirmedAt: subscribers.confirmedAt })
-        .from(subscribers)
-        .where(
-          and(
-            eq(subscribers.status, "confirmed"),
-            isNotNull(subscribers.confirmedAt),
-            isNull(subscribers.suppressionReason),
-            isNull(subscribers.unsubscribedAt),
-            eq(
-              edition === "morning"
-                ? subscribers.morningEnabled
-                : subscribers.eveningEnabled,
-              true,
-            ),
+    const edition = editionFromScheduleKey(
+      run.scheduleKey,
+      this.options.morningTime,
+      this.options.eveningTime,
+    );
+    if (!edition) return 0;
+    const eligible = await this.database
+      .select({ id: subscribers.id, confirmedAt: subscribers.confirmedAt })
+      .from(subscribers)
+      .where(
+        and(
+          eq(subscribers.status, "confirmed"),
+          isNotNull(subscribers.confirmedAt),
+          isNull(subscribers.suppressionReason),
+          isNull(subscribers.unsubscribedAt),
+          eq(
+            edition === "morning"
+              ? subscribers.morningEnabled
+              : subscribers.eveningEnabled,
+            true,
           ),
-        )
-        .then((rows) =>
-          rows.filter((subscriber) => {
-            const latestDelivery = latestDeliveryBySubscriber.get(
-              subscriber.id,
-            );
-            return latestDelivery
-              ? latestDelivery < run.readyAt
-              : run.id === mostRecentRunId;
-          }),
-        );
-      if (eligible.length === 0) continue;
-      const inserted = await this.database
-        .insert(newsletterDeliveries)
-        .values(
-          eligible.map(({ id }) => ({
-            digestRunId: run.id,
-            subscriberId: id,
-            edition,
-            nextAttemptAt: now,
-            createdAt: now,
-            updatedAt: now,
-          })),
-        )
-        .onConflictDoNothing()
-        .returning({ id: newsletterDeliveries.id });
-      count += inserted.length;
-    }
-    return count;
+        ),
+      )
+      .then((rows) =>
+        rows.filter((subscriber) => {
+          const latestDelivery = latestDeliveryBySubscriber.get(subscriber.id);
+          return latestDelivery ? latestDelivery < run.readyAt : true;
+        }),
+      );
+    if (eligible.length === 0) return 0;
+    const inserted = await this.database
+      .insert(newsletterDeliveries)
+      .values(
+        eligible.map(({ id }) => ({
+          digestRunId: run.id,
+          subscriberId: id,
+          edition,
+          nextAttemptAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({ id: newsletterDeliveries.id });
+    return inserted.length;
   }
 
   private async claim(now: Date) {
