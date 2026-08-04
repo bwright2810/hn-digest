@@ -14,7 +14,7 @@ describe("GET /api/health", () => {
     const responseBody = JSON.stringify(await GET().json());
 
     expect(responseBody).not.toContain("DATABASE_URL");
-    expect(responseBody).not.toContain("OPENAI_API_KEY");
+    expect(responseBody).not.toContain("LLM_OPENAI_API_KEY");
     expect(responseBody).not.toContain("process.env");
   });
 });

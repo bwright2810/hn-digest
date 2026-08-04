@@ -7,12 +7,12 @@ import {
   ANALYSIS_PROMPT_VERSION,
   type AnalysisOutput,
 } from "../analysis/contract";
-import type { HumanizerClient } from "../analysis/humanizer-client";
 import {
   HUMANIZER_PROMPT_VERSION,
   HUMANIZER_SCHEMA_VERSION,
 } from "../analysis/humanizer-contract";
-import type { OpenAIAnalysisClient } from "../analysis/openai-client";
+import type { LlmAnalysisClient } from "../analysis/llm-analysis-client";
+import type { HumanizerClient } from "../analysis/llm-humanizer-client";
 import { loadConfig } from "../config/server";
 import { createDatabase } from "../db/client";
 import {
@@ -84,7 +84,7 @@ describeDatabase("DigestPipeline", () => {
         return {
           kind: "completed" as const,
           responseId: `${responsePrefix}-${providerCalls}`,
-          model: "gpt-5.6-luna",
+          model: "deepseek/deepseek-v4-flash",
           usage: {
             inputTokens: 500,
             outputTokens: 200,
@@ -96,11 +96,12 @@ describeDatabase("DigestPipeline", () => {
             providerCalls === 1 ? analysisOutput(commentId + 999) : output,
         };
       },
-    } as unknown as OpenAIAnalysisClient;
+    } as unknown as LlmAnalysisClient;
     const config = loadConfig({
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
-      OPENAI_API_KEY: "test-only",
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
       SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
       SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
@@ -204,7 +205,7 @@ describeDatabase("DigestPipeline", () => {
       analyze: async () => ({
         kind: "completed" as const,
         responseId: `analysis-${randomUUID()}`,
-        model: "gpt-5.6-luna",
+        model: "deepseek/deepseek-v4-flash",
         usage: {
           inputTokens: 500,
           outputTokens: 200,
@@ -214,7 +215,7 @@ describeDatabase("DigestPipeline", () => {
         },
         output: analysisOutput(fixture.commentId),
       }),
-    } as unknown as OpenAIAnalysisClient;
+    } as unknown as LlmAnalysisClient;
     let humanizerCalls = 0;
     const humanizerClient = {
       humanize: async (request: { storyIds: readonly string[] }) => {
@@ -222,7 +223,7 @@ describeDatabase("DigestPipeline", () => {
         return {
           kind: "completed" as const,
           responseId: `humanizer-${randomUUID()}`,
-          model: "gpt-5.6-luna",
+          model: "deepseek/deepseek-v4-flash",
           usage: {
             inputTokens: 80,
             outputTokens: 40,
@@ -246,7 +247,8 @@ describeDatabase("DigestPipeline", () => {
     const config = loadConfig({
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
-      OPENAI_API_KEY: "test-only",
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
       SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
       SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
@@ -336,7 +338,7 @@ describeDatabase("DigestPipeline", () => {
       analyze: async () => ({
         kind: "completed" as const,
         responseId: `analysis-${randomUUID()}`,
-        model: "gpt-5.6-luna",
+        model: "deepseek/deepseek-v4-flash",
         usage: {
           inputTokens: 500,
           outputTokens: 200,
@@ -346,7 +348,7 @@ describeDatabase("DigestPipeline", () => {
         },
         output: analysisOutput(fixture.commentId),
       }),
-    } as unknown as OpenAIAnalysisClient;
+    } as unknown as LlmAnalysisClient;
     const humanizerClient = {
       humanize: async () => {
         throw new Error("network exhausted");
@@ -355,7 +357,8 @@ describeDatabase("DigestPipeline", () => {
     const config = loadConfig({
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
-      OPENAI_API_KEY: "test-only",
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
       SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
       SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
