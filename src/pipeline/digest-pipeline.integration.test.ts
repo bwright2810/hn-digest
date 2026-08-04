@@ -3,18 +3,29 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { AnalysisOutput } from "../analysis/contract";
-import type { OpenAIAnalysisClient } from "../analysis/openai-client";
+import {
+  ANALYSIS_PROMPT_VERSION,
+  type AnalysisOutput,
+} from "../analysis/contract";
+import {
+  HUMANIZER_PROMPT_VERSION,
+  HUMANIZER_SCHEMA_VERSION,
+} from "../analysis/humanizer-contract";
+import type { LlmAnalysisClient } from "../analysis/llm-analysis-client";
+import type { HumanizerClient } from "../analysis/llm-humanizer-client";
 import { loadConfig } from "../config/server";
 import { createDatabase } from "../db/client";
 import {
   analysisJobs,
   digestRuns,
   digestRunStories,
+  discussionAnalyses,
   llmUsage,
 } from "../db/schema";
+import { PostgresDigestReader } from "../digests/reader";
 import type { HackerNewsClient } from "../hn/client";
 import type { HackerNewsStory } from "../hn/schemas";
+import type { ClaimedAnalysisJob } from "../worker/queue";
 import { AnalysisWorker } from "../worker/runner";
 import { DigestPipeline } from "./digest-pipeline";
 
@@ -73,7 +84,7 @@ describeDatabase("DigestPipeline", () => {
         return {
           kind: "completed" as const,
           responseId: `${responsePrefix}-${providerCalls}`,
-          model: "gpt-5.6-luna",
+          model: "deepseek/deepseek-v4-flash",
           usage: {
             inputTokens: 500,
             outputTokens: 200,
@@ -85,11 +96,12 @@ describeDatabase("DigestPipeline", () => {
             providerCalls === 1 ? analysisOutput(commentId + 999) : output,
         };
       },
-    } as unknown as OpenAIAnalysisClient;
+    } as unknown as LlmAnalysisClient;
     const config = loadConfig({
       NODE_ENV: "test",
       DATABASE_URL: databaseUrl!,
-      OPENAI_API_KEY: "test-only",
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
       SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
       SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
       DIGEST_STORY_COUNT: "1",
@@ -187,6 +199,257 @@ describeDatabase("DigestPipeline", () => {
     ).toEqual({ status: "complete", newsletterReadyAt: null });
   });
 
+  it("humanizes displayed prose while preserving citations and comment IDs, and only runs once per run", async () => {
+    const fixture = makeHnFixture();
+    const openaiClient = {
+      analyze: async () => ({
+        kind: "completed" as const,
+        responseId: `analysis-${randomUUID()}`,
+        model: "deepseek/deepseek-v4-flash",
+        usage: {
+          inputTokens: 500,
+          outputTokens: 200,
+          cachedReadTokens: 0,
+          cacheWriteTokens: 0,
+          reasoningTokens: 50,
+        },
+        output: analysisOutput(fixture.commentId),
+      }),
+    } as unknown as LlmAnalysisClient;
+    let humanizerCalls = 0;
+    const humanizerClient = {
+      humanize: async (request: { storyIds: readonly string[] }) => {
+        humanizerCalls += 1;
+        return {
+          kind: "completed" as const,
+          responseId: `humanizer-${randomUUID()}`,
+          model: "deepseek/deepseek-v4-flash",
+          usage: {
+            inputTokens: 80,
+            outputTokens: 40,
+            cachedReadTokens: 0,
+            cacheWriteTokens: 0,
+            reasoningTokens: 0,
+          },
+          output: {
+            promptVersion: HUMANIZER_PROMPT_VERSION,
+            schemaVersion: HUMANIZER_SCHEMA_VERSION,
+            stories: request.storyIds.map((storyId) => ({
+              storyId,
+              article: "Rewritten article claim.",
+              discussion: "Rewritten discussion claim.",
+              takeaway: "Rewritten takeaway.",
+            })),
+          },
+        };
+      },
+    } as unknown as HumanizerClient;
+    const config = loadConfig({
+      NODE_ENV: "test",
+      DATABASE_URL: databaseUrl!,
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
+      SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
+      DIGEST_STORY_COUNT: "1",
+      DIGEST_MINIMUM_COMMENT_COUNT: "1",
+      HUMANIZER_ENABLED: "true",
+    });
+    const pipeline = new DigestPipeline(connection.db, config, {
+      hnClient: fixture.hnClient,
+      openaiClient,
+      humanizerClient,
+    });
+
+    const runId = await createPendingRun();
+    await pipeline.processNextRun();
+    const [queued] = await connection.db
+      .select()
+      .from(analysisJobs)
+      .innerJoin(
+        digestRunStories,
+        eq(analysisJobs.digestRunStoryId, digestRunStories.id),
+      )
+      .where(eq(digestRunStories.digestRunId, runId));
+    const worker = new AnalysisWorker(connection.db, {
+      workerId: `integration:${randomUUID()}`,
+      leaseMs: 60_000,
+      llmConcurrency: 1,
+      fetchConcurrencyPerHost: 1,
+      spendLimits: config.spend,
+    });
+    await worker.processAvailable(
+      (claim) => pipeline.processClaimedJob(claim),
+      (claim, outcome) => pipeline.finishClaimedJob(claim, outcome),
+    );
+
+    expect(humanizerCalls).toBe(1);
+    const run = await connection.db.query.digestRuns.findFirst({
+      columns: { status: true, humanizedAt: true },
+      where: eq(digestRuns.id, runId),
+    });
+    expect(run).toMatchObject({ status: "complete" });
+    expect(run?.humanizedAt).toBeInstanceOf(Date);
+
+    const stored = await connection.db.query.discussionAnalyses.findFirst({
+      columns: { result: true, humanizedResult: true },
+      where: eq(discussionAnalyses.analysisJobId, queued!.analysis_jobs.id),
+    });
+    const original = analysisOutput(fixture.commentId);
+    const humanized = stored?.humanizedResult as AnalysisOutput | undefined;
+    expect(humanized?.article.thesis?.claim).toBe("Rewritten article claim.");
+    expect(humanized?.discussion.consensus[0]?.claim).toBe(
+      "Rewritten discussion claim.",
+    );
+    expect(humanized?.combinedTakeaway.summary).toBe("Rewritten takeaway.");
+    // Citations and comment IDs are byte-identical to the original.
+    expect(humanized?.article.thesis?.citations).toEqual(
+      original.article.thesis?.citations,
+    );
+    expect(humanized?.discussion.consensus[0]?.supportingCommentIds).toEqual(
+      original.discussion.consensus[0]?.supportingCommentIds,
+    );
+    expect(humanized?.discussion.insightfulComments).toEqual(
+      original.discussion.insightfulComments,
+    );
+
+    // The reader serves the humanized text.
+    const reader = new PostgresDigestReader(connection.db);
+    const view = await reader.byId(runId);
+    expect(view?.stories[0]?.analysis?.combinedTakeaway.summary).toBe(
+      "Rewritten takeaway.",
+    );
+
+    // Re-triggering reconcileRun for an already-humanized run must not call
+    // the humanizer again.
+    const fakeClaim: ClaimedAnalysisJob = {
+      id: queued!.analysis_jobs.id,
+      attempt: 1,
+      workerId: "integration-test",
+      leasedUntil: new Date(),
+    };
+    await pipeline.finishClaimedJob(fakeClaim, { status: "succeeded" });
+    expect(humanizerCalls).toBe(1);
+  });
+
+  it("completes normally with the original text when the humanizer fails", async () => {
+    const fixture = makeHnFixture();
+    const openaiClient = {
+      analyze: async () => ({
+        kind: "completed" as const,
+        responseId: `analysis-${randomUUID()}`,
+        model: "deepseek/deepseek-v4-flash",
+        usage: {
+          inputTokens: 500,
+          outputTokens: 200,
+          cachedReadTokens: 0,
+          cacheWriteTokens: 0,
+          reasoningTokens: 50,
+        },
+        output: analysisOutput(fixture.commentId),
+      }),
+    } as unknown as LlmAnalysisClient;
+    const humanizerClient = {
+      humanize: async () => {
+        throw new Error("network exhausted");
+      },
+    } as unknown as HumanizerClient;
+    const config = loadConfig({
+      NODE_ENV: "test",
+      DATABASE_URL: databaseUrl!,
+      LLM_PROVIDER: "openai",
+      LLM_OPENAI_API_KEY: "test-only",
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY: Buffer.alloc(32, 61).toString("base64"),
+      SUBSCRIBER_LOOKUP_HMAC_KEY: Buffer.alloc(32, 67).toString("base64"),
+      DIGEST_STORY_COUNT: "1",
+      DIGEST_MINIMUM_COMMENT_COUNT: "1",
+      HUMANIZER_ENABLED: "true",
+    });
+    const pipeline = new DigestPipeline(connection.db, config, {
+      hnClient: fixture.hnClient,
+      openaiClient,
+      humanizerClient,
+    });
+
+    const runId = await createPendingRun();
+    await pipeline.processNextRun();
+    const worker = new AnalysisWorker(connection.db, {
+      workerId: `integration:${randomUUID()}`,
+      leaseMs: 60_000,
+      llmConcurrency: 1,
+      fetchConcurrencyPerHost: 1,
+      spendLimits: config.spend,
+    });
+    await worker.processAvailable(
+      (claim) => pipeline.processClaimedJob(claim),
+      (claim, outcome) => pipeline.finishClaimedJob(claim, outcome),
+    );
+
+    const run = await connection.db.query.digestRuns.findFirst({
+      columns: { status: true, newsletterReadyAt: true, humanizedAt: true },
+      where: eq(digestRuns.id, runId),
+    });
+    expect(run).toMatchObject({
+      status: "complete",
+      newsletterReadyAt: expect.any(Date),
+    });
+    // A thrown error never reaches the humanizedAt write, so a later
+    // reconcile can try again once the transient failure clears.
+    expect(run?.humanizedAt).toBeNull();
+
+    const reader = new PostgresDigestReader(connection.db);
+    const view = await reader.byId(runId);
+    expect(view?.stories[0]?.analysis?.combinedTakeaway.summary).toBe(
+      analysisOutput(fixture.commentId).combinedTakeaway.summary,
+    );
+  });
+
+  function makeHnFixture(): {
+    readonly hnClient: HackerNewsClient;
+    readonly commentId: number;
+  } {
+    const fixtureStoryId = 40_000_000 + Math.floor(Math.random() * 1_000_000);
+    const fixtureCommentId = fixtureStoryId + 1;
+    const fixtureStory: HackerNewsStory = {
+      id: fixtureStoryId,
+      type: "story",
+      by: "author",
+      time: 1_750_000_000,
+      title: "A deterministic humanizer test story",
+      text: "This text post explains a small but important systems idea.",
+      score: 100,
+      descendants: 1,
+      kids: [fixtureCommentId],
+      deleted: false,
+      dead: false,
+    };
+    return {
+      commentId: fixtureCommentId,
+      hnClient: {
+        getTopStoryIds: async () => [fixtureStory.id],
+        getItems: async () => [fixtureStory],
+        getItem: async () => fixtureStory,
+        getCommentDescendants: async () => ({
+          comments: [
+            {
+              id: fixtureCommentId,
+              type: "comment" as const,
+              by: "commenter",
+              time: 1_750_000_100,
+              parent: fixtureStory.id,
+              text: "The strongest implication is operational simplicity.",
+              deleted: false,
+              dead: false,
+            },
+          ],
+          unavailableComments: [],
+          unavailableItemIds: [],
+          failures: [],
+        }),
+      } as unknown as HackerNewsClient,
+    };
+  }
+
   async function createPendingRun(
     trigger: "scheduled" | "on_demand" = "scheduled",
   ): Promise<string> {
@@ -210,7 +473,7 @@ function analysisOutput(commentId: number): AnalysisOutput {
     supportingCommentIds: [commentId],
   };
   return {
-    promptVersion: "analysis-prompt-v1",
+    promptVersion: ANALYSIS_PROMPT_VERSION,
     schemaVersion: "analysis-schema-v1",
     article: {
       thesis: {

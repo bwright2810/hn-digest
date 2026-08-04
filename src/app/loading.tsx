@@ -7,10 +7,10 @@ export default function Loading() {
         aria-live="polite"
       >
         <div>
-          <p className="eyebrow">Loading edition</p>
-          <h1 id="digest-loading">Opening the latest digest.</h1>
+          <p className="eyebrow">Loading the edition</p>
+          <h1 id="digest-loading">Fetching today’s reading.</h1>
         </div>
-        <p>Collecting the article and discussion analysis for this view.</p>
+        <p>The stories and their HN threads are almost ready.</p>
       </section>
     </main>
   );

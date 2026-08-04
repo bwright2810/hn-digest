@@ -29,8 +29,8 @@ export default async function ConfirmNewsletterPage({
       </h1>
       <p>
         {confirmed
-          ? "Your selected editions are active. Your first email will include links for changing preferences or unsubscribing."
-          : "The link may be expired, replaced, or already invalid. You can request a new confirmation without revealing any subscription status."}
+          ? "You're subscribed to the editions you chose. Every email includes links to change your schedule or unsubscribe."
+          : "This link may have expired or been replaced. Request a new confirmation and we'll send one if the address is eligible."}
       </p>
       <Link href={confirmed ? "/" : "/newsletter"}>
         {confirmed ? "Read the latest digest" : "Return to newsletter signup"}

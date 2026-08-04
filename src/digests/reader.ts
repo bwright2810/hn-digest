@@ -125,11 +125,15 @@ export class PostgresDigestReader implements DigestReader {
               where: eq(articleAnalyses.analysisJobId, job.id),
             }),
             this.database.query.discussionAnalyses.findFirst({
-              columns: { result: true },
+              columns: { result: true, humanizedResult: true },
               where: eq(discussionAnalyses.analysisJobId, job.id),
             }),
           ]);
-          analysis = parseStoredAnalysis(article?.result, discussion?.result);
+          analysis =
+            parseStoredAnalysis(
+              article?.result,
+              discussion?.humanizedResult ?? undefined,
+            ) ?? parseStoredAnalysis(article?.result, discussion?.result);
         }
 
         return {

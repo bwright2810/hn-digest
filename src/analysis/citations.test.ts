@@ -4,7 +4,7 @@ import {
   degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
 } from "./citations";
-import type { AnalysisOutput } from "./contract";
+import { ANALYSIS_PROMPT_VERSION, type AnalysisOutput } from "./contract";
 
 describe("instructionsForCitationAttempt", () => {
   it("adds a correction only after the first citation attempt", () => {
@@ -20,7 +20,7 @@ describe("instructionsForCitationAttempt", () => {
 
 describe("degradeInvalidCommentCitations", () => {
   const output: AnalysisOutput = {
-    promptVersion: "analysis-prompt-v1",
+    promptVersion: ANALYSIS_PROMPT_VERSION,
     schemaVersion: "analysis-schema-v1",
     article: {
       thesis: {

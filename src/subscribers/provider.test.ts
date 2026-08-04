@@ -17,6 +17,7 @@ describe("HD-102 confirmation provider", () => {
         recipient: "reader@example.com",
         confirmationUrl,
         fromEmail: "digest@example.com",
+        replyToEmail: "privacy@example.com",
         apiKey: "provider-secret",
       },
       fetchImplementation,
@@ -29,6 +30,7 @@ describe("HD-102 confirmation provider", () => {
     expect(headers.get("idempotency-key")).not.toContain("opaque-secret-token");
     expect(body).toMatchObject({
       to: ["reader@example.com"],
+      reply_to: "privacy@example.com",
       subject: "Confirm your HN Digest subscription",
     });
     expect(String(body.text)).toContain(confirmationUrl.href);
@@ -44,6 +46,7 @@ describe("HD-102 confirmation provider", () => {
             "https://digest.example/newsletter/confirm?token=token",
           ),
           fromEmail: "digest@example.com",
+          replyToEmail: "privacy@example.com",
           apiKey: "provider-secret",
         },
         vi

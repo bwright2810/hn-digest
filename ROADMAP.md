@@ -157,9 +157,96 @@ Acceptance criteria:
 - A launch checklist verifies sender authentication, unsubscribe behavior,
   provider production access, privacy text, and end-to-end delivery.
 
+### HD-105 — Complete newsletter launch safeguards [complete]
+
+Dependencies: HD-104.
+
+Close the operational gaps found during the production launch review before
+public signup or scheduled delivery is enabled.
+
+Acceptance criteria:
+
+- Every provider request uses the monitored privacy mailbox as Reply-To.
+- A public privacy notice documents collection, processing, retention,
+  suppression, provider sharing, and subscriber rights.
+- An idempotent background lifecycle job enforces the documented token,
+  unconfirmed-subscriber, delivery-event, and unsubscribed-address retention
+  periods.
+- Private operator commands support verified subscriber export and deletion
+  while preserving the keyed do-not-contact record.
+- Automated tests cover Reply-To and destructive lifecycle boundaries, and the
+  launch runbook identifies the commands and required evidence.
+
+### HD-106 — Bound first-subscriber digest delivery [complete]
+
+Dependencies: HD-103.
+
+Allow a newly confirmed subscriber to receive the single most recent scheduled
+digest as a welcome edition, without enqueueing the historical backlog.
+
+Acceptance criteria:
+
+- A subscriber with no prior delivery is eligible only for the most recent
+  deliverable scheduled digest.
+- After the first delivery is recorded, ordinary confirmed-at and edition
+  eligibility apply to future digests.
+- Tests cover a newly confirmed subscriber and an older deliverable run.
+- Existing delivery idempotency, edition preferences, and retries are
+  unchanged.
+
+### HD-107 — Deliver the latest pre-launch scheduled digest [complete]
+
+Dependencies: HD-106.
+
+Allow the first controlled production subscriber to receive the most recent
+completed scheduled digest when that run predates the newsletter-ready marker.
+
+Acceptance criteria:
+
+- Completed or partial scheduled runs fall back to their update time only when
+  the newsletter-ready timestamp is absent.
+- First-delivery backlog bounding and subsequent forward-only delivery use the
+  same effective readiness timestamp.
+- Integration coverage exercises the legacy null-marker path.
+
+### HD-108 — Match newsletter editions to the editorial digest [complete]
+
+Dependencies: HD-103, HD-104, HD-107.
+
+Bring the HTML newsletter closer to the web digest while retaining broad email
+client compatibility, and support deliberate operator-controlled reissues
+without deleting delivery history or reusing provider idempotency keys.
+
+Acceptance criteria:
+
+- Each analyzed story renders distinct Article, Discussion, and The takeaway
+  sections from the same persisted analysis used by the web application.
+- Email-safe HTML provides restrained editorial hierarchy, metadata, source
+  provenance, responsive behavior, and a complete plain-text alternative.
+- Reissues create a new, auditable delivery sequence while ordinary worker
+  polling remains idempotent for each subscriber, digest, and sequence.
+- Tests cover rendered analysis content, escaping, fallback content, and a
+  worker-claimed reissue.
+
+### HD-109 — Refine newsletter takeaway reading rhythm [complete]
+
+Dependencies: HD-108.
+
+Reduce the visual weight of newsletter takeaways and share the web digest's
+bounded paragraphing behavior for long summaries.
+
+Acceptance criteria:
+
+- Newsletter takeaways use body-scale typography suitable for narrow mobile
+  email clients.
+- Explicit author paragraphs are preserved, while only sufficiently long
+  multi-sentence summaries are split into balanced paragraphs.
+- HTML and plain-text alternatives use the same paragraph boundaries.
+- Tests cover short, explicit, and automatically balanced takeaways.
+
 ## Milestone 3: Public digest API
 
-### HD-110 — Expose a rate-limited public digest API [planned]
+### HD-110 — Expose a rate-limited public digest API [complete]
 
 Dependencies: none.
 
@@ -196,6 +283,35 @@ Acceptance criteria:
   timezone boundaries, rate limits, spoofed forwarding headers, and accidental
   sensitive-field exposure.
 
+## Milestone 5: Editorial voice
+
+### HD-112 — Apply full-mode Unslop to reader-facing prose [complete]
+
+Dependencies: none.
+
+Remove generic LLM phrasing from generated digest analysis and public website
+copy without weakening source grounding, factual accuracy, or the single-call
+analysis architecture.
+
+Acceptance criteria:
+
+- The versioned analysis prompt includes the full-mode Unslop rules: strong
+  restructuring, varied cadence, concrete language, and removal of stock model
+  phrasing.
+- The style pass remains part of the existing structured request. It adds no
+  second provider call, retry loop, new model, or unmetered spend path.
+- Facts, quotations, confidence, citations, HN comment IDs, source boundaries,
+  technical terms, and genuine uncertainty take priority over style.
+- The prompt version changes so cached earlier analyses remain identifiable and
+  new work uses the revised editorial instructions.
+- Existing public-facing page copy receives a full-mode pass. Legal, privacy,
+  security, accessibility, and destructive-action text stays literal where the
+  skill's Auto-Clarity rule calls for it.
+- Repository agent instructions require the same full-mode review whenever
+  public-facing page text is added or edited during development.
+- Automated tests pin the prompt's grounding and Unslop requirements, and the
+  relevant mobile and desktop Playwright checks pass after the copy changes.
+
 ## Decision log
 
 | Date | Decision | Rationale |
@@ -206,3 +322,5 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-101 with encrypted subscriber addresses, keyed lookup digests, and database-backed consent and action-token lifecycles. | AES-256-GCM keeps recoverable addresses authenticated and opaque at rest, separate versioned HMAC material supports uniqueness and token lookup without plaintext indexes, and PostgreSQL constraints plus per-address transaction locks make preference state and repeated lifecycle operations durable and idempotent. |
 | 2026-07-23 | Complete HD-102 with launch-gated public forms, Resend confirmation messages, same-origin mutation checks, and PostgreSQL-backed address/client throttling. | Generic signup outcomes resist subscriber enumeration, only confirmed tokens activate delivery, scoped preference tokens permit edition changes or unsubscribe without accounts, and direct database token seeding lets Playwright verify the complete mobile/desktop lifecycle without exposing test tokens through HTTP or contacting Resend. |
 | 2026-07-23 | Complete HD-104 with signed minimized Resend events, local suppression authority, and private delivery diagnostics. | Raw-body Svix verification and unique provider event IDs make at-least-once, out-of-order webhooks safe; hard bounces, complaints, provider suppressions, and unsubscribe events immediately block future sends without retaining payload addresses or content. Internal delivery IDs support diagnostics and alerts, while production remains gated on the owner-recorded launch checklist. |
+| 2026-07-23 | Complete HD-110 with a versioned completed-edition API and PostgreSQL fixed-window limiting. | Named-zone schedule lookup keeps morning/evening dates correct across DST, explicit response mapping excludes internal and subscriber state, and a database-backed HMAC identity bucket enforces limits across processes before cache lookup. Forwarded addresses are accepted only behind configured proxy CIDRs; missing trust context collapses to a fail-safe shared bucket. |
+| 2026-07-23 | Complete HD-112 by applying full-mode Unslop rules within the existing structured analysis prompt and to public page copy. | Keeping the editorial pass in the one bounded request improves voice without adding a model stage or bypassing cost controls. A new prompt version makes cache behavior explicit, while grounding rules and Auto-Clarity preserve facts, citations, legal meaning, and safety-critical wording. |

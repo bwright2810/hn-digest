@@ -10,6 +10,49 @@ import {
 
 const lookupKey = Buffer.alloc(32, 1);
 
+test("offers newsletter signup at the top of the homepage", async ({
+  page,
+}) => {
+  await page.goto("/?fixture=complete");
+
+  await expect(
+    page.getByRole("heading", {
+      name: "Get the gist of what Hacker News is talking about.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Email address")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Join the digest" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "What Hacker News is talking about.",
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  const newsletterTop = await page
+    .locator(".homepage-newsletter")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  const digestTop = await page
+    .locator(".digest-heading")
+    .evaluate((element) => element.getBoundingClientRect().top);
+  expect(newsletterTop).toBeLessThan(digestTop);
+  await expectNoHorizontalOverflow(page);
+});
+
+test("publishes the newsletter privacy notice without horizontal overflow", async ({
+  page,
+}) => {
+  await page.goto("/privacy");
+  await expect(page).toHaveURL(/\/privacy$/u);
+  await expect(
+    page.getByRole("heading", { name: "Privacy, in plain language." }),
+  ).toBeVisible();
+  await expect(page.getByText("privacy@just-dev.us")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
 test("completes signup, confirmation, preference, and unsubscribe lifecycle", async ({
   page,
 }, testInfo) => {
@@ -25,7 +68,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
   try {
     await page.goto("/newsletter");
     await expect(
-      page.getByRole("heading", { name: "HN Digest in your inbox." }),
+      page.getByRole("heading", { name: "Get the edition when you read." }),
     ).toBeVisible();
     await page.getByLabel("Email address").fill(email);
     await page.getByLabel("Morning").check();
@@ -65,7 +108,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
     await page.getByLabel("Evening").check();
     await page.getByRole("button", { name: "Save preferences" }).click();
     await expect(page.getByRole("status")).toContainText(
-      "preferences have been saved",
+      "schedule has been saved",
     );
 
     const unsubscribe = createSubscriberActionToken(lookupKey);
@@ -75,7 +118,7 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
     );
     await page.getByRole("button", { name: "Unsubscribe from all" }).click();
     await expect(page.getByRole("status")).toContainText(
-      "preferences have been saved",
+      "schedule has been saved",
     );
 
     const finalState = await client.query<{

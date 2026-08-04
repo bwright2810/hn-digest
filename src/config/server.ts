@@ -1,4 +1,5 @@
 import { z } from "zod";
+import ipaddr from "ipaddr.js";
 
 const DEVELOPMENT_DEFAULTS = {
   ADMIN_PASSWORD: "development-only-admin-password",
@@ -12,14 +13,18 @@ const DEVELOPMENT_DEFAULTS = {
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
   ARTICLE_FETCH_MAX_REDIRECTS: "5",
-  OPENAI_MODEL: "gpt-5.6-luna",
-  OPENAI_REASONING_EFFORT: "low",
-  OPENAI_REQUEST_TIMEOUT_MS: "60000",
-  OPENAI_MAX_RETRIES: "2",
-  OPENAI_INPUT_USD_PER_MILLION_TOKENS: "1",
-  OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: "0.1",
-  OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: "1.25",
-  OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: "6",
+  LLM_PROVIDER: "openrouter",
+  LLM_OPENAI_MODEL: "gpt-5.6-luna",
+  LLM_OPENAI_REASONING_EFFORT: "low",
+  LLM_OPENROUTER_MODEL: "deepseek/deepseek-v4-flash",
+  LLM_OPENROUTER_REASONING_EFFORT: "high",
+  LLM_OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1",
+  LLM_REQUEST_TIMEOUT_MS: "60000",
+  LLM_MAX_RETRIES: "2",
+  LLM_INPUT_USD_PER_MILLION_TOKENS: "0.1",
+  LLM_CACHED_READ_USD_PER_MILLION_TOKENS: "0.002",
+  LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS: "0.1",
+  LLM_OUTPUT_USD_PER_MILLION_TOKENS: "0.2",
   LLM_INSTRUCTION_TOKEN_LIMIT: "2000",
   LLM_ARTICLE_TOKEN_LIMIT: "12000",
   LLM_COMMENT_TOKEN_LIMIT: "8000",
@@ -30,6 +35,7 @@ const DEVELOPMENT_DEFAULTS = {
   LLM_DAILY_HARD_LIMIT_USD: "3",
   LLM_MONTHLY_SOFT_LIMIT_USD: "30",
   LLM_MONTHLY_HARD_LIMIT_USD: "40",
+  HUMANIZER_ENABLED: "false",
   WORKER_FETCH_CONCURRENCY_PER_HOST: "2",
   WORKER_LLM_CONCURRENCY: "1",
   WORKER_LEASE_MS: "300000",
@@ -46,7 +52,13 @@ const DEVELOPMENT_DEFAULTS = {
   NEWSLETTER_DELIVERY_CONCURRENCY: "2",
   NEWSLETTER_DELIVERY_MAX_ATTEMPTS: "3",
   NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: "5000",
+  NEWSLETTER_RETENTION_POLL_INTERVAL_MS: "21600000",
   NEWSLETTER_POSTAL_ADDRESS: "Not configured — delivery disabled",
+  NEWSLETTER_REPLY_TO_EMAIL: "privacy@example.com",
+  PUBLIC_API_MAX_AGE_DAYS: "30",
+  PUBLIC_API_RATE_LIMIT: "10",
+  PUBLIC_API_RATE_WINDOW_MS: "60000",
+  PUBLIC_API_TRUSTED_PROXY_CIDRS: "127.0.0.1/32,::1/128",
 } as const;
 
 const positiveInteger = z.coerce.number().int().positive();
@@ -106,28 +118,51 @@ const applicationUrl = z.string().refine(
   { message: "must be an HTTP or HTTPS URL" },
 );
 
+const cidrList = z.string().refine(
+  (value) => {
+    try {
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .every((entry) => Boolean(ipaddr.parseCIDR(entry)));
+    } catch {
+      return false;
+    }
+  },
+  { message: "must be a comma-separated list of IP CIDR ranges" },
+);
+
+const reasoningEffortSchema = z.enum([
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]),
     DATABASE_URL: postgresUrl,
-    OPENAI_API_KEY: z.string().min(1, "is required"),
     ADMIN_PASSWORD: z.string().min(16, "must contain at least 16 characters"),
-    OPENAI_MODEL: z.string().min(1),
-    OPENAI_REASONING_EFFORT: z.enum([
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-    ]),
-    OPENAI_REQUEST_TIMEOUT_MS: positiveInteger,
-    OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
-    OPENAI_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS: positiveMoney,
-    OPENAI_OUTPUT_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_PROVIDER: z.enum(["openai", "openrouter"]),
+    LLM_OPENAI_API_KEY: z.string().min(1).optional(),
+    LLM_OPENAI_MODEL: z.string().min(1),
+    LLM_OPENAI_REASONING_EFFORT: reasoningEffortSchema,
+    LLM_OPENROUTER_API_KEY: z.string().min(1).optional(),
+    LLM_OPENROUTER_MODEL: z.string().min(1),
+    LLM_OPENROUTER_REASONING_EFFORT: reasoningEffortSchema,
+    LLM_OPENROUTER_BASE_URL: applicationUrl,
+    LLM_REQUEST_TIMEOUT_MS: positiveInteger,
+    LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
+    LLM_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_CACHED_READ_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS: positiveMoney,
+    LLM_OUTPUT_USD_PER_MILLION_TOKENS: positiveMoney,
     APP_URL: applicationUrl,
     DIGEST_TIME_ZONE: timeZone,
     DIGEST_MORNING_TIME: z
@@ -152,6 +187,7 @@ const environmentSchema = z
     LLM_DAILY_HARD_LIMIT_USD: positiveMoney,
     LLM_MONTHLY_SOFT_LIMIT_USD: positiveMoney,
     LLM_MONTHLY_HARD_LIMIT_USD: positiveMoney,
+    HUMANIZER_ENABLED: environmentBoolean,
     WORKER_FETCH_CONCURRENCY_PER_HOST: positiveInteger,
     WORKER_LLM_CONCURRENCY: positiveInteger,
     WORKER_LEASE_MS: positiveInteger,
@@ -170,12 +206,29 @@ const environmentSchema = z
     NEWSLETTER_DELIVERY_CONCURRENCY: positiveInteger.max(5),
     NEWSLETTER_DELIVERY_MAX_ATTEMPTS: positiveInteger.max(5),
     NEWSLETTER_DELIVERY_POLL_INTERVAL_MS: positiveInteger,
+    NEWSLETTER_RETENTION_POLL_INTERVAL_MS: positiveInteger,
     NEWSLETTER_POSTAL_ADDRESS: z.string().min(1).max(300),
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_WEBHOOK_SECRET: z.string().min(16).optional(),
     NEWSLETTER_FROM_EMAIL: z.email().optional(),
+    NEWSLETTER_REPLY_TO_EMAIL: z.email(),
+    PUBLIC_API_MAX_AGE_DAYS: positiveInteger.max(365),
+    PUBLIC_API_RATE_LIMIT: positiveInteger.max(1000),
+    PUBLIC_API_RATE_WINDOW_MS: positiveInteger.max(3_600_000),
+    PUBLIC_API_TRUSTED_PROXY_CIDRS: cidrList,
   })
   .superRefine((values, context) => {
+    const activeProviderKey =
+      values.LLM_PROVIDER === "openai"
+        ? "LLM_OPENAI_API_KEY"
+        : "LLM_OPENROUTER_API_KEY";
+    if (!values[activeProviderKey]) {
+      context.addIssue({
+        code: "custom",
+        path: [activeProviderKey],
+        message: `is required when LLM_PROVIDER=${values.LLM_PROVIDER}`,
+      });
+    }
     for (const [softKey, hardKey] of [
       ["LLM_DAILY_SOFT_LIMIT_USD", "LLM_DAILY_HARD_LIMIT_USD"],
       ["LLM_MONTHLY_SOFT_LIMIT_USD", "LLM_MONTHLY_HARD_LIMIT_USD"],
@@ -220,11 +273,19 @@ export interface AppConfig {
   readonly database: {
     readonly url: string;
   };
-  readonly openai: {
-    readonly apiKey: string;
-    readonly model: string;
-    readonly reasoningEffort:
-      "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+  readonly llm: {
+    readonly provider: "openai" | "openrouter";
+    readonly openai: {
+      readonly apiKey: string;
+      readonly model: string;
+      readonly reasoningEffort: ReasoningEffort;
+    };
+    readonly openrouter: {
+      readonly apiKey: string;
+      readonly model: string;
+      readonly reasoningEffort: ReasoningEffort;
+      readonly baseUrl: string;
+    };
     readonly timeoutMs: number;
     readonly maximumRetries: number;
     readonly prices: {
@@ -275,6 +336,9 @@ export interface AppConfig {
     readonly monthlySoftLimitUsd: number;
     readonly monthlyHardLimitUsd: number;
   };
+  readonly humanizer: {
+    readonly enabled: boolean;
+  };
   readonly subscribers: {
     readonly emailEncryptionKey: Buffer;
     readonly lookupHmacKey: Buffer;
@@ -288,12 +352,20 @@ export interface AppConfig {
     readonly resendApiKey: string | null;
     readonly resendWebhookSecret: string | null;
     readonly fromEmail: string | null;
+    readonly replyToEmail: string;
     readonly deliveryEnabled: boolean;
     readonly deliveryBatchSize: number;
     readonly deliveryConcurrency: number;
     readonly deliveryMaximumAttempts: number;
     readonly deliveryPollIntervalMs: number;
+    readonly retentionPollIntervalMs: number;
     readonly postalAddress: string;
+  };
+  readonly publicApi: {
+    readonly maximumAgeDays: number;
+    readonly rateLimit: number;
+    readonly rateWindowMs: number;
+    readonly trustedProxyCidrs: readonly string[];
   };
 }
 
@@ -348,19 +420,28 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       adminPassword: values.ADMIN_PASSWORD,
     }),
     database: Object.freeze({ url: values.DATABASE_URL }),
-    openai: Object.freeze({
-      apiKey: values.OPENAI_API_KEY,
-      model: values.OPENAI_MODEL,
-      reasoningEffort: values.OPENAI_REASONING_EFFORT,
-      timeoutMs: values.OPENAI_REQUEST_TIMEOUT_MS,
-      maximumRetries: values.OPENAI_MAX_RETRIES,
+    llm: Object.freeze({
+      provider: values.LLM_PROVIDER,
+      openai: Object.freeze({
+        apiKey: values.LLM_OPENAI_API_KEY ?? "",
+        model: values.LLM_OPENAI_MODEL,
+        reasoningEffort: values.LLM_OPENAI_REASONING_EFFORT,
+      }),
+      openrouter: Object.freeze({
+        apiKey: values.LLM_OPENROUTER_API_KEY ?? "",
+        model: values.LLM_OPENROUTER_MODEL,
+        reasoningEffort: values.LLM_OPENROUTER_REASONING_EFFORT,
+        baseUrl: values.LLM_OPENROUTER_BASE_URL,
+      }),
+      timeoutMs: values.LLM_REQUEST_TIMEOUT_MS,
+      maximumRetries: values.LLM_MAX_RETRIES,
       prices: Object.freeze({
-        inputUsdPerMillionTokens: values.OPENAI_INPUT_USD_PER_MILLION_TOKENS,
+        inputUsdPerMillionTokens: values.LLM_INPUT_USD_PER_MILLION_TOKENS,
         cachedReadUsdPerMillionTokens:
-          values.OPENAI_CACHED_READ_USD_PER_MILLION_TOKENS,
+          values.LLM_CACHED_READ_USD_PER_MILLION_TOKENS,
         cacheWriteUsdPerMillionTokens:
-          values.OPENAI_CACHE_WRITE_USD_PER_MILLION_TOKENS,
-        outputUsdPerMillionTokens: values.OPENAI_OUTPUT_USD_PER_MILLION_TOKENS,
+          values.LLM_CACHE_WRITE_USD_PER_MILLION_TOKENS,
+        outputUsdPerMillionTokens: values.LLM_OUTPUT_USD_PER_MILLION_TOKENS,
       }),
     }),
     schedule: Object.freeze({
@@ -404,6 +485,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       monthlySoftLimitUsd: values.LLM_MONTHLY_SOFT_LIMIT_USD,
       monthlyHardLimitUsd: values.LLM_MONTHLY_HARD_LIMIT_USD,
     }),
+    humanizer: Object.freeze({
+      enabled: values.HUMANIZER_ENABLED,
+    }),
     subscribers: Object.freeze({
       emailEncryptionKey: Buffer.from(
         values.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
@@ -420,12 +504,24 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       resendApiKey: values.RESEND_API_KEY ?? null,
       resendWebhookSecret: values.RESEND_WEBHOOK_SECRET ?? null,
       fromEmail: values.NEWSLETTER_FROM_EMAIL ?? null,
+      replyToEmail: values.NEWSLETTER_REPLY_TO_EMAIL,
       deliveryEnabled: values.NEWSLETTER_DELIVERY_ENABLED,
       deliveryBatchSize: values.NEWSLETTER_DELIVERY_BATCH_SIZE,
       deliveryConcurrency: values.NEWSLETTER_DELIVERY_CONCURRENCY,
       deliveryMaximumAttempts: values.NEWSLETTER_DELIVERY_MAX_ATTEMPTS,
       deliveryPollIntervalMs: values.NEWSLETTER_DELIVERY_POLL_INTERVAL_MS,
+      retentionPollIntervalMs: values.NEWSLETTER_RETENTION_POLL_INTERVAL_MS,
       postalAddress: values.NEWSLETTER_POSTAL_ADDRESS,
+    }),
+    publicApi: Object.freeze({
+      maximumAgeDays: values.PUBLIC_API_MAX_AGE_DAYS,
+      rateLimit: values.PUBLIC_API_RATE_LIMIT,
+      rateWindowMs: values.PUBLIC_API_RATE_WINDOW_MS,
+      trustedProxyCidrs: Object.freeze(
+        values.PUBLIC_API_TRUSTED_PROXY_CIDRS.split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      ),
     }),
   });
 }

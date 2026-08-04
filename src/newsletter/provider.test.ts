@@ -5,6 +5,7 @@ import { DeliveryProviderError, ResendDeliveryProvider } from "./provider";
 const message = {
   recipient: "reader@example.com",
   from: "digest@example.com",
+  replyTo: "privacy@example.com",
   subject: "Morning HN Digest",
   html: "<p>Digest</p>",
   text: "Digest",
@@ -28,6 +29,7 @@ describe("ResendDeliveryProvider", () => {
     });
     expect(JSON.parse(String(init?.body))).toMatchObject({
       to: ["reader@example.com"],
+      reply_to: "privacy@example.com",
       html: "<p>Digest</p>",
       text: "Digest",
       headers: {

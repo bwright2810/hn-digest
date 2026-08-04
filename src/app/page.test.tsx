@@ -84,6 +84,29 @@ const run: DigestRunView = {
 };
 
 describe("DigestPage", () => {
+  it("puts an inviting email signup before the latest digest", () => {
+    const html = renderToStaticMarkup(<DigestPage run={run} />);
+
+    expect(html).toContain(
+      "Get the gist of what Hacker News is talking about.",
+    );
+    expect(html).toContain('action="/api/newsletter/signup"');
+    expect(html).toContain('type="email"');
+    expect(html).toContain('name="morning" value="1"');
+    expect(html).toContain('name="evening" value="1"');
+    expect(html.indexOf("homepage-newsletter")).toBeLessThan(
+      html.indexOf("digest-heading"),
+    );
+  });
+
+  it("hides homepage signup while public signup is disabled", () => {
+    const html = renderToStaticMarkup(
+      <DigestPage run={run} newsletterEnabled={false} />,
+    );
+
+    expect(html).not.toContain("homepage-newsletter");
+  });
+
   it("splits a long takeaway into readable paragraphs", () => {
     const summary = [
       "The article establishes a useful premise with several concrete examples.",
@@ -109,7 +132,7 @@ describe("DigestPage", () => {
   it("keeps failed stories readable and linked to their HN source", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 
-    expect(html).toContain("Analysis failed for this story");
+    expect(html).toContain("We couldn&#x27;t finish this analysis");
     expect(html).toContain("ANALYSIS_TERMINAL");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000002"',

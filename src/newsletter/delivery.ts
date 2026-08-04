@@ -1,6 +1,17 @@
 import { createHmac } from "node:crypto";
 
-import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
@@ -26,6 +37,7 @@ type Edition = "morning" | "evening";
 export interface NewsletterDeliveryOptions {
   readonly applicationUrl: URL;
   readonly fromEmail: string;
+  readonly replyToEmail: string;
   readonly postalAddress: string;
   readonly batchSize: number;
   readonly concurrency: number;
@@ -85,19 +97,38 @@ export class NewsletterDeliveryWorker {
   }
 
   private async enqueueDeliverableRuns(now: Date): Promise<number> {
+    const effectiveReadyAt = sql<Date>`coalesce(${digestRuns.newsletterReadyAt}, ${digestRuns.updatedAt})`;
     const runs = await this.database
       .select({
         id: digestRuns.id,
         scheduleKey: digestRuns.scheduleKey,
+        readyAt: effectiveReadyAt,
       })
       .from(digestRuns)
       .where(
         and(
           eq(digestRuns.trigger, "scheduled"),
           inArray(digestRuns.status, ["complete", "partial"]),
-          lte(digestRuns.newsletterReadyAt, now),
+          lte(effectiveReadyAt, now),
         ),
-      );
+      )
+      .orderBy(desc(effectiveReadyAt));
+    const mostRecentRunId = runs[0]?.id;
+    const latestDeliveryBySubscriber = new Map(
+      (
+        await this.database
+          .select({
+            subscriberId: newsletterDeliveries.subscriberId,
+            readyAt: sql<Date>`max(coalesce(${digestRuns.newsletterReadyAt}, ${digestRuns.updatedAt}))`,
+          })
+          .from(newsletterDeliveries)
+          .innerJoin(
+            digestRuns,
+            eq(newsletterDeliveries.digestRunId, digestRuns.id),
+          )
+          .groupBy(newsletterDeliveries.subscriberId)
+      ).map(({ subscriberId, readyAt }) => [subscriberId, readyAt]),
+    );
     let count = 0;
     for (const run of runs) {
       const edition = editionFromScheduleKey(
@@ -107,11 +138,12 @@ export class NewsletterDeliveryWorker {
       );
       if (!edition) continue;
       const eligible = await this.database
-        .select({ id: subscribers.id })
+        .select({ id: subscribers.id, confirmedAt: subscribers.confirmedAt })
         .from(subscribers)
         .where(
           and(
             eq(subscribers.status, "confirmed"),
+            isNotNull(subscribers.confirmedAt),
             isNull(subscribers.suppressionReason),
             isNull(subscribers.unsubscribedAt),
             eq(
@@ -121,6 +153,16 @@ export class NewsletterDeliveryWorker {
               true,
             ),
           ),
+        )
+        .then((rows) =>
+          rows.filter((subscriber) => {
+            const latestDelivery = latestDeliveryBySubscriber.get(
+              subscriber.id,
+            );
+            return latestDelivery
+              ? latestDelivery < run.readyAt
+              : run.id === mostRecentRunId;
+          }),
         );
       if (eligible.length === 0) continue;
       const inserted = await this.database
@@ -241,6 +283,7 @@ export class NewsletterDeliveryWorker {
           this.options.keys.emailEncryptionKey,
         ),
         from: this.options.fromEmail,
+        replyTo: this.options.replyToEmail,
         ...rendered,
         unsubscribeUrl: unsubscribe,
         idempotencyKey: `digest/${delivery.id}`,

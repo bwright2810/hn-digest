@@ -5,6 +5,7 @@ import { createDatabase } from "../src/db/client";
 import { DigestPipeline } from "../src/pipeline/digest-pipeline";
 import { NewsletterDeliveryWorker } from "../src/newsletter/delivery";
 import { refreshNewsletterAlerts } from "../src/newsletter/events";
+import { cleanupSubscriberData } from "../src/subscribers/lifecycle";
 import { ResendDeliveryProvider } from "../src/newsletter/provider";
 import { runPollLoop } from "../src/runtime/poll-loop";
 import { ensureScheduledDigestRun } from "../src/scheduler/digest-scheduler";
@@ -32,6 +33,7 @@ const newsletterWorker =
         {
           applicationUrl: config.application.url,
           fromEmail: config.newsletter.fromEmail,
+          replyToEmail: config.newsletter.replyToEmail,
           postalAddress: config.newsletter.postalAddress,
           batchSize: config.newsletter.deliveryBatchSize,
           concurrency: config.newsletter.deliveryConcurrency,
@@ -92,6 +94,12 @@ async function newsletterIteration() {
   }
 }
 
+async function retentionIteration() {
+  const result = await cleanupSubscriberData(connection.db);
+  if (Object.values(result).some((count) => count > 0))
+    log("subscriber_retention_completed", { ...result });
+}
+
 async function main() {
   await connection.pool.query("SELECT 1");
   log("background_runtime_started", { workerId });
@@ -116,6 +124,13 @@ async function main() {
       signal: controller.signal,
       run: newsletterIteration,
       onError: (error) => logFailure("newsletter", error),
+    }),
+    runPollLoop({
+      name: "subscriber-retention",
+      intervalMs: config.newsletter.retentionPollIntervalMs,
+      signal: controller.signal,
+      run: retentionIteration,
+      onError: (error) => logFailure("subscriber-retention", error),
     }),
   ]);
 }

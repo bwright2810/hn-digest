@@ -8,9 +8,9 @@ import { ThemeToggle } from "./theme-toggle";
 export const metadata: Metadata = {
   title: {
     default: "HN Digest",
-    template: "%s — HN Digest",
+    template: "%s · HN Digest",
   },
-  description: "Source-grounded Hacker News article and discussion digests.",
+  description: "The day's Hacker News stories, read closely and sourced.",
 };
 
 export default function RootLayout({
@@ -51,9 +51,10 @@ export default function RootLayout({
           </header>
           {children}
           <footer className="site-footer">
-            <p>A focused view of what Hacker News is reading and saying.</p>
+            <p>The stories HN is reading, plus what the comments get right.</p>
             <nav aria-label="Footer">
               <Link href="/newsletter">Newsletter</Link>
+              <Link href="/privacy">Privacy</Link>
               <a href="https://news.ycombinator.com/">Visit Hacker News</a>
             </nav>
           </footer>

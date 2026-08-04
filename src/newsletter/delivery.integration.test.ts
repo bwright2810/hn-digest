@@ -14,6 +14,7 @@ import { encryptSubscriberEmail } from "../subscribers/crypto";
 
 import { NewsletterDeliveryWorker } from "./delivery";
 import { DeliveryProviderError, type DeliveryProvider } from "./provider";
+import { reissueNewsletterDelivery } from "./reissue";
 
 const databaseUrl = process.env.DATABASE_URL;
 const runDatabaseTests = process.env.RUN_DATABASE_TESTS === "1" && databaseUrl;
@@ -45,6 +46,17 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
 
   it("enforces eligibility, isolates failures, retries, and remains idempotent", async () => {
     const now = new Date("2026-07-23T11:10:00Z");
+    const [olderRun] = await connection.db
+      .insert(digestRuns)
+      .values({
+        trigger: "scheduled",
+        scheduleKey: `America/New_York|2026-07-22|19:00|${prefix}`,
+        scheduledFor: new Date("2026-07-22T23:00:00Z"),
+        requestedStoryCount: 1,
+        status: "partial",
+        newsletterReadyAt: new Date("2026-07-22T23:10:00Z"),
+      })
+      .returning();
     const [run] = await connection.db
       .insert(digestRuns)
       .values({
@@ -53,7 +65,8 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
         scheduledFor: new Date("2026-07-23T11:00:00Z"),
         requestedStoryCount: 1,
         status: "partial",
-        newsletterReadyAt: now,
+        newsletterReadyAt: null,
+        updatedAt: now,
       })
       .returning();
     const [story] = await connection.db
@@ -92,6 +105,7 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
       ["retry", true, true],
       ["evening-only", false, true],
       ["unconfirmed", true, true],
+      ["confirmed-after-digest", true, true],
     ] as const) {
       await connection.db.insert(subscribers).values({
         emailCiphertext: encryptSubscriberEmail(
@@ -104,7 +118,12 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
         status: suffix === "unconfirmed" ? "unconfirmed" : "confirmed",
         morningEnabled: morning,
         eveningEnabled: evening,
-        confirmedAt: suffix === "unconfirmed" ? null : now,
+        confirmedAt:
+          suffix === "unconfirmed"
+            ? null
+            : suffix === "confirmed-after-digest"
+              ? new Date(now.getTime() + 1)
+              : now,
       });
     }
 
@@ -124,6 +143,7 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
     const worker = new NewsletterDeliveryWorker(connection.db, provider, {
       applicationUrl: new URL("https://digest.example/"),
       fromEmail: "digest@example.com",
+      replyToEmail: "privacy@example.com",
       postalAddress: "123 Example Street",
       batchSize: 25,
       concurrency: 2,
@@ -134,9 +154,9 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
     });
 
     expect(await worker.process(now)).toMatchObject({
-      queued: 2,
-      claimed: 2,
-      sent: 1,
+      queued: 3,
+      claimed: 3,
+      sent: 2,
       retried: 1,
       failed: 0,
     });
@@ -157,8 +177,9 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
     const deliveries = await connection.db.query.newsletterDeliveries.findMany({
       where: (delivery, { eq }) => eq(delivery.digestRunId, run!.id),
     });
-    expect(deliveries).toHaveLength(2);
+    expect(deliveries).toHaveLength(3);
     expect(deliveries.map((delivery) => delivery.status)).toEqual([
+      "sent",
       "sent",
       "sent",
     ]);
@@ -166,5 +187,39 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
     expect(calls.get("retry@example.com")).toBe(2);
     expect(calls.has("evening-only@example.com")).toBe(false);
     expect(calls.has("unconfirmed@example.com")).toBe(false);
+    expect(calls.get("confirmed-after-digest@example.com")).toBe(1);
+    expect(
+      await connection.db.query.newsletterDeliveries.findMany({
+        where: (delivery, { eq }) => eq(delivery.digestRunId, olderRun!.id),
+      }),
+    ).toHaveLength(0);
+
+    const successSubscriber = await connection.db.query.subscribers.findFirst({
+      where: (subscriber, { eq }) =>
+        eq(subscriber.emailLookupDigest, `${prefix}-success`),
+    });
+    const sourceDelivery = deliveries.find(
+      (delivery) => delivery.subscriberId === successSubscriber?.id,
+    );
+    expect(sourceDelivery).toBeDefined();
+    await expect(
+      reissueNewsletterDelivery(connection.db, sourceDelivery!.id, now),
+    ).resolves.toMatchObject({ sequence: 2 });
+    await expect(
+      reissueNewsletterDelivery(connection.db, sourceDelivery!.id, now),
+    ).rejects.toThrow(/latest delivery/u);
+    expect(
+      await worker.process(new Date(now.getTime() + 30_000)),
+    ).toMatchObject({ queued: 0, claimed: 1, sent: 1 });
+    expect(calls.get("success@example.com")).toBe(2);
+    expect(
+      await connection.db.query.newsletterDeliveries.findMany({
+        where: (delivery, { eq }) =>
+          eq(delivery.subscriberId, successSubscriber!.id),
+      }),
+    ).toMatchObject([
+      { sequence: 1, status: "sent" },
+      { sequence: 2, status: "sent" },
+    ]);
   });
 });

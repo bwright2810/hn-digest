@@ -14,15 +14,15 @@ export default async function NewsletterPreferencesPage({
     <main id="main-content" className="page newsletter-page" tabIndex={-1}>
       <header className="newsletter-heading">
         <p className="eyebrow">Newsletter preferences</p>
-        <h1>Choose what reaches your inbox.</h1>
+        <h1>Set your reading schedule.</h1>
         <p>
-          Select one or both editions. Saving with neither selected unsubscribes
-          the address from all newsletter delivery.
+          Pick one edition or both. If you save with neither selected, we’ll
+          unsubscribe this address.
         </p>
       </header>
       {state === "saved" ? (
         <p className="newsletter-notice" role="status">
-          Your newsletter preferences have been saved.
+          Your schedule has been saved.
         </p>
       ) : invalid ? (
         <p className="newsletter-notice newsletter-notice--error" role="alert">

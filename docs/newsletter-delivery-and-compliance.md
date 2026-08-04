@@ -241,6 +241,15 @@ spam ceilings. Resume only after the cause and suppression backlog are reviewed.
   deletion requests are made when available and do not replace the documented
   provider retention window.
 
+The background runtime runs the idempotent subscriber lifecycle cleanup every
+six hours. Operators can also run `pnpm subscriber:cleanup`. For a verified
+access or deletion request, use `pnpm subscriber:export -- <email>` and then
+`pnpm subscriber:delete -- <email> --confirm` inside the production container.
+Export output contains personal data and must be transferred only through the
+verified request channel, never stored in application logs or public issue
+trackers. Deletion removes the recoverable address and delivery detail while
+retaining the keyed do-not-contact digest and minimal consent evidence.
+
 The privacy notice must identify HN Digest as controller, explain the purposes
 and legal basis for confirmation and newsletter delivery, list the categories
 sent to Resend, disclose US processing and the relevant transfer safeguards,

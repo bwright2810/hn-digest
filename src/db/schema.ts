@@ -307,6 +307,32 @@ export const subscriberSignupLimits = pgTable(
   ],
 );
 
+export const publicApiRateLimits = pgTable(
+  "public_api_rate_limits",
+  {
+    keyDigest: varchar("key_digest", { length: 64 }).primaryKey(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    requestCount: integer("request_count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("public_api_rate_limits_expires_at_idx").on(table.expiresAt),
+    check(
+      "public_api_rate_limits_request_count_positive",
+      sql`${table.requestCount} > 0`,
+    ),
+    check(
+      "public_api_rate_limits_expiry_after_window",
+      sql`${table.expiresAt} > ${table.windowStartedAt}`,
+    ),
+  ],
+);
+
 export const digestRuns = pgTable(
   "digest_runs",
   {
@@ -323,6 +349,7 @@ export const digestRuns = pgTable(
       .notNull(),
     status: digestRunStatus("status").default("pending").notNull(),
     newsletterReadyAt: timestamp("newsletter_ready_at", { withTimezone: true }),
+    humanizedAt: timestamp("humanized_at", { withTimezone: true }),
     errorCode: varchar("error_code", { length: 100 }),
     ...timestampColumns,
   },
@@ -362,6 +389,7 @@ export const newsletterDeliveries = pgTable(
       .notNull()
       .references(() => subscribers.id, { onDelete: "cascade" }),
     edition: newsletterEdition("edition").notNull(),
+    sequence: integer("sequence").default(1).notNull(),
     status: newsletterDeliveryStatus("status").default("pending").notNull(),
     attemptCount: integer("attempt_count").default(0).notNull(),
     providerMessageId: varchar("provider_message_id", { length: 160 }),
@@ -377,9 +405,10 @@ export const newsletterDeliveries = pgTable(
     ...timestampColumns,
   },
   (table) => [
-    uniqueIndex("newsletter_deliveries_run_subscriber_unique").on(
+    uniqueIndex("newsletter_deliveries_run_subscriber_sequence_unique").on(
       table.digestRunId,
       table.subscriberId,
+      table.sequence,
     ),
     index("newsletter_deliveries_claim_idx").on(
       table.status,
@@ -396,6 +425,10 @@ export const newsletterDeliveries = pgTable(
     check(
       "newsletter_deliveries_attempt_count_nonnegative",
       sql`${table.attemptCount} >= 0`,
+    ),
+    check(
+      "newsletter_deliveries_sequence_positive",
+      sql`${table.sequence} > 0`,
     ),
     check(
       "newsletter_deliveries_sent_state",
@@ -781,6 +814,7 @@ export const discussionAnalyses = pgTable(
     schemaVersion: varchar("schema_version", { length: 80 }).notNull(),
     model: varchar("model", { length: 120 }).notNull(),
     result: jsonb("result").$type<Record<string, unknown>>().notNull(),
+    humanizedResult: jsonb("humanized_result").$type<Record<string, unknown>>(),
     citedCommentIds: jsonb("cited_comment_ids")
       .$type<number[]>()
       .default([])
@@ -810,9 +844,12 @@ export const llmUsage = pgTable(
   "llm_usage",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    analysisJobId: uuid("analysis_job_id")
-      .notNull()
-      .references(() => analysisJobs.id, { onDelete: "cascade" }),
+    analysisJobId: uuid("analysis_job_id").references(() => analysisJobs.id, {
+      onDelete: "cascade",
+    }),
+    digestRunId: uuid("digest_run_id").references(() => digestRuns.id, {
+      onDelete: "cascade",
+    }),
     attempt: integer("attempt").notNull(),
     providerRequestId: varchar("provider_request_id", { length: 160 }),
     model: varchar("model", { length: 120 }).notNull(),
@@ -835,10 +872,12 @@ export const llmUsage = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("llm_usage_job_attempt_unique").on(
-      table.analysisJobId,
-      table.attempt,
-    ),
+    uniqueIndex("llm_usage_job_attempt_unique")
+      .on(table.analysisJobId, table.attempt)
+      .where(sql`${table.analysisJobId} is not null`),
+    uniqueIndex("llm_usage_run_attempt_unique")
+      .on(table.digestRunId, table.attempt)
+      .where(sql`${table.digestRunId} is not null`),
     uniqueIndex("llm_usage_provider_request_unique")
       .on(table.providerRequestId)
       .where(sql`${table.providerRequestId} is not null`),
@@ -859,6 +898,10 @@ export const llmUsage = pgTable(
     check(
       "llm_usage_actual_cost_nonnegative",
       sql`${table.actualCostUsd} is null or ${table.actualCostUsd} >= 0`,
+    ),
+    check(
+      "llm_usage_exactly_one_attribution",
+      sql`(${table.analysisJobId} is not null) <> (${table.digestRunId} is not null)`,
     ),
   ],
 );

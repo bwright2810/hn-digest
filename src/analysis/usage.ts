@@ -3,7 +3,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import * as schema from "../db/schema";
 import { analysisJobs, digestRunStories, llmUsage } from "../db/schema";
-import type { AnalysisUsage } from "./openai-client";
+import type { AnalysisUsage } from "./llm-analysis-client";
 
 export const LLM_PRICE_ASSUMPTIONS_VERSION = "llm-prices-v1";
 
@@ -17,7 +17,8 @@ export interface LlmPriceAssumptions {
 }
 
 export interface RecordLlmUsageInput {
-  readonly analysisJobId: string;
+  readonly analysisJobId?: string;
+  readonly digestRunId?: string;
   readonly attempt: number;
   readonly providerRequestId: string;
   readonly model: string;
@@ -85,11 +86,17 @@ export async function recordLlmUsage(
   if (!Number.isInteger(input.attempt) || input.attempt <= 0) {
     throw new RangeError("attempt must be a positive integer");
   }
+  if (Boolean(input.analysisJobId) === Boolean(input.digestRunId)) {
+    throw new RangeError(
+      "exactly one of analysisJobId or digestRunId must be set",
+    );
+  }
   requireNonnegativeMoney(input.estimatedCostUsd, "estimatedCostUsd");
   const actualCostUsd = calculateActualCostUsd(input.usage, input.prices);
 
   await db.insert(llmUsage).values({
     analysisJobId: input.analysisJobId,
+    digestRunId: input.digestRunId,
     attempt: input.attempt,
     providerRequestId: input.providerRequestId,
     model: input.model,

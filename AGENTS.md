@@ -37,6 +37,8 @@ plans, commits, and pull requests where applicable.
   select one direct entry, and both paths retain the shared SSRF and size
   controls. JSON Feed, generic XML, PDF, OCR, and media extraction remain
   unsupported.
+- HD-112 applies a full-mode Unslop editorial pass inside the existing bounded
+  analysis request and to public-facing page copy during development.
 - The agreed baseline is TypeScript on Node.js LTS, pnpm, Next.js, PostgreSQL
   with Drizzle ORM, Zod, Vitest, headless Playwright, ESLint, Prettier, CSS
   Modules/custom properties, the Hacker News Firebase API, Readability-style
@@ -158,6 +160,10 @@ Articles, URLs, HN posts, and comments are untrusted input.
   rendering.
 - Changes to prompts, models, selection algorithms, or token budgets should be
   tested against a fixed representative evaluation set once it exists.
+- Run all new or edited public-facing page copy through the installed `unslop`
+  skill in `full` mode before committing it. Preserve facts, accessibility
+  labels, legal meaning, security warnings, and technical terms; the skill's
+  Auto-Clarity rules take precedence where literal wording is safer.
 
 ## UI and visual design
 

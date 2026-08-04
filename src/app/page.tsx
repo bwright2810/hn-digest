@@ -1,9 +1,13 @@
 import type { AnalysisOutput } from "../analysis/contract";
+import { getConfig } from "../config/server";
 import {
   PostgresDigestReader,
   type DigestRunView,
   type DigestStoryView,
 } from "../digests/reader";
+import { takeawayParagraphs } from "../digests/takeaway";
+
+export { takeawayParagraphs } from "../digests/takeaway";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +29,12 @@ export default async function Home({
     const { e2eDigestScenario } = await import("./e2e-fixtures");
     const { fixture } = await searchParams;
     const view = await e2eDigestScenario(fixture);
-    return <DigestPage {...view} />;
+    return (
+      <DigestPage
+        {...view}
+        newsletterEnabled={getConfig().newsletter.publicSignupEnabled}
+      />
+    );
   }
 
   let run: DigestRunView | null = null;
@@ -36,22 +45,32 @@ export default async function Home({
     unavailable = true;
   }
 
-  return <DigestPage run={run} unavailable={unavailable} />;
+  return (
+    <DigestPage
+      run={run}
+      unavailable={unavailable}
+      newsletterEnabled={getConfig().newsletter.publicSignupEnabled}
+    />
+  );
 }
 
 export function DigestPage({
   run,
   unavailable = false,
+  newsletterEnabled = true,
 }: {
   readonly run: DigestRunView | null;
   readonly unavailable?: boolean;
+  readonly newsletterEnabled?: boolean;
 }) {
   return (
     <main id="main-content" className="page" tabIndex={-1}>
+      {newsletterEnabled ? <HomepageNewsletter /> : null}
+
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">The latest edition</p>
-          <h1 id="page-title">Today on Hacker News.</h1>
+          <p className="eyebrow">Latest edition</p>
+          <h2 id="page-title">What Hacker News is talking about.</h2>
         </div>
         {run ? (
           <div className="run-meta" aria-label="Digest run information">
@@ -71,23 +90,23 @@ export function DigestPage({
         <EmptyState
           label="Temporarily unavailable"
           title="The latest digest could not be loaded."
-          detail="The reading archive is still safe. Try again once the service has recovered."
+          detail="Nothing has been lost. Give us a moment, then try again."
         />
       ) : run === null ? (
         <EmptyState
           label="No editions yet"
-          title="The first digest is being prepared."
-          detail="Published runs will appear here in ranked reading order."
+          title="The first edition is on its way."
+          detail="Once it is ready, the day's stories will appear here in HN rank order."
         />
       ) : run.stories.length === 0 ? (
         <EmptyState
           label={statusLabel(run.status)}
           title={
             run.status === "failed"
-              ? "This digest run did not collect any stories."
-              : "Stories are still being collected."
+              ? "This edition came up empty."
+              : "We're still gathering the stories."
           }
-          detail="This page will reflect the run as work progresses."
+          detail="Stories will show up here as the edition takes shape."
         />
       ) : (
         <ol className="story-list" aria-label="Ranked digest stories">
@@ -99,6 +118,48 @@ export function DigestPage({
         </ol>
       )}
     </main>
+  );
+}
+
+function HomepageNewsletter() {
+  return (
+    <section className="homepage-newsletter" aria-labelledby="newsletter-title">
+      <div className="homepage-newsletter__copy">
+        <p className="eyebrow">HN, twice a day</p>
+        <h1 id="newsletter-title">
+          Get the gist of what Hacker News is talking about.
+        </h1>
+        <p>
+          We read the leading stories and the threads beneath them. You get the
+          argument, the pushback, and the comments worth keeping.
+        </p>
+      </div>
+      <form
+        className="homepage-newsletter__form"
+        action="/api/newsletter/signup"
+        method="post"
+      >
+        <label htmlFor="homepage-newsletter-email">Email address</label>
+        <div className="homepage-newsletter__fields">
+          <input
+            id="homepage-newsletter-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            maxLength={254}
+            required
+          />
+          <input type="hidden" name="morning" value="1" />
+          <input type="hidden" name="evening" value="1" />
+          <button type="submit">Join the digest</button>
+        </div>
+        <p>
+          Morning and evening. Confirm by email; leave whenever you like. Want
+          only one? <a href="/newsletter">Pick your edition</a>.
+        </p>
+      </form>
+    </section>
   );
 }
 
@@ -164,34 +225,6 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
   );
 }
 
-export function takeawayParagraphs(summary: string): readonly string[] {
-  const explicitParagraphs = summary
-    .split(/\n\s*\n/gu)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-  if (explicitParagraphs.length > 1) return explicitParagraphs;
-
-  const sentences = summary.trim().match(/[^.!?]+(?:[.!?]+|$)/gu) ?? [];
-  if (sentences.length < 3 || summary.length < 280) return [summary.trim()];
-
-  const targetLength = Math.ceil(
-    summary.length / Math.min(3, sentences.length),
-  );
-  const paragraphs: string[] = [];
-  let current = "";
-  for (const sentence of sentences) {
-    const next = current ? `${current} ${sentence.trim()}` : sentence.trim();
-    if (current && current.length >= targetLength) {
-      paragraphs.push(current);
-      current = sentence.trim();
-    } else {
-      current = next;
-    }
-  }
-  if (current) paragraphs.push(current);
-  return paragraphs;
-}
-
 function AnalysisSection({
   label,
   text,
@@ -234,12 +267,12 @@ function CommentLinks({
 function StoryState({ story }: { readonly story: DigestStoryView }) {
   const copy =
     story.status === "failed"
-      ? "Analysis failed for this story. Its original sources remain available above."
+      ? "We couldn't finish this analysis. The original links still work."
       : story.status === "discussion_only"
-        ? "The article could not be extracted. A discussion-only analysis is being prepared."
+        ? "We couldn't read the article, so we're working from the HN thread alone."
         : story.status === "complete"
-          ? "The stored analysis was invalid and has been withheld."
-          : "Collection and analysis are still in progress.";
+          ? "This analysis failed validation, so we haven't published it."
+          : "We're still reading this one.";
   return (
     <div
       className="story-state"

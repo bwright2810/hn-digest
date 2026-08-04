@@ -18,12 +18,22 @@ import {
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
   analysisOutputJsonSchema,
+  analysisOutputSchema,
   type AnalysisOutput,
 } from "../analysis/contract";
 import {
-  OpenAIAnalysisClient,
+  HUMANIZER_PROMPT_VERSION,
+  type HumanizerItem,
+} from "../analysis/humanizer-contract";
+import {
+  assembleHumanizerRequest,
+  HumanizerRequestBudgetError,
+} from "../analysis/humanizer-request";
+import {
+  LlmAnalysisClient,
   type AnalysisResponseOutcome,
-} from "../analysis/openai-client";
+} from "../analysis/llm-analysis-client";
+import { HumanizerClient } from "../analysis/llm-humanizer-client";
 import {
   assembleAnalysisRequest,
   type AssembledAnalysisRequest,
@@ -72,6 +82,7 @@ import {
   ingestTopStories,
   PostgresDigestRunStore,
 } from "../ingestion/top-stories";
+import { authorizeLlmSubmission } from "../operations/observability";
 import type { ClaimedAnalysisJob, AttemptOutcome } from "../worker/queue";
 
 type Database = ReturnType<typeof createDatabase>["db"];
@@ -86,15 +97,21 @@ interface StoredJobContext {
 
 export interface DigestPipelineDependencies {
   readonly hnClient?: HackerNewsClient;
-  readonly openaiClient?: OpenAIAnalysisClient;
+  readonly openaiClient?: LlmAnalysisClient;
+  readonly humanizerClient?: HumanizerClient;
   readonly articleFetcher?: FetchArticleClient;
 }
 
 export class DigestPipeline {
   private readonly hnClient: HackerNewsClient;
-  private readonly openaiClient: OpenAIAnalysisClient;
+  private readonly openaiClient: LlmAnalysisClient;
+  private readonly humanizerClient: HumanizerClient;
   private readonly prices: LlmPriceAssumptions;
   private readonly articleFetcher: FetchArticleClient;
+  private readonly activeLlm: {
+    readonly model: string;
+    readonly reasoningEffort: string;
+  };
 
   constructor(
     private readonly db: Database,
@@ -105,10 +122,23 @@ export class DigestPipeline {
     this.articleFetcher =
       dependencies.articleFetcher ??
       createSourceAwareArticleFetcher(config.articleFetch);
+    this.activeLlm =
+      config.llm.provider === "openrouter"
+        ? config.llm.openrouter
+        : config.llm.openai;
     this.openaiClient =
       dependencies.openaiClient ??
-      new OpenAIAnalysisClient({
-        ...config.openai,
+      new LlmAnalysisClient({
+        ...config.llm,
+        logger: {
+          info: (event) => console.log(JSON.stringify(event)),
+          warn: (event) => console.error(JSON.stringify(event)),
+        },
+      });
+    this.humanizerClient =
+      dependencies.humanizerClient ??
+      new HumanizerClient({
+        ...config.llm,
         logger: {
           info: (event) => console.log(JSON.stringify(event)),
           warn: (event) => console.error(JSON.stringify(event)),
@@ -117,7 +147,7 @@ export class DigestPipeline {
     this.prices = {
       version: LLM_PRICE_ASSUMPTIONS_VERSION,
       currency: "USD",
-      ...config.openai.prices,
+      ...config.llm.prices,
     };
   }
 
@@ -408,8 +438,8 @@ export class DigestPipeline {
       selectedCommentHash,
       promptVersion: ANALYSIS_PROMPT_VERSION,
       schemaVersion: ANALYSIS_SCHEMA_VERSION,
-      model: this.config.openai.model,
-      reasoningConfig: { effort: this.config.openai.reasoningEffort },
+      model: this.activeLlm.model,
+      reasoningConfig: { effort: this.activeLlm.reasoningEffort },
     } as const;
     const cache = await resolveAnalysisCache(
       this.db,
@@ -581,8 +611,8 @@ export class DigestPipeline {
       selectedCommentHash: job.selectedCommentHash,
       promptVersion: ANALYSIS_PROMPT_VERSION,
       schemaVersion: ANALYSIS_SCHEMA_VERSION,
-      model: this.config.openai.model,
-      reasoningConfig: { effort: this.config.openai.reasoningEffort },
+      model: this.activeLlm.model,
+      reasoningConfig: { effort: this.activeLlm.reasoningEffort },
     });
 
     await this.db.transaction(async (transaction) => {
@@ -594,7 +624,7 @@ export class DigestPipeline {
           contentHash: job.articleContentHash,
           promptVersion: ANALYSIS_PROMPT_VERSION,
           schemaVersion: ANALYSIS_SCHEMA_VERSION,
-          model: this.config.openai.model,
+          model: this.activeLlm.model,
           result: {
             promptVersion: persistedOutput.promptVersion,
             schemaVersion: persistedOutput.schemaVersion,
@@ -610,7 +640,7 @@ export class DigestPipeline {
         selectedCommentHash: job.selectedCommentHash,
         promptVersion: ANALYSIS_PROMPT_VERSION,
         schemaVersion: ANALYSIS_SCHEMA_VERSION,
-        model: this.config.openai.model,
+        model: this.activeLlm.model,
         result: { ...persistedOutput },
         citedCommentIds: citedCommentIds(persistedOutput),
       });
@@ -724,6 +754,7 @@ export class DigestPipeline {
           errorCode: true,
           trigger: true,
           newsletterReadyAt: true,
+          humanizedAt: true,
         },
         where: eq(digestRuns.id, runId),
       }),
@@ -742,6 +773,14 @@ export class DigestPipeline {
         : statuses.some(({ status }) => status === "failed") || run?.errorCode
           ? "partial"
           : "complete";
+    if (
+      (nextStatus === "complete" || nextStatus === "partial") &&
+      !run?.humanizedAt
+    ) {
+      // Best-effort: never lets a humanizer failure block the run from
+      // completing or the newsletter from sending with the original text.
+      await this.humanizeRun(runId);
+    }
     const errorCode =
       nextStatus === "failed"
         ? (run?.errorCode ?? "all_stories_failed")
@@ -763,6 +802,180 @@ export class DigestPipeline {
       .where(eq(digestRuns.id, runId));
   }
 
+  /**
+   * Rewrites the phrasing of the three prose fields actually rendered to
+   * readers (article thesis, the displayed discussion claim, combined
+   * takeaway) in a single batched call covering every successfully
+   * analyzed story in the run. Never throws: any failure, refusal, or
+   * budget skip is logged and leaves the run's original text in place.
+   */
+  private async humanizeRun(runId: string): Promise<void> {
+    if (!this.config.humanizer.enabled) return;
+    try {
+      const storyRows = await this.db
+        .select({
+          digestRunStoryId: digestRunStories.id,
+          status: digestRunStories.status,
+        })
+        .from(digestRunStories)
+        .where(eq(digestRunStories.digestRunId, runId));
+
+      const candidates: {
+        readonly digestRunStoryId: string;
+        readonly analysisJobId: string;
+        readonly analysis: AnalysisOutput;
+      }[] = [];
+
+      for (const row of storyRows) {
+        if (row.status !== "complete" && row.status !== "discussion_only")
+          continue;
+        const [job] = await this.db
+          .select({ id: analysisJobs.id })
+          .from(analysisJobs)
+          .where(eq(analysisJobs.digestRunStoryId, row.digestRunStoryId))
+          .orderBy(desc(analysisJobs.finishedAt), desc(analysisJobs.createdAt))
+          .limit(1);
+        if (!job) continue;
+        const discussion = await this.db.query.discussionAnalyses.findFirst({
+          columns: { result: true },
+          where: eq(discussionAnalyses.analysisJobId, job.id),
+        });
+        const parsed = discussion
+          ? analysisOutputSchema.safeParse(discussion.result)
+          : null;
+        if (!parsed?.success) continue;
+        candidates.push({
+          digestRunStoryId: row.digestRunStoryId,
+          analysisJobId: job.id,
+          analysis: parsed.data,
+        });
+      }
+
+      if (candidates.length === 0) return;
+
+      const items: HumanizerItem[] = candidates.map((candidate) => {
+        const discussionClaim = selectDisplayedDiscussionClaim(
+          candidate.analysis,
+        );
+        return {
+          storyId: candidate.digestRunStoryId,
+          article: candidate.analysis.article.thesis?.claim ?? null,
+          discussion: discussionClaim?.claim ?? null,
+          takeaway: candidate.analysis.combinedTakeaway.summary,
+        };
+      });
+
+      // Worst case per story is 600+600+900 chars (~525 tokens) plus JSON
+      // overhead; 700 tokens/story leaves comfortable headroom.
+      const maximumOutputTokens = items.length * 700 + 300;
+
+      let request;
+      try {
+        request = assembleHumanizerRequest({
+          items,
+          pricing: {
+            inputUsdPerMillionTokens: this.prices.inputUsdPerMillionTokens,
+            outputUsdPerMillionTokens: this.prices.outputUsdPerMillionTokens,
+            maximumRequestCostUsd: this.config.analysis.maximumRequestCostUsd,
+          },
+          countTokens: estimateTokens,
+          maximumOutputTokens,
+        });
+      } catch (error) {
+        if (error instanceof HumanizerRequestBudgetError) {
+          console.warn(
+            JSON.stringify({
+              event: "humanizer_request_skipped",
+              runId,
+              category: error.category,
+            }),
+          );
+          return;
+        }
+        throw error;
+      }
+
+      const budget = await authorizeLlmSubmission(
+        this.db,
+        request.cost.maximumRequestCostUsd,
+        this.config.spend,
+        new Date(),
+      );
+      if (!budget.allowed) {
+        console.warn(
+          JSON.stringify({
+            event: "humanizer_skipped_budget",
+            runId,
+            reason: budget.reason,
+          }),
+        );
+        return;
+      }
+
+      const outcome = await this.humanizerClient.humanize(request);
+      await this.db
+        .update(digestRuns)
+        .set({ humanizedAt: new Date() })
+        .where(eq(digestRuns.id, runId));
+
+      if (outcome.usage) {
+        await recordLlmUsage(this.db, {
+          digestRunId: runId,
+          attempt: 1,
+          providerRequestId: outcome.responseId,
+          model: outcome.model,
+          promptVersion: HUMANIZER_PROMPT_VERSION,
+          usage: outcome.usage,
+          estimatedCostUsd: request.cost.maximumRequestCostUsd,
+          prices: this.prices,
+        });
+      }
+
+      if (outcome.kind !== "completed") {
+        console.warn(
+          JSON.stringify({
+            event: "humanizer_not_completed",
+            runId,
+            kind: outcome.kind,
+          }),
+        );
+        return;
+      }
+
+      const byStoryId = new Map(
+        candidates.map((candidate) => [candidate.digestRunStoryId, candidate]),
+      );
+      for (const item of outcome.output.stories) {
+        const candidate = byStoryId.get(item.storyId);
+        if (!candidate) continue;
+        const patched = patchHumanizedAnalysis(candidate.analysis, item);
+        const validated = analysisOutputSchema.safeParse(patched);
+        if (!validated.success) {
+          console.warn(
+            JSON.stringify({
+              event: "humanizer_patch_invalid",
+              runId,
+              digestRunStoryId: candidate.digestRunStoryId,
+            }),
+          );
+          continue;
+        }
+        await this.db
+          .update(discussionAnalyses)
+          .set({ humanizedResult: validated.data })
+          .where(eq(discussionAnalyses.analysisJobId, candidate.analysisJobId));
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "humanizer_run_failed",
+          runId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  }
+
   private async failRun(runId: string, errorCode: string): Promise<void> {
     await this.db
       .update(digestRuns)
@@ -777,7 +990,7 @@ export function hasArticleContent(
   return Boolean(document?.text);
 }
 
-function estimateTokens(text: string): number {
+export function estimateTokens(text: string): number {
   // Conservative-enough planning estimate for English prose/JSON. Provider
   // usage remains the billing source of truth after submission.
   return Math.ceil(Buffer.byteLength(text, "utf8") / 4);
@@ -785,6 +998,41 @@ function estimateTokens(text: string): number {
 
 function hashJson(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+/**
+ * Mirrors the discussion-claim selection in `src/app/page.tsx` and
+ * `src/newsletter/render.ts` (both named `summarizeDiscussion`): the first
+ * consensus claim, falling back to the first competing viewpoint. Keep this
+ * in sync with those two — it decides which claim's text the humanizer is
+ * allowed to rewrite.
+ */
+export function selectDisplayedDiscussionClaim(
+  analysis: AnalysisOutput,
+): { readonly claim: string } | null {
+  return (
+    analysis.discussion.consensus[0] ??
+    analysis.discussion.competingViewpoints[0] ??
+    null
+  );
+}
+
+export function patchHumanizedAnalysis(
+  analysis: AnalysisOutput,
+  humanized: HumanizerItem,
+): AnalysisOutput {
+  const patched: AnalysisOutput = structuredClone(analysis);
+  if (humanized.article !== null && patched.article.thesis) {
+    patched.article.thesis.claim = humanized.article;
+  }
+  if (humanized.discussion !== null) {
+    const target =
+      patched.discussion.consensus[0] ??
+      patched.discussion.competingViewpoints[0];
+    if (target) target.claim = humanized.discussion;
+  }
+  patched.combinedTakeaway.summary = humanized.takeaway;
+  return patched;
 }
 
 function isAvailableStory(value: unknown): value is HackerNewsStory {
