@@ -6,6 +6,7 @@ import { createDatabase } from "../db/client";
 import {
   digestRuns,
   digestRunStories,
+  newsletterDeliveries,
   stories,
   storySnapshots,
   subscribers,
@@ -126,6 +127,32 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
               : now,
       });
     }
+
+    const [prehistoryRun] = await connection.db
+      .insert(digestRuns)
+      .values({
+        trigger: "scheduled",
+        scheduleKey: `America/New_York|2026-07-21|19:00|${prefix}`,
+        scheduledFor: new Date("2026-07-21T23:00:00Z"),
+        requestedStoryCount: 1,
+        status: "complete",
+        newsletterReadyAt: new Date("2026-07-21T23:10:00Z"),
+      })
+      .returning();
+    const prehistorySubscriber =
+      await connection.db.query.subscribers.findFirst({
+        where: (subscriber, { eq }) =>
+          eq(subscriber.emailLookupDigest, `${prefix}-success`),
+      });
+    await connection.db.insert(newsletterDeliveries).values({
+      digestRunId: prehistoryRun!.id,
+      subscriberId: prehistorySubscriber!.id,
+      edition: "evening",
+      status: "sent",
+      sentAt: new Date("2026-07-21T23:11:00Z"),
+      createdAt: new Date("2026-07-21T23:10:00Z"),
+      updatedAt: new Date("2026-07-21T23:11:00Z"),
+    });
 
     const calls = new Map<string, number>();
     const provider: DeliveryProvider = {
