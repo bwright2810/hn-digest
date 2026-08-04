@@ -140,13 +140,15 @@ export async function ingestTopStories(options: {
 
   await options.store.recordStoryExclusions?.(runId, excludedHnItemIds, now());
   const hasShortfall = collectedStoryCount < options.storyCount;
-  const status =
-    failures.length === 0 && !hasShortfall ? "complete" : "partial";
+  // A failed candidate does not make the digest partial when we successfully
+  // collect the requested number of stories. The scanner is expected to move
+  // past unavailable or malformed HN items to fill the edition.
+  const status = hasShortfall ? "partial" : "complete";
   await options.store.finishRun(
     runId,
     status,
     now(),
-    failures.length > 0
+    hasShortfall && failures.length > 0
       ? "STORY_ITEM_FAILURES"
       : hasShortfall
         ? "TOP_STORIES_SHORTFALL"
