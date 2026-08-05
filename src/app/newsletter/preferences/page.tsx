@@ -47,7 +47,7 @@ export default async function NewsletterPreferencesPage({
               />
               <span>
                 <strong>Morning</strong>
-                <small>7:00 AM Eastern</small>
+                <small>6:45 AM Eastern</small>
               </span>
             </label>
             <label className="newsletter-choice">
@@ -59,7 +59,7 @@ export default async function NewsletterPreferencesPage({
               />
               <span>
                 <strong>Evening</strong>
-                <small>7:00 PM Eastern</small>
+                <small>6:45 PM Eastern</small>
               </span>
             </label>
           </fieldset>

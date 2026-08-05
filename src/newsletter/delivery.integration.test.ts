@@ -51,19 +51,19 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
       .insert(digestRuns)
       .values({
         trigger: "scheduled",
-        scheduleKey: `America/New_York|2026-07-22|19:00|${prefix}`,
-        scheduledFor: new Date("2026-07-22T23:00:00Z"),
+        scheduleKey: `America/New_York|2026-07-22|18:45|${prefix}`,
+        scheduledFor: new Date("2026-07-22T22:45:00Z"),
         requestedStoryCount: 1,
         status: "partial",
-        newsletterReadyAt: new Date("2026-07-22T23:10:00Z"),
+        newsletterReadyAt: new Date("2026-07-22T22:55:00Z"),
       })
       .returning();
     const [run] = await connection.db
       .insert(digestRuns)
       .values({
         trigger: "scheduled",
-        scheduleKey: `America/New_York|2026-07-23|07:00|${prefix}`,
-        scheduledFor: new Date("2026-07-23T11:00:00Z"),
+        scheduleKey: `America/New_York|2026-07-23|06:45|${prefix}`,
+        scheduledFor: new Date("2026-07-23T10:45:00Z"),
         requestedStoryCount: 1,
         status: "partial",
         newsletterReadyAt: null,
@@ -132,7 +132,7 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
       .insert(digestRuns)
       .values({
         trigger: "scheduled",
-        scheduleKey: `America/New_York|2026-07-21|19:00|${prefix}`,
+        scheduleKey: `America/New_York|2026-07-21|18:45|${prefix}`,
         scheduledFor: new Date("2026-07-21T23:00:00Z"),
         requestedStoryCount: 1,
         status: "complete",
@@ -178,8 +178,8 @@ describe.skipIf(!runDatabaseTests)("HD-103 newsletter delivery", () => {
       batchSize: 25,
       concurrency: 2,
       maximumAttempts: 3,
-      morningTime: "07:00",
-      eveningTime: "19:00",
+      morningTime: "06:45",
+      eveningTime: "18:45",
       keys,
     });
 

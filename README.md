@@ -55,8 +55,8 @@ the existing tokens before adding one-off values.
 ## Scheduling
 
 Scheduled runs use the configured IANA time zone and local morning/evening
-times; timestamps are stored in UTC. The production defaults are 7:00 AM and
-7:00 PM in `America/New_York`, so UTC execution times shift automatically with
+times; timestamps are stored in UTC. The production defaults are 6:45 AM and
+6:45 PM in `America/New_York`, so UTC execution times shift automatically with
 EST and EDT.
 
 Each local slot has a unique key, making repeated scheduler ticks and restarts

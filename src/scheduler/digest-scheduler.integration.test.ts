@@ -12,8 +12,8 @@ describe.skipIf(!runDatabaseTests)("HD-051 scheduled run persistence", () => {
   const database = createDatabase(databaseUrl!);
   const options = {
     timeZone: "America/New_York",
-    morningTime: "07:00",
-    eveningTime: "19:00",
+    morningTime: "06:45",
+    eveningTime: "18:45",
     storyCount: 5,
     missedRunGraceMs: 6 * 60 * 60 * 1_000,
   } as const;
@@ -22,7 +22,7 @@ describe.skipIf(!runDatabaseTests)("HD-051 scheduled run persistence", () => {
 
   it("does not duplicate a scheduled run across concurrent scheduler ticks", async () => {
     const now = new Date("2031-07-22T11:05:00Z");
-    const key = "America/New_York|2031-07-22|07:00";
+    const key = "America/New_York|2031-07-22|06:45";
     await database.db.delete(digestRuns).where(eq(digestRuns.scheduleKey, key));
     try {
       const results = await Promise.all([
@@ -37,7 +37,7 @@ describe.skipIf(!runDatabaseTests)("HD-051 scheduled run persistence", () => {
         .where(eq(digestRuns.scheduleKey, key));
       expect(stored).toMatchObject({
         trigger: "scheduled",
-        scheduledFor: new Date("2031-07-22T11:00:00Z"),
+        scheduledFor: new Date("2031-07-22T10:45:00Z"),
         requestedStoryCount: 5,
       });
     } finally {

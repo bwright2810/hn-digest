@@ -19,17 +19,17 @@ describe.skipIf(!runDatabaseTests)("HD-110 public digest lookup", () => {
     await connection.db.insert(digestRuns).values([
       {
         trigger: "scheduled",
-        scheduleKey: `America/New_York|2026-11-02|07:00|${prefix}`,
-        scheduledFor: new Date("2026-11-02T12:00:00Z"),
-        collectedAt: new Date("2026-11-02T12:05:00Z"),
+        scheduleKey: `America/New_York|2026-11-02|06:45|${prefix}`,
+        scheduledFor: new Date("2026-11-02T11:45:00Z"),
+        collectedAt: new Date("2026-11-02T11:50:00Z"),
         requestedStoryCount: 1,
         status: "complete",
       },
       {
         trigger: "scheduled",
-        scheduleKey: `America/New_York|2026-11-02|19:00|${prefix}`,
-        scheduledFor: new Date("2026-11-03T00:00:00Z"),
-        collectedAt: new Date("2026-11-03T00:05:00Z"),
+        scheduleKey: `America/New_York|2026-11-02|18:45|${prefix}`,
+        scheduledFor: new Date("2026-11-02T23:45:00Z"),
+        collectedAt: new Date("2026-11-02T23:50:00Z"),
         requestedStoryCount: 1,
         status: "partial",
       },
@@ -50,22 +50,22 @@ describe.skipIf(!runDatabaseTests)("HD-110 public digest lookup", () => {
         date: "2026-11-02",
         edition: "morning",
         timeZone: "America/New_York",
-        morningTime: "07:00",
-        eveningTime: "19:00",
+        morningTime: "06:45",
+        eveningTime: "18:45",
       }),
     ).resolves.toMatchObject({
       version: "v1",
       date: "2026-11-02",
       edition: "morning",
-      scheduledFor: "2026-11-02T12:00:00.000Z",
+      scheduledFor: "2026-11-02T11:45:00.000Z",
     });
     await expect(
       readPublicDigest(connection.db, {
         date: "2026-11-02",
         edition: "evening",
         timeZone: "America/New_York",
-        morningTime: "07:00",
-        eveningTime: "19:00",
+        morningTime: "06:45",
+        eveningTime: "18:45",
       }),
     ).resolves.toBeNull();
   });
