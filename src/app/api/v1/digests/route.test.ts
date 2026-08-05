@@ -16,8 +16,8 @@ vi.mock("../../../../config/server", () => ({
     subscribers: { lookupHmacKey: Buffer.alloc(32, 4) },
     schedule: {
       timeZone: "America/New_York",
-      morningTime: "07:00",
-      eveningTime: "19:00",
+      morningTime: "06:45",
+      eveningTime: "18:45",
     },
   }),
 }));

@@ -107,7 +107,7 @@ describe.skipIf(!runDatabaseTests)("HD-010 PostgreSQL schema", () => {
 
     const runResult = await client.query<{ id: string }>(`
       INSERT INTO digest_runs (trigger, schedule_key, scheduled_for, requested_story_count)
-      VALUES ('scheduled', '2026-07-22T07:00:00-America/New_York', now(), 5)
+      VALUES ('scheduled', '2026-07-22T06:45:00-America/New_York', now(), 5)
       ON CONFLICT (schedule_key) WHERE schedule_key IS NOT NULL DO UPDATE SET
         requested_story_count = EXCLUDED.requested_story_count
       RETURNING id
