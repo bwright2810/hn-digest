@@ -42,7 +42,7 @@ describe("loadConfig", () => {
         reasoningEffort: "high",
         baseUrl: "https://openrouter.ai/api/v1",
       },
-      timeoutMs: 60_000,
+      timeoutMs: 120_000,
       maximumRetries: 2,
       prices: {
         inputUsdPerMillionTokens: 0.1,
