@@ -11,7 +11,6 @@ import {
   degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
   InvalidCommentCitationError,
-  MAX_CITATION_ATTEMPTS,
 } from "../analysis/citations";
 import {
   ANALYSIS_PROMPT,
@@ -289,11 +288,10 @@ export class DigestPipeline {
       return { status: "failed", errorCode: safeCode(outcome.code) };
     }
 
-    await this.persistAnalysis(
-      claim.id,
-      outcome.output,
-      claim.attempt >= MAX_CITATION_ATTEMPTS,
-    );
+    // An invalid comment citation is a recoverable quality defect. Preserve
+    // the usable article and discussion text while removing only evidence
+    // that cannot be grounded in the selected comment context.
+    await this.persistAnalysis(claim.id, outcome.output, true);
     return { status: "succeeded" };
   }
 
