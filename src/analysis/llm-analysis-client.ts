@@ -307,7 +307,7 @@ function classifyCompletionResponse(
     );
     return { ...base, ...outcome };
   } catch (error) {
-    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
+    throw new LlmAnalysisError("invalid_structured_output", true, null, null, {
       cause: error,
     });
   }
@@ -356,7 +356,7 @@ function classifyResponsesResponse(
       output: parseAnalysisOutput(JSON.parse(response.output_text)),
     };
   } catch (error) {
-    throw new LlmAnalysisError("invalid_structured_output", false, null, null, {
+    throw new LlmAnalysisError("invalid_structured_output", true, null, null, {
       cause: error,
     });
   }

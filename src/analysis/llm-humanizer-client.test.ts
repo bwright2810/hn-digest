@@ -304,15 +304,16 @@ describe("HumanizerClient (openai provider, Responses API)", () => {
     ).resolves.toMatchObject({ kind: "failed", code: "server_error" });
   });
 
-  it("rejects invalid structured output as a terminal classified error", async () => {
+  it("retries invalid structured output within the bounded retry budget", async () => {
+    const createResponse = vi
+      .fn<(request: ResponseCreateParamsNonStreaming) => Promise<Response>>()
+      .mockResolvedValueOnce(response({ output_text: "not JSON" }))
+      .mockResolvedValueOnce(response());
+
     await expect(
-      openaiClient(async () => response({ output_text: "not JSON" })).humanize(
-        assembledRequest(),
-      ),
-    ).rejects.toMatchObject({
-      code: "invalid_structured_output",
-      retryable: false,
-    });
+      openaiClient(createResponse).humanize(assembledRequest()),
+    ).resolves.toMatchObject({ kind: "completed" });
+    expect(createResponse).toHaveBeenCalledTimes(2);
   });
 
   it("logs only classified metadata, never credentials or source bodies", async () => {
@@ -466,7 +467,7 @@ describe("HumanizerClient (openrouter provider, Chat Completions API)", () => {
     ).resolves.toMatchObject({ kind: "incomplete", reason: "length" });
   });
 
-  it("rejects invalid structured output as a terminal classified error", async () => {
+  it("classifies invalid structured output as retryable when retries are exhausted", async () => {
     const malformed = chatCompletion({
       choices: [
         {
@@ -482,7 +483,7 @@ describe("HumanizerClient (openrouter provider, Chat Completions API)", () => {
       openRouterClient(async () => malformed).humanize(assembledRequest()),
     ).rejects.toMatchObject({
       code: "invalid_structured_output",
-      retryable: false,
+      retryable: true,
     });
   });
 
