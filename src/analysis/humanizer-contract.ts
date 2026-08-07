@@ -13,7 +13,12 @@ const humanizerItemSchema = z
   })
   .strict();
 
-export type HumanizerItem = z.infer<typeof humanizerItemSchema>;
+export interface HumanizerItem {
+  readonly storyId: string;
+  readonly article: string | null;
+  readonly discussion: string | null;
+  readonly takeaway: string;
+}
 
 export const humanizerOutputSchema = z
   .object({
@@ -23,11 +28,18 @@ export const humanizerOutputSchema = z
   })
   .strict();
 
-export type HumanizerOutput = z.infer<typeof humanizerOutputSchema>;
+export interface HumanizerOutput {
+  readonly promptVersion: typeof HUMANIZER_PROMPT_VERSION;
+  readonly schemaVersion: typeof HUMANIZER_SCHEMA_VERSION;
+  readonly stories: readonly HumanizerItem[];
+}
 
 const generatedJsonSchema = Object.fromEntries(
   Object.entries(
-    z.toJSONSchema(humanizerOutputSchema, { target: "draft-7" }),
+    z.toJSONSchema(humanizerOutputSchema, { target: "draft-7" }) as Record<
+      string,
+      unknown
+    >,
   ).filter(([key]) => key !== "$schema"),
 );
 
