@@ -63,7 +63,7 @@ describe("loadConfig", () => {
     });
     expect(config.worker).toEqual({
       fetchConcurrencyPerHost: 2,
-      llmConcurrency: 1,
+      llmConcurrency: 2,
       leaseMs: 300_000,
       pollIntervalMs: 5_000,
     });
