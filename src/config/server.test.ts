@@ -42,7 +42,7 @@ describe("loadConfig", () => {
         reasoningEffort: "high",
         baseUrl: "https://openrouter.ai/api/v1",
       },
-      timeoutMs: 60_000,
+      timeoutMs: 120_000,
       maximumRetries: 2,
       prices: {
         inputUsdPerMillionTokens: 0.1,
@@ -63,7 +63,7 @@ describe("loadConfig", () => {
     });
     expect(config.worker).toEqual({
       fetchConcurrencyPerHost: 2,
-      llmConcurrency: 1,
+      llmConcurrency: 2,
       leaseMs: 300_000,
       pollIntervalMs: 5_000,
     });

@@ -70,9 +70,15 @@ export const analysisOutputSchema = z
 
 export type AnalysisOutput = z.infer<typeof analysisOutputSchema>;
 
+// Keep the generated provider schema behind a plain JSON boundary. Letting
+// TypeScript infer the full Zod JSON-schema type here causes pathological
+// compiler behavior with the current Zod/TypeScript combination.
 const generatedJsonSchema = Object.fromEntries(
   Object.entries(
-    z.toJSONSchema(analysisOutputSchema, { target: "draft-7" }),
+    z.toJSONSchema(analysisOutputSchema, { target: "draft-7" }) as Record<
+      string,
+      unknown
+    >,
   ).filter(([key]) => key !== "$schema"),
 );
 

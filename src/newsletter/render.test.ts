@@ -87,11 +87,9 @@ describe("renderNewsletter", () => {
     for (const value of [
       "Typed &lt;news&gt;",
       "The article explains typed &lt;systems&gt;.",
-      "Commenters value the practical examples &amp; caveats.",
       "Useful guidance, provided its limits are understood.",
       "Apply it with care on narrower screens.",
-      "Article",
-      "Discussion",
+      "Summary",
       "The takeaway",
       "42001",
       "Read original",
@@ -103,9 +101,9 @@ describe("renderNewsletter", () => {
       expect(result.html).toContain(value);
     for (const value of [
       "Typed <news>",
-      "ARTICLE",
+      "SUMMARY",
       "The article explains typed <systems>.",
-      "DISCUSSION",
+      "Discussion evidence:",
       "THE TAKEAWAY",
       "Useful guidance, provided its limits are understood.\n\nApply it with care on narrower screens.",
       "https://example.com/article?a=1&b=2",
@@ -116,9 +114,8 @@ describe("renderNewsletter", () => {
     ])
       expect(result.text).toContain(value);
     expect(result.html).toContain("font-size:15px;line-height:1.55");
-    expect(
-      result.html.match(/font-size:15px;line-height:1\.55/gu),
-    ).toHaveLength(2);
+    expect(result.html).not.toContain(">Article</p>");
+    expect(result.html).not.toContain(">Discussion</p>");
   });
 
   it("refuses a digest that has not reached a deliverable state", () => {

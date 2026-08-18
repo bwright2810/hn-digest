@@ -166,7 +166,6 @@ function HomepageNewsletter() {
 function StoryCard({ story }: { readonly story: DigestStoryView }) {
   const analysis = story.analysis;
   const articleSummary = analysis?.article.thesis?.claim ?? null;
-  const discussionSummary = summarizeDiscussion(analysis?.discussion);
 
   return (
     <article className="story-card" aria-labelledby={`story-${story.id}`}>
@@ -196,10 +195,9 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
       {analysis ? (
         <div className="analysis-grid">
           <AnalysisSection
-            label="Article"
+            label="Summary"
             text={articleSummary ?? "No article summary was available."}
-          />
-          <AnalysisSection label="Discussion" text={discussionSummary}>
+          >
             <CommentLinks analysis={analysis} hnUrl={story.hnUrl} />
           </AnalysisSection>
           <section
@@ -254,7 +252,7 @@ function CommentLinks({
   if (ids.length === 0) return null;
   return (
     <div className="comment-links" aria-label="Cited Hacker News comments">
-      <span>Evidence</span>
+      <span>Discussion evidence</span>
       {ids.map((id) => (
         <a key={id} href={`${hnUrl}#${id}`}>
           #{id}
@@ -306,17 +304,6 @@ function EmptyState({
       </div>
       <p>{detail}</p>
     </section>
-  );
-}
-
-function summarizeDiscussion(
-  discussion: AnalysisOutput["discussion"] | undefined,
-): string {
-  if (!discussion) return "No discussion summary was available.";
-  const claims = [...discussion.consensus, ...discussion.competingViewpoints];
-  return (
-    claims[0]?.claim ??
-    "The selected discussion did not support a reliable summary."
   );
 }
 

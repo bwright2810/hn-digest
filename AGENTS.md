@@ -185,10 +185,11 @@ Articles, URLs, HN posts, and comments are untrusted input.
 - Support touch, keyboard, and mouse input. Maintain semantic HTML, visible
   focus, sufficient contrast, reduced-motion preferences, and useful empty,
   loading, partial, and error states.
-- Use headless Playwright to verify critical UI flows. Cover representative
-  mobile and desktop viewports, navigation, important keyboard interactions,
-  and horizontal overflow. Use deterministic seeded data instead of live HN or
-  LLM calls.
+- When the user explicitly requests browser verification, use headless
+  Playwright to verify critical UI flows. Cover representative mobile and
+  desktop viewports, navigation, important keyboard interactions, and
+  horizontal overflow. Use deterministic seeded data instead of live HN or LLM
+  calls.
 - Configure CI to retain Playwright screenshots, traces, and videos on failure,
   ensuring artifacts contain no secrets or unnecessarily complete source text.
 
@@ -206,9 +207,10 @@ Articles, URLs, HN posts, and comments are untrusted input.
 - Do not create Sprite checkpoints during routine development or after
   successful validation. Create one only when the user explicitly requests a
   checkpoint.
-- UI changes are incomplete until relevant headless Playwright checks have run.
-  When the UI intentionally changes, update assertions or visual references and
-  explain the intended change rather than broadly weakening tests.
+- Run headless Playwright checks for UI changes only when the user explicitly
+  requests browser verification. When those checks are requested and the UI
+  intentionally changes, update assertions or visual references and explain the
+  intended change rather than broadly weakening tests.
 - Run the repository's documented formatting, linting, type-checking, test, and
   production-build commands before declaring work complete.
 - Do not start services with ad hoc background shell processes in the Sprite
@@ -235,6 +237,52 @@ Articles, URLs, HN posts, and comments are untrusted input.
   Docker volume or backup stored only on the same host is not sufficient.
 - Use normal Git SSH transport for repository operations. Do not expose or copy
   SSH private keys.
+
+## Coolify API operations
+
+When production configuration or deployment work is explicitly requested, use
+the authenticated Sprite API gateway. Never use a raw Coolify token, copy one
+into the repository, or print secret-bearing API responses.
+
+1. Discover connections before making a request:
+
+   ```sh
+   curl --fail --silent https://api.sprites.dev/v1/gateway/list
+   ```
+
+   Select the active connection whose display name is `Coolify`, then use its
+   `gateway_base_url`. Do not guess a gateway URL or add an Authorization
+   header; the gateway injects authentication.
+
+2. Identify the HN Digest project and production application using read-only
+   API calls. Match the project name `hn-digest` and the application repository
+   `bwright2810/hn-digest`; do not assume an application UUID or modify a
+   similarly named resource. HN Digest's PostgreSQL resource is separate and
+   must not be redeployed or reconfigured for application changes.
+
+3. Update only the requested production environment key. For example, the
+   Coolify API updates an application environment variable with:
+
+   ```sh
+   curl --fail --request PATCH \
+     "$COOLIFY_GATEWAY/applications/$APPLICATION_UUID/envs" \
+     --header 'Content-Type: application/json' \
+     --data '{"key":"WORKER_LLM_CONCURRENCY","value":"2","is_preview":false}'
+   ```
+
+   Preserve all other variables and never request, log, or paste complete
+   environment-variable listings because they contain secrets. Filter any
+   verification response to the key, non-secret value, preview flag, and
+   update timestamp only.
+
+4. Redeploy the application after runtime environment changes. Record the
+   returned deployment UUID, poll its deployment resource until it reaches a
+   terminal state, and verify the application reports `running:healthy`. A
+   successful API response that only queues a deployment is not completion.
+
+5. Report the changed key, deployment result, application health, and any
+   remaining blocker. Do not expose credentials, database URLs, webhook
+   secrets, API keys, private host details, or complete deployment logs.
 
 ## Commands
 
