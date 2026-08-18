@@ -302,8 +302,9 @@ function CommentLinks({
 }
 
 function StoryState({ story }: { readonly story: DigestStoryView }) {
-  const copy =
-    story.status === "failed"
+  const copy = isIncompleteStory(story)
+    ? "This analysis stopped before the story was complete. The original links still work."
+    : story.status === "failed"
       ? "We couldn't finish this analysis. The original links still work."
       : story.status === "discussion_only"
         ? "We couldn't read the article, so we're working from the HN thread alone."
@@ -323,6 +324,18 @@ function StoryState({ story }: { readonly story: DigestStoryView }) {
         <p className="error-code">Reference: {story.failureCode}</p>
       ) : null}
     </div>
+  );
+}
+
+function isIncompleteStory(story: DigestStoryView): boolean {
+  return (
+    story.status === "failed" &&
+    [
+      "length",
+      "max_output_tokens",
+      "message_incomplete",
+      "output_boundary",
+    ].some((code) => story.failureCode?.includes(code))
   );
 }
 

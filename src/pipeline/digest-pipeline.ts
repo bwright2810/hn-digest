@@ -16,6 +16,7 @@ import {
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
   analysisOutputJsonSchema,
+  analysisOutputHasCompleteProse,
   analysisOutputSchema,
   type AnalysisOutput,
 } from "../analysis/contract";
@@ -285,6 +286,10 @@ export class DigestPipeline {
     }
     if (outcome.kind === "failed") {
       return { status: "failed", errorCode: safeCode(outcome.code) };
+    }
+
+    if (!analysisOutputHasCompleteProse(outcome.output)) {
+      return { status: "incomplete", errorCode: "output_boundary" };
     }
 
     validateCitations(

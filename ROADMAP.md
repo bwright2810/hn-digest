@@ -385,7 +385,7 @@ Acceptance criteria:
   bounded history, unavailable editions, canonical navigation, and seeded
   deterministic data.
 
-### HD-116 — Prevent truncated digest story output [planned]
+### HD-116 — Prevent truncated digest story output [complete]
 
 Find and fix the pipeline or rendering conditions that can cut off a story's
 text, including output that ends mid-sentence or with dangling punctuation.
@@ -532,3 +532,4 @@ Acceptance criteria:
 | 2026-08-18 | Approve HD-121 to make discussion evidence links human-readable and previewable. | Usernames are more useful than opaque comment IDs while hover/focus previews can expose comment text and score without making each story card substantially longer. The original HN link remains available for provenance. |
 | 2026-08-18 | Complete HD-114 by deriving source labels from persisted document metadata and rendering normalized URLs with explicit unavailable and discussion-only states. | Readers can identify the original source and its trusted classification without confusing failed extraction with a usable article or exposing arbitrary source-provided display text. |
 | 2026-08-18 | Complete HD-115 with bounded scheduled-run archive pages keyed by local date and edition. | The archive reuses persisted digest data, excludes on-demand and failed/future runs, preserves partial status, and keeps historical links stable without adding a second source of truth. |
+| 2026-08-18 | Complete HD-116 by rejecting provider-incomplete responses and valid structured results with dangling prose boundaries before persistence. | Provider finish state remains explicit, boundary validation prevents mid-sentence text from becoming a published analysis, and the reader exposes an incomplete state rather than presenting it as complete. |
