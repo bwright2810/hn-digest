@@ -15,6 +15,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     env: {
+      APP_URL: "http://localhost:3000",
       DATABASE_URL:
         process.env.DATABASE_URL ??
         "postgresql://fixture:fixture@127.0.0.1:5432/fixture",

@@ -50,7 +50,7 @@
   box-sizing: border-box;
 }
 html {
-  min-width: 20rem;
+  min-width: 0;
 }
 body {
   min-height: 100vh;
