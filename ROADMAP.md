@@ -426,7 +426,7 @@ Acceptance criteria:
 - Tests cover invalid citations on the first response, recovery on a later
   response, exhausted retries, idempotency, and spend-limit enforcement.
 
-### HD-118 — Improve summary coverage for all supported link types [planned]
+### HD-118 — Improve summary coverage for all supported link types [complete]
 
 Eliminate avoidable “No article summary was available” outcomes by expanding
 bounded extraction and fallback handling for every supported source type. Use
@@ -533,3 +533,5 @@ Acceptance criteria:
 | 2026-08-18 | Complete HD-114 by deriving source labels from persisted document metadata and rendering normalized URLs with explicit unavailable and discussion-only states. | Readers can identify the original source and its trusted classification without confusing failed extraction with a usable article or exposing arbitrary source-provided display text. |
 | 2026-08-18 | Complete HD-115 with bounded scheduled-run archive pages keyed by local date and edition. | The archive reuses persisted digest data, excludes on-demand and failed/future runs, preserves partial status, and keeps historical links stable without adding a second source of truth. |
 | 2026-08-18 | Complete HD-116 by rejecting provider-incomplete responses and valid structured results with dangling prose boundaries before persistence. | Provider finish state remains explicit, boundary validation prevents mid-sentence text from becoming a published analysis, and the reader exposes an incomplete state rather than presenting it as complete. |
+| 2026-08-18 | Complete HD-118 with a reviewed source-coverage matrix and an opt-in archive fallback boundary. | Every currently classified source has a tested extraction path or a deliberate discussion-only state; archive retrieval remains disabled by default until its legal, retention, provider-cost, and operator policy review is complete. |
+| 2026-08-18 | Revise HD-118 archive handling to an opt-in Internet Archive Wayback fallback. | The fallback is disabled by default, bounded by the primary fetcher, never used for access-restricted sources, and preserves original-source provenance; operators must explicitly review policy before enabling it. |

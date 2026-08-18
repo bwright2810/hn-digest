@@ -27,7 +27,9 @@ export type ArticleFetchFailureCode =
   | "redirect_limit"
   | "unsupported_content_type"
   | "response_too_large"
-  | "invalid_source_response";
+  | "invalid_source_response"
+  | "archive_unavailable"
+  | "archive_invalid_response";
 
 export class ArticleFetchError extends Error {
   constructor(
