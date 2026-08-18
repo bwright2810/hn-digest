@@ -542,6 +542,12 @@ Increase wrapping rhythm and touch-target separation for cited comment links at
 Add deterministic tests for budget-category diagnostics, non-English output,
 three-paragraph takeaways, popup positioning, and mobile evidence wrapping.
 
+### HD-128 — Add a scoped machine-trigger endpoint for on-demand digests [in progress]
+
+Provide an operator-controlled JSON endpoint authenticated by a dedicated
+trigger secret, separate from the browser admin password, that queues the same
+bounded on-demand run and returns only its opaque run ID and coalescing state.
+
 ## Decision log
 
 | Date | Decision | Rationale |

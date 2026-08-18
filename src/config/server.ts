@@ -3,6 +3,7 @@ import ipaddr from "ipaddr.js";
 
 const DEVELOPMENT_DEFAULTS = {
   ADMIN_PASSWORD: "development-only-admin-password",
+  DIGEST_TRIGGER_SECRET: "development-only-digest-trigger-secret",
   APP_URL: "http://localhost:3000",
   DIGEST_TIME_ZONE: "America/New_York",
   DIGEST_MORNING_TIME: "08:00",
@@ -150,6 +151,9 @@ const environmentSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]),
     DATABASE_URL: postgresUrl,
     ADMIN_PASSWORD: z.string().min(16, "must contain at least 16 characters"),
+    DIGEST_TRIGGER_SECRET: z
+      .string()
+      .min(16, "must contain at least 16 characters"),
     LLM_PROVIDER: z.enum(["openai", "openrouter"]),
     LLM_OPENAI_API_KEY: z.string().min(1).optional(),
     LLM_OPENAI_MODEL: z.string().min(1),
@@ -271,6 +275,7 @@ export interface AppConfig {
   readonly application: {
     readonly url: URL;
     readonly adminPassword: string;
+    readonly digestTriggerSecret: string;
   };
   readonly database: {
     readonly url: string;
@@ -421,6 +426,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     application: Object.freeze({
       url: new URL(values.APP_URL),
       adminPassword: values.ADMIN_PASSWORD,
+      digestTriggerSecret: values.DIGEST_TRIGGER_SECRET,
     }),
     database: Object.freeze({ url: values.DATABASE_URL }),
     llm: Object.freeze({
