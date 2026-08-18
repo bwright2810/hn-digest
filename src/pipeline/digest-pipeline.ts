@@ -8,7 +8,6 @@ import {
   resolveAnalysisCache,
 } from "../analysis/cache";
 import {
-  degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
   InvalidCommentCitationError,
 } from "../analysis/citations";
@@ -288,10 +287,11 @@ export class DigestPipeline {
       return { status: "failed", errorCode: safeCode(outcome.code) };
     }
 
-    // An invalid comment citation is a recoverable quality defect. Preserve
-    // the usable article and discussion text while removing only evidence
-    // that cannot be grounded in the selected comment context.
-    await this.persistAnalysis(claim.id, outcome.output, true);
+    validateCitations(
+      outcome.output,
+      new Set(reconstructed.selectedCommentIds),
+    );
+    await this.persistAnalysis(claim.id, outcome.output);
     return { status: "succeeded" };
   }
 
@@ -569,7 +569,6 @@ export class DigestPipeline {
   private async persistAnalysis(
     jobId: string,
     output: AnalysisOutput,
-    degradeInvalidCitations = false,
   ): Promise<void> {
     const [job] = await this.db
       .select({
@@ -589,21 +588,7 @@ export class DigestPipeline {
       .limit(1);
     if (!job) throw new Error("Analysis job not found");
     const context = parseContext(job.context);
-    const allowedCommentIds = new Set(context.selectedCommentIds);
-    const degraded = degradeInvalidCitations
-      ? degradeInvalidCommentCitations(output, allowedCommentIds)
-      : { output, invalidCommentIds: [] };
-    if (degraded.invalidCommentIds.length > 0) {
-      console.error(
-        JSON.stringify({
-          event: "invalid_comment_citations_degraded",
-          jobId,
-          invalidCommentIds: degraded.invalidCommentIds,
-        }),
-      );
-    }
-    const persistedOutput = degraded.output;
-    validateCitations(persistedOutput, allowedCommentIds);
+    const persistedOutput = output;
     const keys = createAnalysisCacheKeys({
       articleContentHash: job.articleContentHash,
       selectedCommentHash: job.selectedCommentHash,

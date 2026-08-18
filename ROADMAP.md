@@ -405,7 +405,7 @@ Acceptance criteria:
   mid-sentence endings and long outputs near configured limits.
 - Existing token, spend, retry, and source-grounding controls remain enforced.
 
-### HD-117 — Retry stories with invalid discussion citations [planned]
+### HD-117 — Retry stories with invalid discussion citations [complete]
 
 Treat invalid HN comment citations as a retryable story-analysis failure. A
 successful response that omits the discussion synthesis because citations were
