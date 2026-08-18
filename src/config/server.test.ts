@@ -16,8 +16,8 @@ describe("loadConfig", () => {
     expect(config.application.url.href).toBe("http://localhost:3000/");
     expect(config.schedule).toEqual({
       timeZone: "America/New_York",
-      morningTime: "06:45",
-      eveningTime: "18:45",
+      morningTime: "08:00",
+      eveningTime: "17:00",
       missedRunGraceMs: 21_600_000,
     });
     expect(config.stories).toEqual({

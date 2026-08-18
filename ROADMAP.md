@@ -467,7 +467,7 @@ Acceptance criteria:
 - Tests cover the heading text, document outline, mobile and desktop layout,
   visible focus, and no horizontal overflow.
 
-### HD-120 — Change scheduled digest times to 8 AM and 5 PM ET [planned]
+### HD-120 — Change scheduled digest times to 8 AM and 5 PM ET [complete]
 
 Update the default scheduled editions from the current morning/evening times to
 8:00 AM and 5:00 PM in the `America/New_York` timezone.
@@ -536,3 +536,4 @@ Acceptance criteria:
 | 2026-08-18 | Complete HD-118 with a reviewed source-coverage matrix and an opt-in archive fallback boundary. | Every currently classified source has a tested extraction path or a deliberate discussion-only state; archive retrieval remains disabled by default until its legal, retention, provider-cost, and operator policy review is complete. |
 | 2026-08-18 | Revise HD-118 archive handling to an opt-in Internet Archive Wayback fallback. | The fallback is disabled by default, bounded by the primary fetcher, never used for access-restricted sources, and preserves original-source provenance; operators must explicitly review policy before enabling it. |
 | 2026-08-18 | Complete HD-119 by making “Latest Edition” the homepage’s single primary heading. | The newsletter signup remains a secondary section heading, removing the old repeated digest title while preserving the established layout and mobile hierarchy. |
+| 2026-08-18 | Complete HD-120 by changing the typed morning/evening defaults to 08:00 and 17:00 `America/New_York`. | Scheduler, archive, API date interpretation, and newsletter eligibility already consume the shared schedule configuration, so named-zone UTC/DST behavior and idempotency remain unchanged. |
