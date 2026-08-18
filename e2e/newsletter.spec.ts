@@ -78,6 +78,15 @@ test("completes signup, confirmation, preference, and unsubscribe lifecycle", as
       "If that address can receive a confirmation",
     );
 
+    await expect
+      .poll(async () => {
+        const result = await client.query<{ id: string }>(
+          "select id from subscribers where email_lookup_digest = $1",
+          [emailDigest],
+        );
+        return result.rows[0]?.id;
+      })
+      .toBeTruthy();
     const subscriberResult = await client.query<{ id: string }>(
       "select id from subscribers where email_lookup_digest = $1",
       [emailDigest],
