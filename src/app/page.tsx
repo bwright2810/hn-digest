@@ -72,7 +72,6 @@ export function DigestPage({
 
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">Latest edition</p>
           <h1 id="page-title">Latest Edition</h1>
         </div>
         {run ? (
