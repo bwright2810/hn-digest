@@ -665,30 +665,38 @@ h1 {
   color: var(--color-ink-soft);
 }
 .comment-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  display: block;
   margin-top: var(--space-4);
   font-size: 0.7rem;
 }
 .comment-links span {
+  display: block;
+  margin-bottom: var(--space-2);
   color: var(--color-ink-soft);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.comment-links__items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
 .comment-preview {
   position: relative;
   max-width: 100%;
+  display: inline-flex;
+  align-items: center;
 }
 .comment-preview__author {
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   display: inline-flex;
   align-items: center;
 }
 .comment-preview__toggle {
   width: 1.8rem;
-  min-height: 2.75rem;
+  min-height: 2.25rem;
   margin-left: 0.1rem;
   padding: 0;
   border: 0;
