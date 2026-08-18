@@ -77,7 +77,6 @@ function renderStory(story: DigestStoryView): { html: string; text: string } {
     (story.status === "failed"
       ? "Analysis was unavailable; the original sources remain available."
       : "No article summary was available.");
-  const discussion = summarizeDiscussion(story.analysis?.discussion);
   const takeaway =
     story.analysis?.combinedTakeaway.summary ??
     "A combined takeaway is unavailable for this story.";
@@ -110,14 +109,13 @@ function renderStory(story: DigestStoryView): { html: string; text: string } {
 <p style="margin:0 0 9px;color:${colors.accent};font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">${String(story.rank).padStart(2, "0")} &nbsp; ${escapeHtml(metadata)}</p>
 <h2 class="story-title" style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.18;font-weight:500;letter-spacing:-0.4px;">${escapeHtml(story.title)}</h2>
 <p style="margin:0 0 30px;font-size:13px;line-height:1.5;">${articleLink}<a href="${escapeAttribute(story.hnUrl)}" style="color:${colors.accent};font-weight:700;text-decoration:none;">View HN discussion</a></p>
-${renderAnalysisSection("Article", article)}
-${renderAnalysisSection("Discussion", discussion, evidence)}
+${renderAnalysisSection("Summary", article, evidence)}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin-top:24px;background:${colors.takeaway};"><tr><td style="padding:22px 24px;border-left:3px solid ${colors.accent};">
 <p style="margin:0 0 9px;color:${colors.accent};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">The takeaway</p>
 ${takeawayParts.map((paragraph, index) => `<p style="margin:${index === 0 ? "0" : "12px 0 0"};color:${colors.ink};font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;">${escapeHtml(paragraph)}</p>`).join("")}
 </td></tr></table>
 </td></tr>`,
-    text: `${String(story.rank).padStart(2, "0")}  ${story.title}\n${metadata}\n\nARTICLE\n${article}\n\nDISCUSSION\n${discussion}${textEvidence ? `\nEvidence: ${textEvidence}` : ""}\n\nTHE TAKEAWAY\n${takeawayParts.join("\n\n")}\n\n${story.articleUrl ? `Read original: ${story.articleUrl}\n` : ""}View HN discussion: ${story.hnUrl}`,
+    text: `${String(story.rank).padStart(2, "0")}  ${story.title}\n${metadata}\n\nSUMMARY\n${article}${textEvidence ? `\nDiscussion evidence: ${textEvidence}` : ""}\n\nTHE TAKEAWAY\n${takeawayParts.join("\n\n")}\n\n${story.articleUrl ? `Read original: ${story.articleUrl}\n` : ""}View HN discussion: ${story.hnUrl}`,
   };
 }
 
@@ -126,17 +124,7 @@ function renderAnalysisSection(
   content: string,
   evidence = "",
 ): string {
-  return `<div style="margin-top:24px;"><p style="margin:0 0 8px;color:${colors.muted};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">${label}</p><p style="margin:0;color:${colors.ink};font-size:15px;line-height:1.65;">${escapeHtml(content)}</p>${evidence ? `<p style="margin:10px 0 0;color:${colors.muted};font-size:11px;line-height:1.6;">Evidence&nbsp; ${evidence}</p>` : ""}</div>`;
-}
-
-function summarizeDiscussion(
-  discussion: AnalysisOutput["discussion"] | undefined,
-): string {
-  if (!discussion) return "No discussion summary was available.";
-  return (
-    [...discussion.consensus, ...discussion.competingViewpoints][0]?.claim ??
-    "The selected discussion did not support a reliable summary."
-  );
+  return `<div style="margin-top:24px;"><p style="margin:0 0 8px;color:${colors.muted};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">${label}</p><p style="margin:0;color:${colors.ink};font-size:15px;line-height:1.65;">${escapeHtml(content)}</p>${evidence ? `<p style="margin:10px 0 0;color:${colors.muted};font-size:11px;line-height:1.6;">Discussion evidence&nbsp; ${evidence}</p>` : ""}</div>`;
 }
 
 function citedCommentIds(analysis: AnalysisOutput): readonly number[] {

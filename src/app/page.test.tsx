@@ -118,15 +118,20 @@ describe("DigestPage", () => {
     expect(takeawayParagraphs(summary)).toHaveLength(2);
   });
 
-  it("renders ranked analyses with original, discussion, and comment evidence links", () => {
+  it("renders a concise summary, takeaway, and discussion evidence link", () => {
     const html = renderToStaticMarkup(<DigestPage run={run} />);
 
     expect(html).toContain("A careful technical article");
+    expect(html).toContain("Summary");
+    expect(html).toContain("The takeaway");
+    expect(html).toContain("Discussion evidence");
     expect(html).toContain('href="https://example.com/article"');
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000001#44000123"',
     );
     expect(html).toContain("The evidence is useful");
+    expect(html).not.toContain(">Article</p>");
+    expect(html).not.toContain(">Discussion</p>");
   });
 
   it("keeps failed stories readable and linked to their HN source", () => {

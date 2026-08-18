@@ -11,6 +11,11 @@ public metadata, original/HN links, and validated article, discussion, and
 combined analysis. Internal IDs, errors, prompts, source bodies, subscriber
 data, and operator fields are excluded.
 
+The web digest and newsletter present that analysis as two reader-facing
+blocks: a short Summary and a separate The takeaway block. The API continues
+to return the validated `article`, `discussion`, and `combinedTakeaway` fields
+so clients do not lose discussion evidence or source-grounding data.
+
 Errors use `{ "version": "v1", "error": { "code": "...", "message": "..." } }`.
 Invalid requests and future dates return 400, unavailable or partial editions
 return 404, dates outside the configured window return 410, exhausted limits

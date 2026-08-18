@@ -312,6 +312,206 @@ Acceptance criteria:
 - Automated tests pin the prompt's grounding and Unslop requirements, and the
   relevant mobile and desktop Playwright checks pass after the copy changes.
 
+## Milestone 6: Digest reading experience and source coverage
+
+These tasks address reader-facing repetition, historical access, incomplete
+rendering, and source coverage in the digest experience. They apply to the web
+digest unless an acceptance criterion explicitly calls out another surface.
+
+### HD-113 — Consolidate repeated story analysis sections [complete]
+
+Reduce repetition between Article, Discussion, and The takeaway by replacing
+the current three-section presentation with a concise one-line story summary
+and a separate takeaway. Preserve discussion evidence and source provenance in
+the resulting story view.
+
+Acceptance criteria:
+
+- Each story presents one clearly labeled, one-line summary followed by one
+  clearly labeled takeaway.
+- The new presentation does not restate the same claim across multiple
+  sections merely because it came from different analysis fields.
+- Supporting discussion evidence, HN comment links/IDs, article provenance,
+  confidence or limitation states, and the original-source link remain
+  available and distinguishable.
+- Stored analysis data and API compatibility are handled deliberately; no
+  source-grounding information is discarded solely to simplify the UI.
+- The web digest, public API documentation, and newsletter rendering are
+  updated consistently, or any intentionally different representation is
+  documented.
+- Headless Playwright covers the revised story hierarchy at 320-pixel and
+  desktop viewports, including keyboard access and no horizontal overflow.
+
+### HD-114 — Show original-source URL and media type [planned]
+
+Make the Read Original action more informative by displaying the normalized
+source URL and the classified media type beside it.
+
+Acceptance criteria:
+
+- Read Original remains a usable, accessible link to the validated original
+  source.
+- The displayed URL is the stored, normalized source URL and is visibly
+  truncated or wrapped safely without causing horizontal overflow.
+- The UI displays the source classification, including at least site and PDF
+  where those classifications are supported by ingestion.
+- The classification is derived from trusted application metadata rather than
+  arbitrary source-provided display text.
+- Missing, inaccessible, or discussion-only sources receive an explicit
+  state instead of a misleading media type or link.
+- Tests cover normal URLs, long URLs, PDF sources, unavailable sources, and
+  mobile/keyboard rendering.
+
+### HD-115 — Add a morning/evening digest archive [planned]
+
+Provide a browsable backlog of previously created scheduled digests, with
+morning and evening editions available as distinct entries.
+
+Dependencies: HD-110.
+
+Acceptance criteria:
+
+- Readers can browse completed scheduled digests by local calendar date and
+  morning/evening edition using the configured `America/New_York` timezone.
+- Archive entries link to canonical digest pages and preserve deterministic
+  ordering, stable URLs, and the digest's published status.
+- On-demand runs are not presented as morning or evening editions unless the
+  data explicitly identifies them as scheduled runs.
+- Missing, partial, failed, and future editions have deliberate non-success or
+  empty states and do not expose internal diagnostics or source bodies.
+- The archive works at 320-pixel and desktop viewports, supports keyboard
+  navigation, and does not introduce horizontal overflow.
+- Tests cover timezone/DST boundaries, morning/evening filtering, pagination or
+  bounded history, unavailable editions, canonical navigation, and seeded
+  deterministic data.
+
+### HD-116 — Prevent truncated digest story output [planned]
+
+Find and fix the pipeline or rendering conditions that can cut off a story's
+text, including output that ends mid-sentence or with dangling punctuation.
+
+Acceptance criteria:
+
+- Article summaries, discussion synthesis, takeaways, and the consolidated
+  summary fields are rendered from complete persisted values without silent
+  client-side or server-side truncation.
+- Generation and persistence distinguish a complete response from a provider
+  response that stopped at an output limit, transport failure, or malformed
+  boundary.
+- A bounded retry or explicit incomplete state is used when completeness
+  cannot be established; incomplete prose is never presented as a complete
+  digest story.
+- Regression coverage includes the current class of dangling-comma or
+  mid-sentence endings and long outputs near configured limits.
+- Existing token, spend, retry, and source-grounding controls remain enforced.
+
+### HD-117 — Retry stories with invalid discussion citations [planned]
+
+Treat invalid HN comment citations as a retryable story-analysis failure. A
+successful response that omits the discussion synthesis because citations were
+invalid is not an acceptable terminal outcome.
+
+Acceptance criteria:
+
+- Citation validation runs before an analysis is accepted for persistence or
+  publication.
+- Invalid comment citations trigger the existing bounded retry policy, with
+  retry diagnostics recording safe IDs, attempt counts, and classified failure
+  reasons only.
+- A response with an omitted or invalidly cited discussion synthesis cannot be
+  silently downgraded into a successful story analysis.
+- If bounded retries are exhausted, the story receives an explicit failed or
+  incomplete state that the digest UI can represent safely; it is not rendered
+  with the unacceptable invalid-citation message as though analysis succeeded.
+- Tests cover invalid citations on the first response, recovery on a later
+  response, exhausted retries, idempotency, and spend-limit enforcement.
+
+### HD-118 — Improve summary coverage for all supported link types [planned]
+
+Eliminate avoidable “No article summary was available” outcomes by expanding
+bounded extraction and fallback handling for every supported source type. Use
+an Internet Archive or equivalent archived copy only when it is permitted,
+available, and passes the same source-safety controls.
+
+Acceptance criteria:
+
+- The supported link-type matrix is documented and each type has a tested
+  extraction path, fallback path, or explicit discussion-only/inaccessible
+  state.
+- HTML sites, PDFs, GitHub README/files, RSS/Atom-selected entries, redirects,
+  and other currently supported inputs are covered without bypassing paywalls,
+  access controls, or robots/security boundaries.
+- Archive fallback is bounded by timeout, redirect, response-size,
+  content-type, concurrency, and public-destination SSRF controls, and never
+  exposes credentials or arbitrary fetched content through the application.
+- Extraction failures preserve a classified, user-safe reason and source
+  provenance; they do not invent an article summary.
+- Tests use reviewed fixtures for each supported class, including archive
+  success, archive failure, malformed content, oversized content, and blocked
+  destinations. No live internet or LLM calls are required.
+- The roadmap decision log records the final archive provider, legal/security
+  boundaries, retention behavior, and cost/rate limits before implementation.
+
+### HD-119 — Simplify the latest-edition heading [planned]
+
+Remove the repetitive “What Hacker News Is Talking About” heading and use
+“Latest Edition” as the primary page heading at the existing heading location.
+
+Acceptance criteria:
+
+- “Latest Edition” is the page's single primary `h1` for the latest digest view.
+- The removed heading is not repeated in visible page copy, accessible names,
+  metadata, or redundant landmark labels.
+- Typography gives “Latest Edition” the intended prominent treatment while
+  preserving the established editorial design tokens and responsive behavior.
+- Tests cover the heading text, document outline, mobile and desktop layout,
+  visible focus, and no horizontal overflow.
+
+### HD-120 — Change scheduled digest times to 8 AM and 5 PM ET [planned]
+
+Update the default scheduled editions from the current morning/evening times to
+8:00 AM and 5:00 PM in the `America/New_York` timezone.
+
+Acceptance criteria:
+
+- The morning edition is scheduled for 8:00 AM and the evening edition for
+  5:00 PM in `America/New_York`.
+- Schedule calculation uses the named IANA timezone and persists execution
+  timestamps in UTC, including correct EST/EDT transitions.
+- The configured schedule is shared consistently by the scheduler, digest
+  edition labels, archive behavior, API date interpretation, and newsletter
+  delivery eligibility.
+- Existing idempotency, retry, previous-scheduled-run exclusion, and missed-run
+  behavior remain unchanged.
+- Tests cover both editions, timezone boundaries, DST transitions, duplicate
+  prevention, and the changed default configuration.
+
+### HD-121 — Add commenter previews to discussion evidence links [planned]
+
+Replace numeric HN comment-ID link text with the commenter's username and add
+an unobtrusive preview on hover or keyboard focus showing the cited comment and
+its score.
+
+Acceptance criteria:
+
+- Each cited-comment link displays the username associated with that HN
+  comment, with a safe fallback when the commenter is deleted or unavailable.
+- Hover and keyboard focus expose a small, readable preview containing the
+  comment text, score, and a direct link to the original HN comment.
+- Preview content is sourced from validated stored comment data and is escaped;
+  it never renders arbitrary HTML or source-provided markup.
+- The preview is usable with keyboard, touch, and assistive technology, does
+  not depend on hover alone, and closes or moves predictably without trapping
+  focus.
+- Long comments are bounded and visually scrollable or clipped with an
+  accessible indication; previews do not cause horizontal overflow at 320
+  pixels.
+- Missing comment data preserves a useful citation link and displays an
+  explicit unavailable state rather than fabricated author or score data.
+- Headless Playwright and unit tests cover hover, focus, escape/blur behavior,
+  deleted users, long comments, safe rendering, mobile layout, and direct HN
+  links.
+
 ## Decision log
 
 | Date | Decision | Rationale |
@@ -326,3 +526,7 @@ Acceptance criteria:
 | 2026-07-23 | Complete HD-112 by applying full-mode Unslop rules within the existing structured analysis prompt and to public page copy. | Keeping the editorial pass in the one bounded request improves voice without adding a model stage or bypassing cost controls. A new prompt version makes cache behavior explicit, while grounding rules and Auto-Clarity preserve facts, citations, legal meaning, and safety-critical wording. |
 | 2026-08-07 | Extend HD-041 so invalid HN comment citations are degraded on the first successful structured response instead of waiting for a retry. | An invalid reference is a recoverable discussion-quality defect; removing only ungrounded discussion evidence preserves a useful digest item when a later retry would otherwise fail or be unavailable. |
 | 2026-08-07 | Extend HD-041 so provider responses that fail local structured-output validation are retryable within the existing bounded LLM retry budget. | OpenRouter can occasionally return malformed or schema-invalid JSON despite requesting strict output; retrying transient generation defects avoids failing a story on the first response while preserving strict validation and spend bounds. |
+| 2026-08-18 | Replace the HD-041 invalid-citation degradation behavior with the HD-117 retry requirement. | Discussion synthesis without valid supporting HN comment citations is not an acceptable successful story outcome. Retries must remain bounded by the existing spend and attempt controls; exhausted retries produce an explicit incomplete or failed state. |
+| 2026-08-18 | Approve HD-113 through HD-119 as the next digest experience and source-coverage work. | Reader feedback identifies repeated analysis, missing source context, lack of scheduled-edition history, truncated output, insufficient citation recovery, incomplete link coverage, and redundant page hierarchy as release-quality issues. |
+| 2026-08-18 | Approve HD-120 to move scheduled editions to 8:00 AM and 5:00 PM `America/New_York` time. | The morning and evening digest cadence should match the desired reader schedule while retaining named-zone calculation and UTC persistence across EST/EDT changes. |
+| 2026-08-18 | Approve HD-121 to make discussion evidence links human-readable and previewable. | Usernames are more useful than opaque comment IDs while hover/focus previews can expose comment text and score without making each story card substantially longer. The original HN link remains available for provenance. |

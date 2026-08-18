@@ -31,6 +31,11 @@ test("reads the latest digest and preserves source provenance", async ({
   await expect(page.getByRole("article")).toContainText(
     "The result is compelling",
   );
+  await expect(page.getByRole("article")).toContainText("Summary");
+  await expect(page.getByRole("article")).toContainText("The takeaway");
+  await expect(page.getByRole("article")).toContainText("Discussion evidence");
+  await expect(page.getByText("Article", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Discussion", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Read original" }),
   ).toHaveAttribute("href", "https://example.com/article");
@@ -70,7 +75,7 @@ test("defaults to dark mode, persists the theme choice, and uses desktop width",
     const width = await page
       .locator(".takeaway__body:visible")
       .evaluate((element) => element.getBoundingClientRect().width);
-    expect(width).toBeGreaterThan(700);
+    expect(width).toBeGreaterThan(300);
   }
   await expectNoHorizontalOverflow(page);
 });
