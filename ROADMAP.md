@@ -512,6 +512,36 @@ Acceptance criteria:
   deleted users, long comments, safe rendering, mobile layout, and direct HN
   links.
 
+### HD-122 — Make analysis budget failures diagnosable and envelope-safe [in progress]
+
+Prevent serialized source envelopes from exceeding the raw article allowance,
+and preserve the failing budget category in the safe story reference code.
+
+### HD-123 — Enforce English editorial output [in progress]
+
+Detect substantial accidental CJK output, retry it within the bounded analysis
+attempt policy, and keep the language requirement explicit in the prompt.
+
+### HD-124 — Guarantee three-paragraph takeaways [in progress]
+
+Require three short takeaway paragraphs from the model and provide a safe
+server-rendered fallback for legacy or unusually short persisted summaries.
+
+### HD-125 — Keep comment previews within the viewport [in progress]
+
+Position discussion previews against the viewport so links near either edge of
+a mobile screen do not produce clipped or inaccessible popups.
+
+### HD-126 — Improve mobile discussion-evidence spacing [in progress]
+
+Increase wrapping rhythm and touch-target separation for cited comment links at
+320-pixel layouts without changing their provenance or ordering.
+
+### HD-127 — Add regression coverage for production editorial defects [pending]
+
+Add deterministic tests for budget-category diagnostics, non-English output,
+three-paragraph takeaways, popup positioning, and mobile evidence wrapping.
+
 ## Decision log
 
 | Date | Decision | Rationale |
@@ -538,3 +568,4 @@ Acceptance criteria:
 | 2026-08-18 | Complete HD-119 by making “Latest Edition” the homepage’s single primary heading. | The newsletter signup remains a secondary section heading, removing the old repeated digest title while preserving the established layout and mobile hierarchy. |
 | 2026-08-18 | Complete HD-120 by changing the typed morning/evening defaults to 08:00 and 17:00 `America/New_York`. | Scheduler, archive, API date interpretation, and newsletter eligibility already consume the shared schedule configuration, so named-zone UTC/DST behavior and idempotency remain unchanged. |
 | 2026-08-18 | Complete HD-121 with server-validated comment evidence and a client-side focus/hover/touch preview. | Comment authors and normalized text come only from stored comment rows, missing data stays explicit, HN links remain direct provenance links, and score is shown as unavailable because the upstream comment schema does not provide one. |
+| 2026-08-18 | Add HD-122 through HD-127 from production review feedback. | Analysis failures must identify the affected budget, editorial output must remain English and structurally readable, and discussion evidence must remain usable at narrow mobile widths. |

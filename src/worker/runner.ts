@@ -113,6 +113,18 @@ export function workerErrorOutcome(
         }
       : { status: "failed", errorCode: "invalid_comment_citation" };
   }
+  if (
+    error instanceof Error &&
+    error.message === "Analysis output language was not acceptable"
+  ) {
+    return attempt < MAX_CITATION_ATTEMPTS
+      ? {
+          status: "retry",
+          errorCode: "invalid_output_language",
+          availableAt: now,
+        }
+      : { status: "failed", errorCode: "invalid_output_language" };
+  }
   return {
     status: "failed",
     errorCode: classifyOperationalError(error, "unexpected_worker_error"),

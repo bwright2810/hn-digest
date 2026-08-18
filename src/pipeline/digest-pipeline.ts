@@ -15,6 +15,7 @@ import {
   ANALYSIS_PROMPT,
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
+  analysisOutputHasAcceptableLanguage,
   analysisOutputJsonSchema,
   analysisOutputHasCompleteProse,
   analysisOutputSchema,
@@ -37,6 +38,8 @@ import {
   assembleAnalysisRequest,
   type AssembledAnalysisRequest,
 } from "../analysis/request";
+
+const ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS = 256;
 import {
   LLM_PRICE_ASSUMPTIONS_VERSION,
   recordLlmUsage,
@@ -296,6 +299,9 @@ export class DigestPipeline {
     if (!analysisOutputHasCompleteProse(outcome.output)) {
       return { status: "incomplete", errorCode: "output_boundary" };
     }
+    if (!analysisOutputHasAcceptableLanguage(outcome.output)) {
+      throw new Error("Analysis output language was not acceptable");
+    }
 
     validateCitations(
       outcome.output,
@@ -431,7 +437,10 @@ export class DigestPipeline {
       },
     );
     const article = selectArticleContext(document?.text ?? null, {
-      maximumTokens: this.config.tokens.article,
+      maximumTokens: Math.max(
+        1,
+        this.config.tokens.article - ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS,
+      ),
       countTokens: estimateTokens,
     });
     const selectedCommentHash = hashJson(
@@ -543,7 +552,10 @@ export class DigestPipeline {
       throw new Error("Selected comment context is incomplete");
     }
     const article = selectArticleContext(job.documentText ?? null, {
-      maximumTokens: this.config.tokens.article,
+      maximumTokens: Math.max(
+        1,
+        this.config.tokens.article - ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS,
+      ),
       countTokens: estimateTokens,
     });
     return this.assembleRequest({

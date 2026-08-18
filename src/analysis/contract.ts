@@ -93,6 +93,34 @@ export function analysisOutputHasCompleteProse(
     .every((value) => !hasIncompleteBoundary(value));
 }
 
+/** Keep accidental provider language drift out of the English editorial UI. */
+export function analysisOutputHasAcceptableLanguage(
+  output: AnalysisOutput,
+): boolean {
+  const prose = [
+    output.article.thesis?.claim,
+    ...output.article.keyPoints.map(({ claim }) => claim),
+    ...output.article.evidence.map(({ claim }) => claim),
+    ...output.article.limitations.map(({ claim }) => claim),
+    ...output.discussion.consensus.map(({ claim }) => claim),
+    ...output.discussion.competingViewpoints.map(({ claim }) => claim),
+    ...output.discussion.unresolvedQuestions.map(({ claim }) => claim),
+    ...output.discussion.insightfulComments.flatMap(
+      ({ insight, whyNotable }) => [insight, whyNotable],
+    ),
+    output.combinedTakeaway.summary,
+    ...output.combinedTakeaway.tensions,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  const letters = [...prose].filter((character) => /\p{L}/u.test(character));
+  if (letters.length < 40) return true;
+  const cjkLetters = letters.filter((character) =>
+    /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/u.test(character),
+  );
+  return cjkLetters.length / letters.length <= 0.12;
+}
+
 function hasIncompleteBoundary(value: string): boolean {
   const text = value.trim();
   return text.length > 0 && /[,;:]$/u.test(text);
@@ -126,7 +154,8 @@ Editorial expectations:
 - Capture the article thesis, up to 6 key points, up to 6 important pieces of evidence, and up to 4 limitations.
 - Summarize up to 4 areas of discussion consensus without treating popularity as correctness.
 - Preserve up to 6 materially different viewpoints, up to 5 insightful comments, and up to 4 unresolved questions.
-- End with one combined takeaway of at most 900 characters and no more than 4 concise tensions.
+- End with one combined takeaway of at most 900 characters, formatted as exactly three short paragraphs separated by blank lines, and no more than 4 concise tensions.
+- Write all editorial prose in clear English, even when a source contains non-English text. Preserve non-English proper nouns and technical terms only when needed for accuracy.
 - Keep each claim under 600 characters, each source-quality note or tension under 300 characters, and each article citation locator under 160 characters.
 - Use low, medium, or high confidence based only on the completeness, consistency, and directness of the supplied evidence.
 
