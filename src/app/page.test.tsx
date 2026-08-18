@@ -153,6 +153,7 @@ describe("DigestPage", () => {
     expect(html).toContain("Summary");
     expect(html).toContain("The takeaway");
     expect(html).toContain("Discussion evidence");
+    expect(html).toContain('class="comment-links__items"');
     expect(html).toContain("commenter");
     expect(html).toContain("Preview comment by commenter");
     expect(html).toContain('href="https://example.com/article"');

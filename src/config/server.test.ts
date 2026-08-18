@@ -21,7 +21,7 @@ describe("loadConfig", () => {
       missedRunGraceMs: 21_600_000,
     });
     expect(config.stories).toEqual({
-      perRun: 5,
+      perRun: 10,
       minimumCommentCount: 10,
     });
     expect(config.articleFetch).toEqual({
@@ -43,7 +43,7 @@ describe("loadConfig", () => {
         reasoningEffort: "high",
         baseUrl: "https://openrouter.ai/api/v1",
       },
-      timeoutMs: 120_000,
+      timeoutMs: 180_000,
       maximumRetries: 2,
       prices: {
         inputUsdPerMillionTokens: 0.1,

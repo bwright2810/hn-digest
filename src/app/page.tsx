@@ -299,18 +299,20 @@ function CommentLinks({
   return (
     <div className="comment-links" aria-label="Cited Hacker News comments">
       <span>Discussion evidence</span>
-      {ids.map((id) => {
-        const comment = evidence.find((item) => item.commentId === id);
-        return (
-          <CommentPreview
-            key={id}
-            author={comment?.author?.trim() || "Deleted commenter"}
-            text={comment?.text ?? null}
-            score={comment?.score ?? null}
-            href={`${hnUrl}#${id}`}
-          />
-        );
-      })}
+      <div className="comment-links__items">
+        {ids.map((id) => {
+          const comment = evidence.find((item) => item.commentId === id);
+          return (
+            <CommentPreview
+              key={id}
+              author={comment?.author?.trim() || "Deleted commenter"}
+              text={comment?.text ?? null}
+              score={comment?.score ?? null}
+              href={`${hnUrl}#${id}`}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
