@@ -876,6 +876,8 @@ h1 {
   }
   .site-header {
     align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
   .site-actions {
     gap: var(--space-2);
