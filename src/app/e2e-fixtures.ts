@@ -56,6 +56,19 @@ const completeRun: DigestRunView = {
       rank: 1,
       title: "What careful measurements reveal about simple systems",
       articleUrl: "https://example.com/article",
+      source: {
+        url: "https://example.com/article",
+        mediaType: "site",
+        availability: "available",
+      },
+      commentEvidence: [
+        {
+          commentId: 44000123,
+          author: "fixture_commenter",
+          text: "The measured result has a narrower scope than the headline suggests.",
+          score: null,
+        },
+      ],
       hnUrl: "https://news.ycombinator.com/item?id=44000001",
       score: 312,
       commentCount: 84,
@@ -100,6 +113,12 @@ export async function e2eDigestScenario(name: string | undefined): Promise<{
             rank: 2,
             title: "A source that could not be analyzed",
             articleUrl: null,
+            source: {
+              url: null,
+              mediaType: null,
+              availability: "discussion_only",
+            },
+            commentEvidence: [],
             hnUrl: "https://news.ycombinator.com/item?id=44000002",
             score: 94,
             commentCount: 20,

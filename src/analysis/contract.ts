@@ -70,6 +70,34 @@ export const analysisOutputSchema = z
 
 export type AnalysisOutput = z.infer<typeof analysisOutputSchema>;
 
+/** Keep valid JSON that ends inside a prose field out of persisted digests. */
+export function analysisOutputHasCompleteProse(
+  output: AnalysisOutput,
+): boolean {
+  const prose = [
+    output.article.thesis?.claim,
+    ...output.article.keyPoints.map(({ claim }) => claim),
+    ...output.article.evidence.map(({ claim }) => claim),
+    ...output.article.limitations.map(({ claim }) => claim),
+    ...output.discussion.consensus.map(({ claim }) => claim),
+    ...output.discussion.competingViewpoints.map(({ claim }) => claim),
+    ...output.discussion.unresolvedQuestions.map(({ claim }) => claim),
+    ...output.discussion.insightfulComments.flatMap(
+      ({ insight, whyNotable }) => [insight, whyNotable],
+    ),
+    output.combinedTakeaway.summary,
+    ...output.combinedTakeaway.tensions,
+  ];
+  return prose
+    .filter((value): value is string => typeof value === "string")
+    .every((value) => !hasIncompleteBoundary(value));
+}
+
+function hasIncompleteBoundary(value: string): boolean {
+  const text = value.trim();
+  return text.length > 0 && /[,;:]$/u.test(text);
+}
+
 // Keep the generated provider schema behind a plain JSON boundary. Letting
 // TypeScript infer the full Zod JSON-schema type here causes pathological
 // compiler behavior with the current Zod/TypeScript combination.

@@ -5,7 +5,7 @@ import {
   ANALYSIS_SCHEMA_VERSION,
   type AnalysisOutput,
 } from "../analysis/contract";
-import { parseStoredAnalysis } from "./reader";
+import { parseStoredAnalysis, sourceView } from "./reader";
 
 const output: AnalysisOutput = {
   promptVersion: ANALYSIS_PROMPT_VERSION,
@@ -61,5 +61,45 @@ describe("parseStoredAnalysis", () => {
     expect(
       parseStoredAnalysis({ article: { thesis: "invalid" } }, {}),
     ).toBeNull();
+  });
+});
+
+describe("sourceView", () => {
+  it("maps trusted PDF metadata to an available source", () => {
+    expect(
+      sourceView({
+        articleUrl: "https://example.com/report.pdf",
+        documentSourceUrl: "https://example.com/report.pdf",
+        documentStatus: "extracted",
+        documentMetadata: { sourceType: "pdf" },
+      }),
+    ).toEqual({
+      url: "https://example.com/report.pdf",
+      mediaType: "pdf",
+      availability: "available",
+    });
+  });
+
+  it("keeps failed and missing sources explicit", () => {
+    expect(
+      sourceView({
+        articleUrl: "https://example.com/private",
+        documentSourceUrl: "https://example.com/private",
+        documentStatus: "access_restricted",
+        documentMetadata: { sourceType: "html" },
+      }).availability,
+    ).toBe("unavailable");
+    expect(
+      sourceView({
+        articleUrl: null,
+        documentSourceUrl: null,
+        documentStatus: null,
+        documentMetadata: null,
+      }),
+    ).toEqual({
+      url: null,
+      mediaType: null,
+      availability: "discussion_only",
+    });
   });
 });

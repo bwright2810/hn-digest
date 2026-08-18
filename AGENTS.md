@@ -54,7 +54,7 @@ plans, commits, and pull requests where applicable.
 - HN Digest must use its own Coolify-managed PostgreSQL resource and persistent
   volume. Never use or modify Coolify's internal `coolify-db` PostgreSQL
   container for application data.
-- Scheduled production runs default to 6:45 AM and 6:45 PM in the
+- Scheduled production runs default to 8:00 AM and 5:00 PM in the
   `America/New_York` IANA time zone. Persist timestamps in UTC and calculate
   schedules with the named zone so EST/EDT changes are handled correctly.
 - The repository became public under the MIT license on 2026-07-23 after the

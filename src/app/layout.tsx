@@ -39,6 +39,7 @@ export default function RootLayout({
               <span>HN Digest</span>
             </Link>
             <div className="site-actions">
+              <Link href="/archive">Archive</Link>
               {/* Next may prefetch any same-origin anchor. A GET form keeps the
                   Basic challenge behind an intentional operator action. */}
               <form action="/admin" method="get">

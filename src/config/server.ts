@@ -5,14 +5,15 @@ const DEVELOPMENT_DEFAULTS = {
   ADMIN_PASSWORD: "development-only-admin-password",
   APP_URL: "http://localhost:3000",
   DIGEST_TIME_ZONE: "America/New_York",
-  DIGEST_MORNING_TIME: "06:45",
-  DIGEST_EVENING_TIME: "18:45",
+  DIGEST_MORNING_TIME: "08:00",
+  DIGEST_EVENING_TIME: "17:00",
   DIGEST_STORY_COUNT: "5",
   DIGEST_MINIMUM_COMMENT_COUNT: "10",
   DIGEST_MISSED_RUN_GRACE_MS: "21600000",
   ARTICLE_FETCH_TIMEOUT_MS: "10000",
   ARTICLE_FETCH_MAX_BYTES: "2097152",
   ARTICLE_FETCH_MAX_REDIRECTS: "5",
+  ARTICLE_ARCHIVE_FALLBACK_ENABLED: "false",
   LLM_PROVIDER: "openrouter",
   LLM_OPENAI_MODEL: "gpt-5.6-luna",
   LLM_OPENAI_REASONING_EFFORT: "low",
@@ -177,6 +178,7 @@ const environmentSchema = z
     ARTICLE_FETCH_TIMEOUT_MS: positiveInteger,
     ARTICLE_FETCH_MAX_BYTES: positiveInteger,
     ARTICLE_FETCH_MAX_REDIRECTS: z.coerce.number().int().nonnegative(),
+    ARTICLE_ARCHIVE_FALLBACK_ENABLED: environmentBoolean,
     LLM_INSTRUCTION_TOKEN_LIMIT: positiveInteger,
     LLM_ARTICLE_TOKEN_LIMIT: positiveInteger,
     LLM_COMMENT_TOKEN_LIMIT: positiveInteger,
@@ -309,6 +311,7 @@ export interface AppConfig {
     readonly timeoutMs: number;
     readonly maximumBytes: number;
     readonly maximumRedirects: number;
+    readonly archiveFallbackEnabled: boolean;
   };
   readonly tokens: {
     readonly instructions: number;
@@ -458,6 +461,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
       timeoutMs: values.ARTICLE_FETCH_TIMEOUT_MS,
       maximumBytes: values.ARTICLE_FETCH_MAX_BYTES,
       maximumRedirects: values.ARTICLE_FETCH_MAX_REDIRECTS,
+      archiveFallbackEnabled: values.ARTICLE_ARCHIVE_FALLBACK_ENABLED,
     }),
     tokens: Object.freeze({
       instructions: values.LLM_INSTRUCTION_TOKEN_LIMIT,
