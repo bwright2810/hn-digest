@@ -677,6 +677,59 @@ h1 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.comment-preview {
+  position: relative;
+  max-width: 100%;
+}
+.comment-preview__author {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+.comment-preview__toggle {
+  width: 1.8rem;
+  min-height: 2.75rem;
+  margin-left: 0.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  font: 700 0.75rem var(--font-sans);
+}
+.comment-preview__body {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  width: min(28rem, calc(100vw - 3rem));
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.comment-preview__text {
+  max-height: 9rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.comment-preview__score {
+  margin-top: var(--space-2) !important;
+  color: var(--color-ink-soft);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.comment-preview__body a {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
 .story-state {
   margin: var(--space-6) 0 0 5rem;
   padding: var(--space-5);

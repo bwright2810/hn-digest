@@ -30,6 +30,7 @@ describe("HD-110 public digest representation", () => {
             mediaType: "site",
             availability: "available",
           },
+          commentEvidence: [],
           hnUrl: "https://news.ycombinator.com/item?id=123",
           score: 42,
           commentCount: 12,

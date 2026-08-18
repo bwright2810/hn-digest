@@ -39,10 +39,36 @@ test("reads the latest digest and preserves source provenance", async ({
   await expect(
     page.getByRole("link", { name: "Read original" }),
   ).toHaveAttribute("href", "https://example.com/article");
-  await expect(page.getByRole("link", { name: "#44000123" })).toHaveAttribute(
-    "href",
-    /#44000123$/,
-  );
+  await expect(
+    page.getByRole("link", { name: "fixture_commenter" }),
+  ).toHaveAttribute("href", /#44000123$/);
+  await expectNoHorizontalOverflow(page);
+});
+
+test("previews cited comments by keyboard and closes them with Escape", async ({
+  page,
+}) => {
+  await page.goto("/?fixture=complete");
+  const author = page.getByRole("link", { name: "fixture_commenter" });
+  await author.focus();
+  await expect(
+    page.getByRole("region", { name: "Comment by fixture_commenter" }),
+  ).toContainText("The measured result has a narrower scope");
+  await expect(
+    page.getByRole("region", { name: "Comment by fixture_commenter" }),
+  ).toContainText("Score unavailable");
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("region", { name: "Comment by fixture_commenter" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: "Preview comment by fixture_commenter",
+    })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Open comment on Hacker News" }),
+  ).toHaveAttribute("href", /#44000123$/u);
   await expectNoHorizontalOverflow(page);
 });
 

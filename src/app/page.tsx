@@ -5,8 +5,10 @@ import {
   type DigestRunView,
   type DigestStoryView,
   type DigestSourceView,
+  type DigestCommentEvidence,
 } from "../digests/reader";
 import { takeawayParagraphs } from "../digests/takeaway";
+import { CommentPreview } from "./comment-preview";
 
 export { takeawayParagraphs } from "../digests/takeaway";
 
@@ -197,7 +199,11 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
             label="Summary"
             text={articleSummary ?? "No article summary was available."}
           >
-            <CommentLinks analysis={analysis} hnUrl={story.hnUrl} />
+            <CommentLinks
+              analysis={analysis}
+              hnUrl={story.hnUrl}
+              evidence={story.commentEvidence}
+            />
           </AnalysisSection>
           <section
             className="takeaway"
@@ -283,20 +289,29 @@ function AnalysisSection({
 function CommentLinks({
   analysis,
   hnUrl,
+  evidence,
 }: {
   readonly analysis: AnalysisOutput;
   readonly hnUrl: string;
+  readonly evidence: readonly DigestCommentEvidence[];
 }) {
   const ids = citedCommentIds(analysis);
   if (ids.length === 0) return null;
   return (
     <div className="comment-links" aria-label="Cited Hacker News comments">
       <span>Discussion evidence</span>
-      {ids.map((id) => (
-        <a key={id} href={`${hnUrl}#${id}`}>
-          #{id}
-        </a>
-      ))}
+      {ids.map((id) => {
+        const comment = evidence.find((item) => item.commentId === id);
+        return (
+          <CommentPreview
+            key={id}
+            author={comment?.author?.trim() || "Deleted commenter"}
+            text={comment?.text ?? null}
+            score={comment?.score ?? null}
+            href={`${hnUrl}#${id}`}
+          />
+        );
+      })}
     </div>
   );
 }

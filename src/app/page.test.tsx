@@ -26,6 +26,14 @@ const run: DigestRunView = {
         mediaType: "site",
         availability: "available",
       },
+      commentEvidence: [
+        {
+          commentId: 44000123,
+          author: "commenter",
+          text: "A useful comment preview.",
+          score: null,
+        },
+      ],
       hnUrl: "https://news.ycombinator.com/item?id=44000001",
       score: 312,
       commentCount: 84,
@@ -82,6 +90,7 @@ const run: DigestRunView = {
         mediaType: null,
         availability: "discussion_only",
       },
+      commentEvidence: [],
       hnUrl: "https://news.ycombinator.com/item?id=44000002",
       score: 94,
       commentCount: 20,
@@ -143,6 +152,8 @@ describe("DigestPage", () => {
     expect(html).toContain("Summary");
     expect(html).toContain("The takeaway");
     expect(html).toContain("Discussion evidence");
+    expect(html).toContain("commenter");
+    expect(html).toContain("Preview comment by commenter");
     expect(html).toContain('href="https://example.com/article"');
     expect(html).toContain("Site");
     expect(html).toContain("https://example.com/article");

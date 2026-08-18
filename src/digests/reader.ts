@@ -13,6 +13,7 @@ import {
   digestRunStories,
   discussionAnalyses,
   documents,
+  comments,
   stories as storyRecords,
   storySnapshots,
 } from "../db/schema";
@@ -41,12 +42,20 @@ export interface DigestSourceView {
   readonly availability: SourceAvailability;
 }
 
+export interface DigestCommentEvidence {
+  readonly commentId: number;
+  readonly author: string | null;
+  readonly text: string | null;
+  readonly score: number | null;
+}
+
 export interface DigestStoryView {
   readonly id: string;
   readonly rank: number;
   readonly title: string;
   readonly articleUrl: string | null;
   readonly source: DigestSourceView;
+  readonly commentEvidence: readonly DigestCommentEvidence[];
   readonly hnUrl: string;
   readonly score: number;
   readonly commentCount: number;
@@ -237,6 +246,26 @@ export class PostgresDigestReader implements DigestReader {
             ) ?? parseStoredAnalysis(article?.result, discussion?.result);
         }
 
+        const citedIds = analysis ? citedCommentIds(analysis) : [];
+        const commentRows = citedIds.length
+          ? await this.database
+              .select({
+                commentId: comments.hnItemId,
+                author: comments.author,
+                text: comments.text,
+              })
+              .from(comments)
+              .where(
+                and(
+                  eq(comments.storyId, row.storyId),
+                  inArray(comments.hnItemId, citedIds),
+                ),
+              )
+          : [];
+        const commentById = new Map(
+          commentRows.map((comment) => [comment.commentId, comment]),
+        );
+
         return {
           id: row.id,
           rank: row.rank,
@@ -248,6 +277,12 @@ export class PostgresDigestReader implements DigestReader {
             documentStatus: document?.status ?? null,
             documentMetadata: document?.metadata ?? null,
           }),
+          commentEvidence: citedIds.map((commentId) => ({
+            commentId,
+            author: commentById.get(commentId)?.author ?? null,
+            text: commentById.get(commentId)?.text ?? null,
+            score: null,
+          })),
           hnUrl: `https://news.ycombinator.com/item?id=${row.hnItemId}`,
           score: row.score,
           commentCount: row.commentCount,
@@ -268,6 +303,20 @@ export class PostgresDigestReader implements DigestReader {
       stories,
     };
   }
+}
+
+function citedCommentIds(analysis: AnalysisOutput): readonly number[] {
+  const ids = new Set<number>();
+  for (const claim of [
+    ...analysis.discussion.consensus,
+    ...analysis.discussion.competingViewpoints,
+    ...analysis.discussion.unresolvedQuestions,
+  ]) {
+    for (const id of claim.supportingCommentIds) ids.add(id);
+  }
+  for (const comment of analysis.discussion.insightfulComments)
+    ids.add(comment.commentId);
+  return [...ids].slice(0, 8);
 }
 
 function localDateAndTime(date: Date, timeZone: string) {

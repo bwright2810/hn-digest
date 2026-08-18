@@ -61,6 +61,14 @@ const completeRun: DigestRunView = {
         mediaType: "site",
         availability: "available",
       },
+      commentEvidence: [
+        {
+          commentId: 44000123,
+          author: "fixture_commenter",
+          text: "The measured result has a narrower scope than the headline suggests.",
+          score: null,
+        },
+      ],
       hnUrl: "https://news.ycombinator.com/item?id=44000001",
       score: 312,
       commentCount: 84,
@@ -110,6 +118,7 @@ export async function e2eDigestScenario(name: string | undefined): Promise<{
               mediaType: null,
               availability: "discussion_only",
             },
+            commentEvidence: [],
             hnUrl: "https://news.ycombinator.com/item?id=44000002",
             score: 94,
             commentCount: 20,

@@ -486,7 +486,7 @@ Acceptance criteria:
 - Tests cover both editions, timezone boundaries, DST transitions, duplicate
   prevention, and the changed default configuration.
 
-### HD-121 — Add commenter previews to discussion evidence links [planned]
+### HD-121 — Add commenter previews to discussion evidence links [complete]
 
 Replace numeric HN comment-ID link text with the commenter's username and add
 an unobtrusive preview on hover or keyboard focus showing the cited comment and
@@ -537,3 +537,4 @@ Acceptance criteria:
 | 2026-08-18 | Revise HD-118 archive handling to an opt-in Internet Archive Wayback fallback. | The fallback is disabled by default, bounded by the primary fetcher, never used for access-restricted sources, and preserves original-source provenance; operators must explicitly review policy before enabling it. |
 | 2026-08-18 | Complete HD-119 by making “Latest Edition” the homepage’s single primary heading. | The newsletter signup remains a secondary section heading, removing the old repeated digest title while preserving the established layout and mobile hierarchy. |
 | 2026-08-18 | Complete HD-120 by changing the typed morning/evening defaults to 08:00 and 17:00 `America/New_York`. | Scheduler, archive, API date interpretation, and newsletter eligibility already consume the shared schedule configuration, so named-zone UTC/DST behavior and idempotency remain unchanged. |
+| 2026-08-18 | Complete HD-121 with server-validated comment evidence and a client-side focus/hover/touch preview. | Comment authors and normalized text come only from stored comment rows, missing data stays explicit, HN links remain direct provenance links, and score is shown as unavailable because the upstream comment schema does not provide one. |

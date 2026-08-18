@@ -25,6 +25,7 @@ const digest: DigestRunView = {
         mediaType: "site",
         availability: "available",
       },
+      commentEvidence: [],
       hnUrl: "https://news.ycombinator.com/item?id=42",
       score: 100,
       commentCount: 20,
