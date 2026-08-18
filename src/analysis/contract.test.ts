@@ -1,10 +1,55 @@
 import { describe, expect, it } from "vitest";
 
+const baseOutput = {
+  promptVersion: "analysis-prompt-v2-unslop-full",
+  schemaVersion: "analysis-schema-v1",
+  article: {
+    thesis: null,
+    keyPoints: [],
+    evidence: [],
+    limitations: [],
+    confidence: "low",
+    sourceQualityNotes: [],
+  },
+  discussion: {
+    consensus: [],
+    competingViewpoints: [],
+    insightfulComments: [],
+    unresolvedQuestions: [],
+    confidence: "low",
+    sourceQualityNotes: [],
+  },
+  combinedTakeaway: {
+    summary: "A grounded takeaway.",
+    tensions: [],
+    confidence: "low",
+  },
+} as import("./contract").AnalysisOutput;
+
+describe("analysis output language", () => {
+  it("accepts English prose", () => {
+    expect(analysisOutputHasAcceptableLanguage(baseOutput)).toBe(true);
+  });
+
+  it("rejects substantial accidental CJK prose", () => {
+    expect(
+      analysisOutputHasAcceptableLanguage({
+        ...baseOutput,
+        combinedTakeaway: {
+          ...baseOutput.combinedTakeaway,
+          summary: "这是一个中文摘要。".repeat(20),
+        },
+      }),
+    ).toBe(false);
+  });
+});
+
 import {
   ANALYSIS_PROMPT,
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
   analysisOutputHasCompleteProse,
+  analysisOutputHasAcceptableLanguage,
   analysisOutputJsonSchema,
   analysisOutputSchema,
   parseAnalysisOutput,

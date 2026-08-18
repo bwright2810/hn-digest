@@ -22,6 +22,14 @@ export function classifyOperationalError(
   if (error.name === "LlmAnalysisError" && providerCode) {
     return boundedCode(`llm_${providerCode}`);
   }
+  if (error.name === "AnalysisRequestBudgetError") {
+    const category = stringProperty(error, "category");
+    return boundedCode(
+      category
+        ? `analysis_request_budget_${category}`
+        : "analysis_request_budget",
+    );
+  }
   if (providerCode && POSTGRES_ERROR_CODE.test(providerCode)) {
     return `postgres_${providerCode.toLowerCase()}`;
   }

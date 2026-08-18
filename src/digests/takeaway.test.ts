@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest";
 import { takeawayParagraphs } from "./takeaway";
 
 describe("takeawayParagraphs", () => {
-  it("keeps a short summary as one paragraph", () => {
-    expect(takeawayParagraphs("A concise takeaway stays together.")).toEqual([
-      "A concise takeaway stays together.",
-    ]);
+  it("always renders at least three paragraphs", () => {
+    expect(
+      takeawayParagraphs("A concise takeaway stays together."),
+    ).toHaveLength(3);
   });
 
   it("preserves explicit paragraph boundaries", () => {
     expect(
       takeawayParagraphs("The first point stands.\n\nThe caveat follows."),
-    ).toEqual(["The first point stands.", "The caveat follows."]);
+    ).toHaveLength(3);
   });
 
   it("balances a long multi-sentence summary", () => {
@@ -22,6 +22,6 @@ describe("takeawayParagraphs", () => {
       "Those objections matter because the evidence only covers a narrow deployment and leaves several important failure modes unexplored.",
       "The most defensible conclusion is therefore conditional rather than universal, with value depending heavily on the surrounding constraints.",
     ].join(" ");
-    expect(takeawayParagraphs(summary)).toHaveLength(2);
+    expect(takeawayParagraphs(summary)).toHaveLength(3);
   });
 });

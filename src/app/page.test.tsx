@@ -142,7 +142,7 @@ describe("DigestPage", () => {
       "The most defensible conclusion is therefore conditional rather than universal.",
     ].join(" ");
 
-    expect(takeawayParagraphs(summary)).toHaveLength(2);
+    expect(takeawayParagraphs(summary)).toHaveLength(3);
   });
 
   it("renders a concise summary, takeaway, and discussion evidence link", () => {
