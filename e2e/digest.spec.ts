@@ -24,8 +24,8 @@ test("reads the latest digest and preserves source provenance", async ({
 
   await expect(
     page.getByRole("heading", {
-      level: 2,
-      name: "What Hacker News is talking about.",
+      level: 1,
+      name: "Latest Edition",
     }),
   ).toBeVisible();
   await expect(page.getByRole("article")).toContainText(
@@ -183,7 +183,7 @@ test("shows a useful loading state while a digest is streamed", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "What Hacker News is talking about.",
+      name: "Latest Edition",
       exact: true,
     }),
   ).toBeVisible();

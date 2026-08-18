@@ -71,7 +71,7 @@ export function DigestPage({
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
           <p className="eyebrow">Latest edition</p>
-          <h2 id="page-title">What Hacker News is talking about.</h2>
+          <h1 id="page-title">Latest Edition</h1>
         </div>
         {run ? (
           <div className="run-meta" aria-label="Digest run information">
@@ -127,9 +127,9 @@ function HomepageNewsletter() {
     <section className="homepage-newsletter" aria-labelledby="newsletter-title">
       <div className="homepage-newsletter__copy">
         <p className="eyebrow">HN, twice a day</p>
-        <h1 id="newsletter-title">
+        <h2 id="newsletter-title">
           Get the gist of what Hacker News is talking about.
-        </h1>
+        </h2>
         <p>
           We read the leading stories and the threads beneath them. You get the
           argument, the pushback, and the comments worth keeping.

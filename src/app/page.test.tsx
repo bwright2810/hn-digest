@@ -109,6 +109,14 @@ describe("DigestPage", () => {
     );
   });
 
+  it("uses Latest Edition as the single primary page heading", () => {
+    const html = renderToStaticMarkup(<DigestPage run={run} />);
+
+    expect(html).toContain('<h1 id="page-title">Latest Edition</h1>');
+    expect((html.match(/<h1\b/gu) ?? []).length).toBe(1);
+    expect(html).not.toContain("What Hacker News is talking about.</h2>");
+  });
+
   it("hides homepage signup while public signup is disabled", () => {
     const html = renderToStaticMarkup(
       <DigestPage run={run} newsletterEnabled={false} />,

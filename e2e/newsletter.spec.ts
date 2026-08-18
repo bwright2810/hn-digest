@@ -26,7 +26,7 @@ test("offers newsletter signup at the top of the homepage", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "What Hacker News is talking about.",
+      name: "Latest Edition",
       exact: true,
     }),
   ).toBeVisible();

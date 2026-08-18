@@ -452,7 +452,7 @@ Acceptance criteria:
 - The roadmap decision log records the final archive provider, legal/security
   boundaries, retention behavior, and cost/rate limits before implementation.
 
-### HD-119 — Simplify the latest-edition heading [planned]
+### HD-119 — Simplify the latest-edition heading [complete]
 
 Remove the repetitive “What Hacker News Is Talking About” heading and use
 “Latest Edition” as the primary page heading at the existing heading location.
@@ -535,3 +535,4 @@ Acceptance criteria:
 | 2026-08-18 | Complete HD-116 by rejecting provider-incomplete responses and valid structured results with dangling prose boundaries before persistence. | Provider finish state remains explicit, boundary validation prevents mid-sentence text from becoming a published analysis, and the reader exposes an incomplete state rather than presenting it as complete. |
 | 2026-08-18 | Complete HD-118 with a reviewed source-coverage matrix and an opt-in archive fallback boundary. | Every currently classified source has a tested extraction path or a deliberate discussion-only state; archive retrieval remains disabled by default until its legal, retention, provider-cost, and operator policy review is complete. |
 | 2026-08-18 | Revise HD-118 archive handling to an opt-in Internet Archive Wayback fallback. | The fallback is disabled by default, bounded by the primary fetcher, never used for access-restricted sources, and preserves original-source provenance; operators must explicitly review policy before enabling it. |
+| 2026-08-18 | Complete HD-119 by making “Latest Edition” the homepage’s single primary heading. | The newsletter signup remains a secondary section heading, removing the old repeated digest title while preserving the established layout and mobile hierarchy. |
