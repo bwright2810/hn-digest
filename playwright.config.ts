@@ -15,6 +15,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     env: {
+      APP_URL: "http://localhost:3000",
       DATABASE_URL:
         process.env.DATABASE_URL ??
         "postgresql://fixture:fixture@127.0.0.1:5432/fixture",
@@ -25,6 +26,7 @@ export default defineConfig({
       SUBSCRIBER_LOOKUP_HMAC_KEY:
         "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
       NEWSLETTER_PUBLIC_SIGNUP_ENABLED: "true",
+      NEWSLETTER_SIGNUP_RATE_LIMIT: "100",
       RESEND_API_KEY: "playwright-resend-placeholder",
       NEWSLETTER_FROM_EMAIL: "digest@example.com",
       PLAYWRIGHT_FIXTURES: "1",

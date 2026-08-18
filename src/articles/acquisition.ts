@@ -11,6 +11,7 @@ import {
   type ArticleFetchResult,
 } from "./fetcher";
 import { GitHubSourceFetcher } from "./github";
+import { InternetArchiveFallbackFetcher } from "./archive";
 
 export type ArticleAcquisitionOutcome =
   | { readonly status: "fetched"; readonly result: ArticleFetchResult }
@@ -64,6 +65,7 @@ export async function acquireArticle(options: {
   readonly sourceUrl: string;
   readonly fetcher: FetchArticleClient;
   readonly store: ArticleFetchStore;
+  readonly archiveFetcher?: FetchArticleClient;
   readonly now?: () => Date;
 }): Promise<ArticleAcquisitionOutcome> {
   const fetchedAt = (options.now ?? (() => new Date()))();
@@ -71,7 +73,7 @@ export async function acquireArticle(options: {
   try {
     result = await options.fetcher.fetch(options.sourceUrl);
   } catch (error) {
-    const failure =
+    let failure =
       error instanceof ArticleFetchError
         ? error
         : new ArticleFetchError(
@@ -83,6 +85,39 @@ export async function acquireArticle(options: {
             },
           );
     const status = documentStatusForFailure(failure);
+    if (
+      options.archiveFetcher &&
+      status === "failed" &&
+      !isAccessRestricted(failure)
+    ) {
+      try {
+        const archived = await options.archiveFetcher.fetch(options.sourceUrl);
+        await options.store.recordFetch({
+          storyId: options.storyId,
+          sourceUrl: options.sourceUrl,
+          canonicalUrl: archived.finalUrl,
+          status: "pending",
+          fetchedAt,
+          metadata: {
+            fetchStatus: "archive_fallback",
+            contentType: archived.contentType,
+            sourceType: articleSourceType(archived.contentType),
+            byteLength: archived.byteLength,
+            redirectCount: archived.redirectCount,
+          },
+        });
+        return { status: "fetched", result: archived };
+      } catch (archiveError) {
+        const archiveCode =
+          archiveError instanceof ArticleFetchError
+            ? archiveError.code
+            : "archive_unavailable";
+        failure = new ArticleFetchError(failure.code, failure.message, {
+          ...failure.metadata,
+          archiveFailureCode: archiveCode,
+        });
+      }
+    }
     await options.store.recordFetch({
       storyId: options.storyId,
       sourceUrl: options.sourceUrl,
@@ -136,6 +171,23 @@ function documentStatusForFailure(
     return "access_restricted";
   }
   return "failed";
+}
+
+function isAccessRestricted(failure: ArticleFetchError): boolean {
+  return (
+    failure.code === "http_status" &&
+    [401, 403, 451].includes(failure.metadata.status as number)
+  );
+}
+
+export function createArchiveFallbackFetcher(options: {
+  readonly timeoutMs: number;
+  readonly maximumBytes: number;
+  readonly maximumRedirects: number;
+  readonly fetch?: typeof globalThis.fetch;
+  readonly lookup?: (hostname: string) => Promise<readonly string[]>;
+}): FetchArticleClient {
+  return new InternetArchiveFallbackFetcher(options);
 }
 
 type Database = ReturnType<typeof getDatabase>;

@@ -16,6 +16,7 @@ import {
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
   analysisOutputJsonSchema,
+  analysisOutputHasCompleteProse,
   analysisOutputSchema,
   type AnalysisOutput,
 } from "../analysis/contract";
@@ -43,6 +44,7 @@ import {
 } from "../analysis/usage";
 import {
   acquireArticle,
+  createArchiveFallbackFetcher,
   createSourceAwareArticleFetcher,
   type FetchArticleClient,
   PostgresArticleFetchStore,
@@ -106,6 +108,7 @@ export class DigestPipeline {
   private readonly humanizerClient: HumanizerClient;
   private readonly prices: LlmPriceAssumptions;
   private readonly articleFetcher: FetchArticleClient;
+  private readonly archiveFetcher: FetchArticleClient | undefined;
   private readonly activeLlm: {
     readonly model: string;
     readonly reasoningEffort: string;
@@ -120,6 +123,9 @@ export class DigestPipeline {
     this.articleFetcher =
       dependencies.articleFetcher ??
       createSourceAwareArticleFetcher(config.articleFetch);
+    this.archiveFetcher = config.articleFetch.archiveFallbackEnabled
+      ? createArchiveFallbackFetcher(config.articleFetch)
+      : undefined;
     this.activeLlm =
       config.llm.provider === "openrouter"
         ? config.llm.openrouter
@@ -287,6 +293,10 @@ export class DigestPipeline {
       return { status: "failed", errorCode: safeCode(outcome.code) };
     }
 
+    if (!analysisOutputHasCompleteProse(outcome.output)) {
+      return { status: "incomplete", errorCode: "output_boundary" };
+    }
+
     validateCitations(
       outcome.output,
       new Set(reconstructed.selectedCommentIds),
@@ -361,6 +371,7 @@ export class DigestPipeline {
         storyId: record.storyId,
         sourceUrl: record.url,
         fetcher: this.articleFetcher,
+        archiveFetcher: this.archiveFetcher,
         store: new PostgresArticleFetchStore(this.db),
       });
       if (acquired.status === "fetched") {

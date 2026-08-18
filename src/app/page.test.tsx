@@ -21,6 +21,19 @@ const run: DigestRunView = {
       rank: 1,
       title: "A careful technical article",
       articleUrl: "https://example.com/article",
+      source: {
+        url: "https://example.com/article",
+        mediaType: "site",
+        availability: "available",
+      },
+      commentEvidence: [
+        {
+          commentId: 44000123,
+          author: "commenter",
+          text: "A useful comment preview.",
+          score: null,
+        },
+      ],
       hnUrl: "https://news.ycombinator.com/item?id=44000001",
       score: 312,
       commentCount: 84,
@@ -72,6 +85,12 @@ const run: DigestRunView = {
       rank: 2,
       title: "An unavailable story",
       articleUrl: null,
+      source: {
+        url: null,
+        mediaType: null,
+        availability: "discussion_only",
+      },
+      commentEvidence: [],
       hnUrl: "https://news.ycombinator.com/item?id=44000002",
       score: 94,
       commentCount: 20,
@@ -97,6 +116,14 @@ describe("DigestPage", () => {
     expect(html.indexOf("homepage-newsletter")).toBeLessThan(
       html.indexOf("digest-heading"),
     );
+  });
+
+  it("uses Latest Edition as the single primary page heading", () => {
+    const html = renderToStaticMarkup(<DigestPage run={run} />);
+
+    expect(html).toContain('<h1 id="page-title">Latest Edition</h1>');
+    expect((html.match(/<h1\b/gu) ?? []).length).toBe(1);
+    expect(html).not.toContain("What Hacker News is talking about.</h2>");
   });
 
   it("hides homepage signup while public signup is disabled", () => {
@@ -125,7 +152,11 @@ describe("DigestPage", () => {
     expect(html).toContain("Summary");
     expect(html).toContain("The takeaway");
     expect(html).toContain("Discussion evidence");
+    expect(html).toContain("commenter");
+    expect(html).toContain("Preview comment by commenter");
     expect(html).toContain('href="https://example.com/article"');
+    expect(html).toContain("Site");
+    expect(html).toContain("https://example.com/article");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000001#44000123"',
     );
@@ -139,6 +170,7 @@ describe("DigestPage", () => {
 
     expect(html).toContain("We couldn&#x27;t finish this analysis");
     expect(html).toContain("ANALYSIS_TERMINAL");
+    expect(html).toContain("Discussion-only source");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000002"',
     );

@@ -342,7 +342,7 @@ Acceptance criteria:
 - Headless Playwright covers the revised story hierarchy at 320-pixel and
   desktop viewports, including keyboard access and no horizontal overflow.
 
-### HD-114 — Show original-source URL and media type [planned]
+### HD-114 — Show original-source URL and media type [complete]
 
 Make the Read Original action more informative by displaying the normalized
 source URL and the classified media type beside it.
@@ -362,7 +362,7 @@ Acceptance criteria:
 - Tests cover normal URLs, long URLs, PDF sources, unavailable sources, and
   mobile/keyboard rendering.
 
-### HD-115 — Add a morning/evening digest archive [planned]
+### HD-115 — Add a morning/evening digest archive [complete]
 
 Provide a browsable backlog of previously created scheduled digests, with
 morning and evening editions available as distinct entries.
@@ -385,7 +385,7 @@ Acceptance criteria:
   bounded history, unavailable editions, canonical navigation, and seeded
   deterministic data.
 
-### HD-116 — Prevent truncated digest story output [planned]
+### HD-116 — Prevent truncated digest story output [complete]
 
 Find and fix the pipeline or rendering conditions that can cut off a story's
 text, including output that ends mid-sentence or with dangling punctuation.
@@ -426,7 +426,7 @@ Acceptance criteria:
 - Tests cover invalid citations on the first response, recovery on a later
   response, exhausted retries, idempotency, and spend-limit enforcement.
 
-### HD-118 — Improve summary coverage for all supported link types [planned]
+### HD-118 — Improve summary coverage for all supported link types [complete]
 
 Eliminate avoidable “No article summary was available” outcomes by expanding
 bounded extraction and fallback handling for every supported source type. Use
@@ -452,7 +452,7 @@ Acceptance criteria:
 - The roadmap decision log records the final archive provider, legal/security
   boundaries, retention behavior, and cost/rate limits before implementation.
 
-### HD-119 — Simplify the latest-edition heading [planned]
+### HD-119 — Simplify the latest-edition heading [complete]
 
 Remove the repetitive “What Hacker News Is Talking About” heading and use
 “Latest Edition” as the primary page heading at the existing heading location.
@@ -467,7 +467,7 @@ Acceptance criteria:
 - Tests cover the heading text, document outline, mobile and desktop layout,
   visible focus, and no horizontal overflow.
 
-### HD-120 — Change scheduled digest times to 8 AM and 5 PM ET [planned]
+### HD-120 — Change scheduled digest times to 8 AM and 5 PM ET [complete]
 
 Update the default scheduled editions from the current morning/evening times to
 8:00 AM and 5:00 PM in the `America/New_York` timezone.
@@ -486,7 +486,7 @@ Acceptance criteria:
 - Tests cover both editions, timezone boundaries, DST transitions, duplicate
   prevention, and the changed default configuration.
 
-### HD-121 — Add commenter previews to discussion evidence links [planned]
+### HD-121 — Add commenter previews to discussion evidence links [complete]
 
 Replace numeric HN comment-ID link text with the commenter's username and add
 an unobtrusive preview on hover or keyboard focus showing the cited comment and
@@ -530,3 +530,11 @@ Acceptance criteria:
 | 2026-08-18 | Approve HD-113 through HD-119 as the next digest experience and source-coverage work. | Reader feedback identifies repeated analysis, missing source context, lack of scheduled-edition history, truncated output, insufficient citation recovery, incomplete link coverage, and redundant page hierarchy as release-quality issues. |
 | 2026-08-18 | Approve HD-120 to move scheduled editions to 8:00 AM and 5:00 PM `America/New_York` time. | The morning and evening digest cadence should match the desired reader schedule while retaining named-zone calculation and UTC persistence across EST/EDT changes. |
 | 2026-08-18 | Approve HD-121 to make discussion evidence links human-readable and previewable. | Usernames are more useful than opaque comment IDs while hover/focus previews can expose comment text and score without making each story card substantially longer. The original HN link remains available for provenance. |
+| 2026-08-18 | Complete HD-114 by deriving source labels from persisted document metadata and rendering normalized URLs with explicit unavailable and discussion-only states. | Readers can identify the original source and its trusted classification without confusing failed extraction with a usable article or exposing arbitrary source-provided display text. |
+| 2026-08-18 | Complete HD-115 with bounded scheduled-run archive pages keyed by local date and edition. | The archive reuses persisted digest data, excludes on-demand and failed/future runs, preserves partial status, and keeps historical links stable without adding a second source of truth. |
+| 2026-08-18 | Complete HD-116 by rejecting provider-incomplete responses and valid structured results with dangling prose boundaries before persistence. | Provider finish state remains explicit, boundary validation prevents mid-sentence text from becoming a published analysis, and the reader exposes an incomplete state rather than presenting it as complete. |
+| 2026-08-18 | Complete HD-118 with a reviewed source-coverage matrix and an opt-in archive fallback boundary. | Every currently classified source has a tested extraction path or a deliberate discussion-only state; archive retrieval remains disabled by default until its legal, retention, provider-cost, and operator policy review is complete. |
+| 2026-08-18 | Revise HD-118 archive handling to an opt-in Internet Archive Wayback fallback. | The fallback is disabled by default, bounded by the primary fetcher, never used for access-restricted sources, and preserves original-source provenance; operators must explicitly review policy before enabling it. |
+| 2026-08-18 | Complete HD-119 by making “Latest Edition” the homepage’s single primary heading. | The newsletter signup remains a secondary section heading, removing the old repeated digest title while preserving the established layout and mobile hierarchy. |
+| 2026-08-18 | Complete HD-120 by changing the typed morning/evening defaults to 08:00 and 17:00 `America/New_York`. | Scheduler, archive, API date interpretation, and newsletter eligibility already consume the shared schedule configuration, so named-zone UTC/DST behavior and idempotency remain unchanged. |
+| 2026-08-18 | Complete HD-121 with server-validated comment evidence and a client-side focus/hover/touch preview. | Comment authors and normalized text come only from stored comment rows, missing data stays explicit, HN links remain direct provenance links, and score is shown as unavailable because the upstream comment schema does not provide one. |

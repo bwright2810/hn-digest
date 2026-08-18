@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import {
@@ -12,6 +12,8 @@ import {
   digestRuns,
   digestRunStories,
   discussionAnalyses,
+  documents,
+  comments,
   stories as storyRecords,
   storySnapshots,
 } from "../db/schema";
@@ -28,11 +30,32 @@ export type DigestStoryState =
   | "discussion_only"
   | "failed";
 
+export type SourceAvailability =
+  "available" | "unavailable" | "discussion_only";
+
+export type SourceMediaType =
+  "site" | "pdf" | "plain_text" | "markdown" | "other";
+
+export interface DigestSourceView {
+  readonly url: string | null;
+  readonly mediaType: SourceMediaType | null;
+  readonly availability: SourceAvailability;
+}
+
+export interface DigestCommentEvidence {
+  readonly commentId: number;
+  readonly author: string | null;
+  readonly text: string | null;
+  readonly score: number | null;
+}
+
 export interface DigestStoryView {
   readonly id: string;
   readonly rank: number;
   readonly title: string;
   readonly articleUrl: string | null;
+  readonly source: DigestSourceView;
+  readonly commentEvidence: readonly DigestCommentEvidence[];
   readonly hnUrl: string;
   readonly score: number;
   readonly commentCount: number;
@@ -51,9 +74,25 @@ export interface DigestRunView {
   readonly stories: readonly DigestStoryView[];
 }
 
+export type DigestEdition = "morning" | "evening";
+
+export interface DigestArchiveEntry {
+  readonly id: string;
+  readonly date: string;
+  readonly edition: DigestEdition;
+  readonly status: "complete" | "partial";
+  readonly publishedAt: Date;
+}
+
 export interface DigestReader {
   latest(): Promise<DigestRunView | null>;
   byId(id: string): Promise<DigestRunView | null>;
+  archive(options: {
+    readonly timeZone: string;
+    readonly morningTime: string;
+    readonly eveningTime: string;
+    readonly limit: number;
+  }): Promise<readonly DigestArchiveEntry[]>;
 }
 
 type Database = NodePgDatabase<typeof schema>;
@@ -80,6 +119,60 @@ export class PostgresDigestReader implements DigestReader {
       .limit(1);
     if (!run) return null;
     return this.readRun(run);
+  }
+
+  async archive(options: {
+    readonly timeZone: string;
+    readonly morningTime: string;
+    readonly eveningTime: string;
+    readonly limit: number;
+  }): Promise<readonly DigestArchiveEntry[]> {
+    if (!Number.isInteger(options.limit) || options.limit <= 0) {
+      throw new RangeError("archive limit must be a positive integer");
+    }
+    const rows = await this.database
+      .select({
+        id: digestRuns.id,
+        status: digestRuns.status,
+        scheduledFor: digestRuns.scheduledFor,
+        publishedAt: digestRuns.collectedAt,
+        updatedAt: digestRuns.updatedAt,
+      })
+      .from(digestRuns)
+      .where(
+        and(
+          eq(digestRuns.trigger, "scheduled"),
+          inArray(digestRuns.status, ["complete", "partial"]),
+          lte(digestRuns.scheduledFor, new Date()),
+        ),
+      )
+      .orderBy(desc(digestRuns.scheduledFor), desc(digestRuns.updatedAt))
+      .limit(options.limit * 2);
+
+    return rows
+      .flatMap((row) => {
+        if (!row.scheduledFor) return [];
+        const local = localDateAndTime(row.scheduledFor, options.timeZone);
+        const edition: DigestEdition | null =
+          local.time === options.morningTime
+            ? "morning"
+            : local.time === options.eveningTime
+              ? "evening"
+              : null;
+        if (!edition) return [];
+        const status: "complete" | "partial" =
+          row.status === "complete" ? "complete" : "partial";
+        return [
+          {
+            id: row.id,
+            date: local.date,
+            edition,
+            status,
+            publishedAt: row.publishedAt ?? row.updatedAt,
+          },
+        ];
+      })
+      .slice(0, options.limit);
   }
 
   private async readRun(
@@ -110,6 +203,23 @@ export class PostgresDigestReader implements DigestReader {
 
     const stories = await Promise.all(
       rows.map(async (row): Promise<DigestStoryView> => {
+        const [document] = row.articleUrl
+          ? await this.database
+              .select({
+                sourceUrl: documents.sourceUrl,
+                status: documents.status,
+                metadata: documents.extractionMetadata,
+              })
+              .from(documents)
+              .where(
+                and(
+                  eq(documents.storyId, row.storyId),
+                  eq(documents.sourceUrl, row.articleUrl),
+                ),
+              )
+              .orderBy(desc(documents.updatedAt))
+              .limit(1)
+          : [];
         const [job] = await this.database
           .select({ id: analysisJobs.id })
           .from(analysisJobs)
@@ -136,11 +246,43 @@ export class PostgresDigestReader implements DigestReader {
             ) ?? parseStoredAnalysis(article?.result, discussion?.result);
         }
 
+        const citedIds = analysis ? citedCommentIds(analysis) : [];
+        const commentRows = citedIds.length
+          ? await this.database
+              .select({
+                commentId: comments.hnItemId,
+                author: comments.author,
+                text: comments.text,
+              })
+              .from(comments)
+              .where(
+                and(
+                  eq(comments.storyId, row.storyId),
+                  inArray(comments.hnItemId, citedIds),
+                ),
+              )
+          : [];
+        const commentById = new Map(
+          commentRows.map((comment) => [comment.commentId, comment]),
+        );
+
         return {
           id: row.id,
           rank: row.rank,
           title: row.title,
           articleUrl: row.articleUrl,
+          source: sourceView({
+            articleUrl: row.articleUrl,
+            documentSourceUrl: document?.sourceUrl ?? null,
+            documentStatus: document?.status ?? null,
+            documentMetadata: document?.metadata ?? null,
+          }),
+          commentEvidence: citedIds.map((commentId) => ({
+            commentId,
+            author: commentById.get(commentId)?.author ?? null,
+            text: commentById.get(commentId)?.text ?? null,
+            score: null,
+          })),
           hnUrl: `https://news.ycombinator.com/item?id=${row.hnItemId}`,
           score: row.score,
           commentCount: row.commentCount,
@@ -161,6 +303,83 @@ export class PostgresDigestReader implements DigestReader {
       stories,
     };
   }
+}
+
+function citedCommentIds(analysis: AnalysisOutput): readonly number[] {
+  const ids = new Set<number>();
+  for (const claim of [
+    ...analysis.discussion.consensus,
+    ...analysis.discussion.competingViewpoints,
+    ...analysis.discussion.unresolvedQuestions,
+  ]) {
+    for (const id of claim.supportingCommentIds) ids.add(id);
+  }
+  for (const comment of analysis.discussion.insightfulComments)
+    ids.add(comment.commentId);
+  return [...ids].slice(0, 8);
+}
+
+function localDateAndTime(date: Date, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(date)
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value]),
+  );
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
+}
+
+export function sourceView(row: {
+  readonly articleUrl: string | null;
+  readonly documentSourceUrl: string | null;
+  readonly documentStatus: (typeof documents.$inferSelect)["status"] | null;
+  readonly documentMetadata: Record<string, unknown> | null;
+}): DigestSourceView {
+  if (!row.articleUrl) {
+    return {
+      url: null,
+      mediaType: null,
+      availability: "discussion_only",
+    };
+  }
+
+  const available =
+    row.documentStatus === "extracted" ||
+    row.documentStatus === "low_confidence";
+  return {
+    url: row.documentSourceUrl ?? row.articleUrl,
+    mediaType: available ? sourceMediaType(row.documentMetadata) : null,
+    availability: available ? "available" : "unavailable",
+  };
+}
+
+function sourceMediaType(
+  metadata: Record<string, unknown> | null,
+): SourceMediaType {
+  const sourceType = metadata?.sourceType;
+  if (sourceType === "pdf") return "pdf";
+  if (sourceType === "plain_text") return "plain_text";
+  if (sourceType === "markdown") return "markdown";
+  if (
+    sourceType === "html" ||
+    sourceType === "github_repository" ||
+    sourceType === "github_file" ||
+    sourceType === "hn_text_post"
+  ) {
+    return "site";
+  }
+  return "other";
 }
 
 export function parseStoredAnalysis(

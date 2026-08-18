@@ -20,6 +20,12 @@ const digest: DigestRunView = {
       rank: 1,
       title: "Typed <news>",
       articleUrl: "https://example.com/article?a=1&b=2",
+      source: {
+        url: "https://example.com/article?a=1&b=2",
+        mediaType: "site",
+        availability: "available",
+      },
+      commentEvidence: [],
       hnUrl: "https://news.ycombinator.com/item?id=42",
       score: 100,
       commentCount: 20,

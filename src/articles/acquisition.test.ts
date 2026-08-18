@@ -90,6 +90,50 @@ describe("acquireArticle", () => {
     );
   });
 
+  it("uses an archive fallback for ordinary failures and preserves provenance", async () => {
+    const fetchStore = store();
+    const archived = { ...result, finalUrl: "https://web.archive.org/web/1" };
+    const outcome = await acquireArticle({
+      storyId: 42,
+      sourceUrl: result.sourceUrl,
+      fetcher: { fetch: vi.fn().mockRejectedValue(new Error("timeout")) },
+      archiveFetcher: { fetch: vi.fn().mockResolvedValue(archived) },
+      store: fetchStore,
+      now: () => fetchedAt,
+    });
+
+    expect(outcome).toEqual({ status: "fetched", result: archived });
+    expect(fetchStore.recordFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceUrl: result.sourceUrl,
+        canonicalUrl: archived.finalUrl,
+        metadata: expect.objectContaining({ fetchStatus: "archive_fallback" }),
+      }),
+    );
+  });
+
+  it("never uses an archive fallback for access-restricted sources", async () => {
+    const fetchStore = store();
+    const archiveFetcher = { fetch: vi.fn() };
+    const outcome = await acquireArticle({
+      storyId: 42,
+      sourceUrl: result.sourceUrl,
+      fetcher: {
+        fetch: vi
+          .fn()
+          .mockRejectedValue(
+            new ArticleFetchError("http_status", "restricted", { status: 403 }),
+          ),
+      },
+      archiveFetcher,
+      store: fetchStore,
+      now: () => fetchedAt,
+    });
+
+    expect(outcome.status).toBe("access_restricted");
+    expect(archiveFetcher.fetch).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       code: "unsupported_content_type" as const,

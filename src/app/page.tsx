@@ -4,8 +4,11 @@ import {
   PostgresDigestReader,
   type DigestRunView,
   type DigestStoryView,
+  type DigestSourceView,
+  type DigestCommentEvidence,
 } from "../digests/reader";
 import { takeawayParagraphs } from "../digests/takeaway";
+import { CommentPreview } from "./comment-preview";
 
 export { takeawayParagraphs } from "../digests/takeaway";
 
@@ -70,7 +73,7 @@ export function DigestPage({
       <section className="digest-heading" aria-labelledby="page-title">
         <div>
           <p className="eyebrow">Latest edition</p>
-          <h2 id="page-title">What Hacker News is talking about.</h2>
+          <h1 id="page-title">Latest Edition</h1>
         </div>
         {run ? (
           <div className="run-meta" aria-label="Digest run information">
@@ -126,9 +129,9 @@ function HomepageNewsletter() {
     <section className="homepage-newsletter" aria-labelledby="newsletter-title">
       <div className="homepage-newsletter__copy">
         <p className="eyebrow">HN, twice a day</p>
-        <h1 id="newsletter-title">
+        <h2 id="newsletter-title">
           Get the gist of what Hacker News is talking about.
-        </h1>
+        </h2>
         <p>
           We read the leading stories and the threads beneath them. You get the
           argument, the pushback, and the comments worth keeping.
@@ -184,9 +187,7 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
             className="source-links"
             aria-label={`Sources for ${story.title}`}
           >
-            {story.articleUrl ? (
-              <a href={story.articleUrl}>Read original</a>
-            ) : null}
+            <SourceLink source={story.source} />
             <a href={story.hnUrl}>View HN discussion</a>
           </nav>
         </div>
@@ -198,7 +199,11 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
             label="Summary"
             text={articleSummary ?? "No article summary was available."}
           >
-            <CommentLinks analysis={analysis} hnUrl={story.hnUrl} />
+            <CommentLinks
+              analysis={analysis}
+              hnUrl={story.hnUrl}
+              evidence={story.commentEvidence}
+            />
           </AnalysisSection>
           <section
             className="takeaway"
@@ -223,6 +228,46 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
   );
 }
 
+function SourceLink({ source }: { readonly source: DigestSourceView }) {
+  if (source.availability === "discussion_only") {
+    return <span className="source-state">Discussion-only source</span>;
+  }
+
+  const label =
+    source.availability === "unavailable"
+      ? "Original source unavailable"
+      : `Read original · ${mediaTypeLabel(source.mediaType)}`;
+  return (
+    <div className="source-detail">
+      {source.url ? (
+        <a href={source.url}>{label}</a>
+      ) : (
+        <span className="source-state">Original source unavailable</span>
+      )}
+      {source.url ? (
+        <span className="source-url" title={source.url}>
+          {source.url}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function mediaTypeLabel(mediaType: DigestSourceView["mediaType"]): string {
+  switch (mediaType) {
+    case "pdf":
+      return "PDF";
+    case "plain_text":
+      return "Plain text";
+    case "markdown":
+      return "Markdown";
+    case "other":
+      return "Other source";
+    default:
+      return "Site";
+  }
+}
+
 function AnalysisSection({
   label,
   text,
@@ -244,27 +289,37 @@ function AnalysisSection({
 function CommentLinks({
   analysis,
   hnUrl,
+  evidence,
 }: {
   readonly analysis: AnalysisOutput;
   readonly hnUrl: string;
+  readonly evidence: readonly DigestCommentEvidence[];
 }) {
   const ids = citedCommentIds(analysis);
   if (ids.length === 0) return null;
   return (
     <div className="comment-links" aria-label="Cited Hacker News comments">
       <span>Discussion evidence</span>
-      {ids.map((id) => (
-        <a key={id} href={`${hnUrl}#${id}`}>
-          #{id}
-        </a>
-      ))}
+      {ids.map((id) => {
+        const comment = evidence.find((item) => item.commentId === id);
+        return (
+          <CommentPreview
+            key={id}
+            author={comment?.author?.trim() || "Deleted commenter"}
+            text={comment?.text ?? null}
+            score={comment?.score ?? null}
+            href={`${hnUrl}#${id}`}
+          />
+        );
+      })}
     </div>
   );
 }
 
 function StoryState({ story }: { readonly story: DigestStoryView }) {
-  const copy =
-    story.status === "failed"
+  const copy = isIncompleteStory(story)
+    ? "This analysis stopped before the story was complete. The original links still work."
+    : story.status === "failed"
       ? "We couldn't finish this analysis. The original links still work."
       : story.status === "discussion_only"
         ? "We couldn't read the article, so we're working from the HN thread alone."
@@ -284,6 +339,18 @@ function StoryState({ story }: { readonly story: DigestStoryView }) {
         <p className="error-code">Reference: {story.failureCode}</p>
       ) : null}
     </div>
+  );
+}
+
+function isIncompleteStory(story: DigestStoryView): boolean {
+  return (
+    story.status === "failed" &&
+    [
+      "length",
+      "max_output_tokens",
+      "message_incomplete",
+      "output_boundary",
+    ].some((code) => story.failureCode?.includes(code))
   );
 }
 

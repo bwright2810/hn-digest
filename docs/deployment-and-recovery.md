@@ -92,8 +92,8 @@ without a redeploy requires both keys to already be set.
 | `LLM_OUTPUT_USD_PER_MILLION_TOKENS`      | current standard-processing output price for the active provider's model                                                        |
 | `APP_URL`                                | final `https://<hn-digest-hostname>` URL                                                                                        |
 | `DIGEST_TIME_ZONE`                       | `America/New_York`                                                                                                              |
-| `DIGEST_MORNING_TIME`                    | `06:45`                                                                                                                         |
-| `DIGEST_EVENING_TIME`                    | `18:45`                                                                                                                         |
+| `DIGEST_MORNING_TIME`                    | `08:00`                                                                                                                         |
+| `DIGEST_EVENING_TIME`                    | `17:00`                                                                                                                         |
 | `DIGEST_STORY_COUNT`                     | reviewed private-MVP count                                                                                                      |
 | `DIGEST_MINIMUM_COMMENT_COUNT`           | `10`; minimum HN discussion size before a story is selected                                                                     |
 | `DIGEST_MISSED_RUN_GRACE_MS`             | `21600000`                                                                                                                      |

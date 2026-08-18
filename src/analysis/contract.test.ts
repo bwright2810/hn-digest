@@ -4,6 +4,7 @@ import {
   ANALYSIS_PROMPT,
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
+  analysisOutputHasCompleteProse,
   analysisOutputJsonSchema,
   analysisOutputSchema,
   parseAnalysisOutput,
@@ -131,6 +132,17 @@ describe("analysis output contract", () => {
     );
     expect(ANALYSIS_PROMPT).toContain(ANALYSIS_PROMPT_VERSION);
     expect(ANALYSIS_PROMPT).toContain(ANALYSIS_SCHEMA_VERSION);
+  });
+
+  it("rejects prose that ends at a dangling punctuation boundary", () => {
+    const output = validOutput();
+    expect(analysisOutputHasCompleteProse(output)).toBe(true);
+    expect(
+      analysisOutputHasCompleteProse({
+        ...output,
+        combinedTakeaway: { ...output.combinedTakeaway, summary: "It ends," },
+      }),
+    ).toBe(false);
   });
 });
 

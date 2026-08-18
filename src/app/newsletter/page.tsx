@@ -64,14 +64,14 @@ export default async function NewsletterPage({
               <input type="checkbox" name="morning" value="1" />
               <span>
                 <strong>Morning</strong>
-                <small>Prepared for 6:45 AM Eastern</small>
+                <small>Prepared for 8:00 AM Eastern</small>
               </span>
             </label>
             <label className="newsletter-choice">
               <input type="checkbox" name="evening" value="1" />
               <span>
                 <strong>Evening</strong>
-                <small>Prepared for 6:45 PM Eastern</small>
+                <small>Prepared for 5:00 PM Eastern</small>
               </span>
             </label>
           </fieldset>
