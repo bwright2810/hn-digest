@@ -123,6 +123,7 @@ describe("DigestPage", () => {
 
     expect(html).toContain('<h1 id="page-title">Latest Edition</h1>');
     expect((html.match(/<h1\b/gu) ?? []).length).toBe(1);
+    expect((html.match(/Latest [Ee]dition/gu) ?? []).length).toBe(1);
     expect(html).not.toContain("What Hacker News is talking about.</h2>");
   });
 
