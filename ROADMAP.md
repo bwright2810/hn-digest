@@ -342,7 +342,7 @@ Acceptance criteria:
 - Headless Playwright covers the revised story hierarchy at 320-pixel and
   desktop viewports, including keyboard access and no horizontal overflow.
 
-### HD-114 — Show original-source URL and media type [planned]
+### HD-114 — Show original-source URL and media type [complete]
 
 Make the Read Original action more informative by displaying the normalized
 source URL and the classified media type beside it.
@@ -530,3 +530,4 @@ Acceptance criteria:
 | 2026-08-18 | Approve HD-113 through HD-119 as the next digest experience and source-coverage work. | Reader feedback identifies repeated analysis, missing source context, lack of scheduled-edition history, truncated output, insufficient citation recovery, incomplete link coverage, and redundant page hierarchy as release-quality issues. |
 | 2026-08-18 | Approve HD-120 to move scheduled editions to 8:00 AM and 5:00 PM `America/New_York` time. | The morning and evening digest cadence should match the desired reader schedule while retaining named-zone calculation and UTC persistence across EST/EDT changes. |
 | 2026-08-18 | Approve HD-121 to make discussion evidence links human-readable and previewable. | Usernames are more useful than opaque comment IDs while hover/focus previews can expose comment text and score without making each story card substantially longer. The original HN link remains available for provenance. |
+| 2026-08-18 | Complete HD-114 by deriving source labels from persisted document metadata and rendering normalized URLs with explicit unavailable and discussion-only states. | Readers can identify the original source and its trusted classification without confusing failed extraction with a usable article or exposing arbitrary source-provided display text. |

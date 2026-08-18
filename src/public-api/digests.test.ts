@@ -25,6 +25,11 @@ describe("HD-110 public digest representation", () => {
           rank: 1,
           title: "Public title",
           articleUrl: "https://example.com/article",
+          source: {
+            url: "https://example.com/article",
+            mediaType: "site",
+            availability: "available",
+          },
           hnUrl: "https://news.ycombinator.com/item?id=123",
           score: 42,
           commentCount: 12,

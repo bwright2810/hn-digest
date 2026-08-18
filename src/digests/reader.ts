@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import {
@@ -12,6 +12,7 @@ import {
   digestRuns,
   digestRunStories,
   discussionAnalyses,
+  documents,
   stories as storyRecords,
   storySnapshots,
 } from "../db/schema";
@@ -28,11 +29,24 @@ export type DigestStoryState =
   | "discussion_only"
   | "failed";
 
+export type SourceAvailability =
+  "available" | "unavailable" | "discussion_only";
+
+export type SourceMediaType =
+  "site" | "pdf" | "plain_text" | "markdown" | "other";
+
+export interface DigestSourceView {
+  readonly url: string | null;
+  readonly mediaType: SourceMediaType | null;
+  readonly availability: SourceAvailability;
+}
+
 export interface DigestStoryView {
   readonly id: string;
   readonly rank: number;
   readonly title: string;
   readonly articleUrl: string | null;
+  readonly source: DigestSourceView;
   readonly hnUrl: string;
   readonly score: number;
   readonly commentCount: number;
@@ -110,6 +124,23 @@ export class PostgresDigestReader implements DigestReader {
 
     const stories = await Promise.all(
       rows.map(async (row): Promise<DigestStoryView> => {
+        const [document] = row.articleUrl
+          ? await this.database
+              .select({
+                sourceUrl: documents.sourceUrl,
+                status: documents.status,
+                metadata: documents.extractionMetadata,
+              })
+              .from(documents)
+              .where(
+                and(
+                  eq(documents.storyId, row.storyId),
+                  eq(documents.sourceUrl, row.articleUrl),
+                ),
+              )
+              .orderBy(desc(documents.updatedAt))
+              .limit(1)
+          : [];
         const [job] = await this.database
           .select({ id: analysisJobs.id })
           .from(analysisJobs)
@@ -141,6 +172,12 @@ export class PostgresDigestReader implements DigestReader {
           rank: row.rank,
           title: row.title,
           articleUrl: row.articleUrl,
+          source: sourceView({
+            articleUrl: row.articleUrl,
+            documentSourceUrl: document?.sourceUrl ?? null,
+            documentStatus: document?.status ?? null,
+            documentMetadata: document?.metadata ?? null,
+          }),
           hnUrl: `https://news.ycombinator.com/item?id=${row.hnItemId}`,
           score: row.score,
           commentCount: row.commentCount,
@@ -161,6 +198,48 @@ export class PostgresDigestReader implements DigestReader {
       stories,
     };
   }
+}
+
+export function sourceView(row: {
+  readonly articleUrl: string | null;
+  readonly documentSourceUrl: string | null;
+  readonly documentStatus: (typeof documents.$inferSelect)["status"] | null;
+  readonly documentMetadata: Record<string, unknown> | null;
+}): DigestSourceView {
+  if (!row.articleUrl) {
+    return {
+      url: null,
+      mediaType: null,
+      availability: "discussion_only",
+    };
+  }
+
+  const available =
+    row.documentStatus === "extracted" ||
+    row.documentStatus === "low_confidence";
+  return {
+    url: row.documentSourceUrl ?? row.articleUrl,
+    mediaType: available ? sourceMediaType(row.documentMetadata) : null,
+    availability: available ? "available" : "unavailable",
+  };
+}
+
+function sourceMediaType(
+  metadata: Record<string, unknown> | null,
+): SourceMediaType {
+  const sourceType = metadata?.sourceType;
+  if (sourceType === "pdf") return "pdf";
+  if (sourceType === "plain_text") return "plain_text";
+  if (sourceType === "markdown") return "markdown";
+  if (
+    sourceType === "html" ||
+    sourceType === "github_repository" ||
+    sourceType === "github_file" ||
+    sourceType === "hn_text_post"
+  ) {
+    return "site";
+  }
+  return "other";
 }
 
 export function parseStoredAnalysis(

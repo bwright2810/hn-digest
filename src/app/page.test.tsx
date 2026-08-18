@@ -21,6 +21,11 @@ const run: DigestRunView = {
       rank: 1,
       title: "A careful technical article",
       articleUrl: "https://example.com/article",
+      source: {
+        url: "https://example.com/article",
+        mediaType: "site",
+        availability: "available",
+      },
       hnUrl: "https://news.ycombinator.com/item?id=44000001",
       score: 312,
       commentCount: 84,
@@ -72,6 +77,11 @@ const run: DigestRunView = {
       rank: 2,
       title: "An unavailable story",
       articleUrl: null,
+      source: {
+        url: null,
+        mediaType: null,
+        availability: "discussion_only",
+      },
       hnUrl: "https://news.ycombinator.com/item?id=44000002",
       score: 94,
       commentCount: 20,
@@ -126,6 +136,8 @@ describe("DigestPage", () => {
     expect(html).toContain("The takeaway");
     expect(html).toContain("Discussion evidence");
     expect(html).toContain('href="https://example.com/article"');
+    expect(html).toContain("Site");
+    expect(html).toContain("https://example.com/article");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000001#44000123"',
     );
@@ -139,6 +151,7 @@ describe("DigestPage", () => {
 
     expect(html).toContain("We couldn&#x27;t finish this analysis");
     expect(html).toContain("ANALYSIS_TERMINAL");
+    expect(html).toContain("Discussion-only source");
     expect(html).toContain(
       'href="https://news.ycombinator.com/item?id=44000002"',
     );

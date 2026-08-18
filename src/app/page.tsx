@@ -4,6 +4,7 @@ import {
   PostgresDigestReader,
   type DigestRunView,
   type DigestStoryView,
+  type DigestSourceView,
 } from "../digests/reader";
 import { takeawayParagraphs } from "../digests/takeaway";
 
@@ -184,9 +185,7 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
             className="source-links"
             aria-label={`Sources for ${story.title}`}
           >
-            {story.articleUrl ? (
-              <a href={story.articleUrl}>Read original</a>
-            ) : null}
+            <SourceLink source={story.source} />
             <a href={story.hnUrl}>View HN discussion</a>
           </nav>
         </div>
@@ -221,6 +220,46 @@ function StoryCard({ story }: { readonly story: DigestStoryView }) {
       )}
     </article>
   );
+}
+
+function SourceLink({ source }: { readonly source: DigestSourceView }) {
+  if (source.availability === "discussion_only") {
+    return <span className="source-state">Discussion-only source</span>;
+  }
+
+  const label =
+    source.availability === "unavailable"
+      ? "Original source unavailable"
+      : `Read original · ${mediaTypeLabel(source.mediaType)}`;
+  return (
+    <div className="source-detail">
+      {source.url ? (
+        <a href={source.url}>{label}</a>
+      ) : (
+        <span className="source-state">Original source unavailable</span>
+      )}
+      {source.url ? (
+        <span className="source-url" title={source.url}>
+          {source.url}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function mediaTypeLabel(mediaType: DigestSourceView["mediaType"]): string {
+  switch (mediaType) {
+    case "pdf":
+      return "PDF";
+    case "plain_text":
+      return "Plain text";
+    case "markdown":
+      return "Markdown";
+    case "other":
+      return "Other source";
+    default:
+      return "Site";
+  }
 }
 
 function AnalysisSection({
