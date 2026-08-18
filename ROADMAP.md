@@ -362,7 +362,7 @@ Acceptance criteria:
 - Tests cover normal URLs, long URLs, PDF sources, unavailable sources, and
   mobile/keyboard rendering.
 
-### HD-115 — Add a morning/evening digest archive [planned]
+### HD-115 — Add a morning/evening digest archive [complete]
 
 Provide a browsable backlog of previously created scheduled digests, with
 morning and evening editions available as distinct entries.
@@ -531,3 +531,4 @@ Acceptance criteria:
 | 2026-08-18 | Approve HD-120 to move scheduled editions to 8:00 AM and 5:00 PM `America/New_York` time. | The morning and evening digest cadence should match the desired reader schedule while retaining named-zone calculation and UTC persistence across EST/EDT changes. |
 | 2026-08-18 | Approve HD-121 to make discussion evidence links human-readable and previewable. | Usernames are more useful than opaque comment IDs while hover/focus previews can expose comment text and score without making each story card substantially longer. The original HN link remains available for provenance. |
 | 2026-08-18 | Complete HD-114 by deriving source labels from persisted document metadata and rendering normalized URLs with explicit unavailable and discussion-only states. | Readers can identify the original source and its trusted classification without confusing failed extraction with a usable article or exposing arbitrary source-provided display text. |
+| 2026-08-18 | Complete HD-115 with bounded scheduled-run archive pages keyed by local date and edition. | The archive reuses persisted digest data, excludes on-demand and failed/future runs, preserves partial status, and keeps historical links stable without adding a second source of truth. |

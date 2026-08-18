@@ -147,6 +147,51 @@ a:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.archive-list {
+  max-width: var(--measure-reading);
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-rule);
+}
+.archive-list li {
+  border-bottom: 1px solid var(--color-rule);
+}
+.archive-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.archive-entry:hover .archive-entry__date {
+  color: var(--color-accent);
+}
+.archive-entry__date,
+.archive-entry__edition {
+  display: block;
+}
+.archive-entry__date {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+}
+.archive-entry__edition {
+  margin-top: var(--space-2);
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.archive-backlink {
+  width: min(100% - 2rem, var(--measure-page));
+  margin: var(--space-5) auto 0;
+}
+.archive-notice {
+  max-width: var(--measure-reading);
+  grid-template-columns: minmax(0, 1fr);
+}
 .site-actions form {
   margin: 0;
 }

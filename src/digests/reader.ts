@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import {
@@ -65,9 +65,25 @@ export interface DigestRunView {
   readonly stories: readonly DigestStoryView[];
 }
 
+export type DigestEdition = "morning" | "evening";
+
+export interface DigestArchiveEntry {
+  readonly id: string;
+  readonly date: string;
+  readonly edition: DigestEdition;
+  readonly status: "complete" | "partial";
+  readonly publishedAt: Date;
+}
+
 export interface DigestReader {
   latest(): Promise<DigestRunView | null>;
   byId(id: string): Promise<DigestRunView | null>;
+  archive(options: {
+    readonly timeZone: string;
+    readonly morningTime: string;
+    readonly eveningTime: string;
+    readonly limit: number;
+  }): Promise<readonly DigestArchiveEntry[]>;
 }
 
 type Database = NodePgDatabase<typeof schema>;
@@ -94,6 +110,60 @@ export class PostgresDigestReader implements DigestReader {
       .limit(1);
     if (!run) return null;
     return this.readRun(run);
+  }
+
+  async archive(options: {
+    readonly timeZone: string;
+    readonly morningTime: string;
+    readonly eveningTime: string;
+    readonly limit: number;
+  }): Promise<readonly DigestArchiveEntry[]> {
+    if (!Number.isInteger(options.limit) || options.limit <= 0) {
+      throw new RangeError("archive limit must be a positive integer");
+    }
+    const rows = await this.database
+      .select({
+        id: digestRuns.id,
+        status: digestRuns.status,
+        scheduledFor: digestRuns.scheduledFor,
+        publishedAt: digestRuns.collectedAt,
+        updatedAt: digestRuns.updatedAt,
+      })
+      .from(digestRuns)
+      .where(
+        and(
+          eq(digestRuns.trigger, "scheduled"),
+          inArray(digestRuns.status, ["complete", "partial"]),
+          lte(digestRuns.scheduledFor, new Date()),
+        ),
+      )
+      .orderBy(desc(digestRuns.scheduledFor), desc(digestRuns.updatedAt))
+      .limit(options.limit * 2);
+
+    return rows
+      .flatMap((row) => {
+        if (!row.scheduledFor) return [];
+        const local = localDateAndTime(row.scheduledFor, options.timeZone);
+        const edition: DigestEdition | null =
+          local.time === options.morningTime
+            ? "morning"
+            : local.time === options.eveningTime
+              ? "evening"
+              : null;
+        if (!edition) return [];
+        const status: "complete" | "partial" =
+          row.status === "complete" ? "complete" : "partial";
+        return [
+          {
+            id: row.id,
+            date: local.date,
+            edition,
+            status,
+            publishedAt: row.publishedAt ?? row.updatedAt,
+          },
+        ];
+      })
+      .slice(0, options.limit);
   }
 
   private async readRun(
@@ -198,6 +268,27 @@ export class PostgresDigestReader implements DigestReader {
       stories,
     };
   }
+}
+
+function localDateAndTime(date: Date, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(date)
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value]),
+  );
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
 }
 
 export function sourceView(row: {
