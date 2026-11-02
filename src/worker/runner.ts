@@ -125,6 +125,18 @@ export function workerErrorOutcome(
         }
       : { status: "failed", errorCode: "invalid_output_language" };
   }
+  if (
+    error instanceof Error &&
+    error.message === "Analysis output prose ended at an incomplete boundary"
+  ) {
+    return attempt < MAX_CITATION_ATTEMPTS
+      ? {
+          status: "retry",
+          errorCode: "output_boundary",
+          availableAt: now,
+        }
+      : { status: "incomplete", errorCode: "output_boundary" };
+  }
   return {
     status: "failed",
     errorCode: classifyOperationalError(error, "unexpected_worker_error"),

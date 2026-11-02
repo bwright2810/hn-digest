@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ANALYSIS_PROMPT,
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SCHEMA_VERSION,
+  analysisOutputJsonSchema,
   type AnalysisOutput,
 } from "../analysis/contract";
+import { assembleAnalysisRequest } from "../analysis/request";
 import {
   determineDigestRunStatus,
+  estimateTokens,
   hasArticleContent,
   patchHumanizedAnalysis,
+  selectArticleWithinEnvelopeBudget,
   selectDisplayedDiscussionClaim,
 } from "./digest-pipeline";
 
@@ -182,5 +187,54 @@ describe("patchHumanizedAnalysis", () => {
 
     expect(patched.discussion.consensus).toEqual([]);
     expect(patched.discussion.competingViewpoints).toEqual([]);
+  });
+});
+
+describe("selectArticleWithinEnvelopeBudget", () => {
+  it("keeps code- and quote-heavy articles within the JSON-serialized article token limit", () => {
+    const codeBlock =
+      'const query = "SELECT * FROM \\"items\\" WHERE text LIKE \'%\\\\n%\'";\n'.repeat(
+        40,
+      );
+    const EscapeHeavyArticle = Array.from(
+      { length: 25 },
+      (_, idx) => `## Section ${idx + 1}\n\n${codeBlock}`,
+    ).join("\n\n");
+
+    const selected = selectArticleWithinEnvelopeBudget({
+      text: EscapeHeavyArticle,
+      storyHnItemId: 42_000_001,
+      title: "Escaping stress test with quotes and newlines",
+      url: "https://example.com/escaping-stress-test",
+      articleTokenLimit: 12_000,
+    });
+
+    const assembled = assembleAnalysisRequest({
+      instructions: ANALYSIS_PROMPT,
+      outputSchema: analysisOutputJsonSchema,
+      source: {
+        storyHnItemId: 42_000_001,
+        title: "Escaping stress test with quotes and newlines",
+        url: "https://example.com/escaping-stress-test",
+        articleText: selected.text,
+        articleTruncated: selected.metadata.truncated,
+        comments: [],
+      },
+      tokenLimits: {
+        instructions: 6_000,
+        article: 12_000,
+        comments: 14_000,
+        output: 4_000,
+      },
+      pricing: {
+        inputUsdPerMillionTokens: 0.14,
+        outputUsdPerMillionTokens: 0.28,
+        maximumRequestCostUsd: 0.1,
+      },
+      countTokens: estimateTokens,
+    });
+
+    expect(assembled.tokens.article).toBeLessThanOrEqual(12_000);
+    expect(selected.metadata.truncated).toBe(true);
   });
 });

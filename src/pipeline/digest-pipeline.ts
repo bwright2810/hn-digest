@@ -8,8 +8,11 @@ import {
   resolveAnalysisCache,
 } from "../analysis/cache";
 import {
+  degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
   InvalidCommentCitationError,
+  MAX_CITATION_ATTEMPTS,
+  prunePartialInvalidCitations,
 } from "../analysis/citations";
 import {
   ANALYSIS_PROMPT,
@@ -85,6 +88,7 @@ import {
   ingestTopStories,
   PostgresDigestRunStore,
 } from "../ingestion/top-stories";
+import { classifyOperationalError } from "../operations/error-classification";
 import { authorizeLlmSubmission } from "../operations/observability";
 import type { ClaimedAnalysisJob, AttemptOutcome } from "../worker/queue";
 
@@ -229,7 +233,10 @@ export class DigestPipeline {
           );
         }
       } catch (error) {
-        await this.failRun(runId, classifyError(error));
+        await this.failRun(
+          runId,
+          classifyOperationalError(error, "pipeline_error"),
+        );
         return;
       }
     }
@@ -249,7 +256,7 @@ export class DigestPipeline {
       try {
         await this.prepareStory(runStory.id);
       } catch (error) {
-        const errorCode = classifyError(error);
+        const errorCode = classifyOperationalError(error, "pipeline_error");
         console.error(
           JSON.stringify({
             event: "digest_story_preparation_failed",
@@ -283,6 +290,7 @@ export class DigestPipeline {
       instructions: instructionsForCitationAttempt(
         reconstructed.instructions,
         claim.attempt,
+        reconstructed.selectedCommentIds,
       ),
     };
     const outcome = await this.openaiClient.analyze(request);
@@ -299,17 +307,42 @@ export class DigestPipeline {
     }
 
     if (!analysisOutputHasCompleteProse(outcome.output)) {
-      return { status: "incomplete", errorCode: "output_boundary" };
+      throw new Error("Analysis output prose ended at an incomplete boundary");
     }
     if (!analysisOutputHasAcceptableLanguage(outcome.output)) {
       throw new Error("Analysis output language was not acceptable");
     }
 
-    validateCitations(
+    const allowedCommentIds = new Set(reconstructed.selectedCommentIds);
+    let finalOutput = prunePartialInvalidCitations(
       outcome.output,
-      new Set(reconstructed.selectedCommentIds),
+      allowedCommentIds,
     );
-    await this.persistAnalysis(claim.id, outcome.output);
+    try {
+      validateCitations(finalOutput, allowedCommentIds);
+    } catch (error) {
+      if (
+        error instanceof InvalidCommentCitationError &&
+        claim.attempt >= MAX_CITATION_ATTEMPTS
+      ) {
+        const degraded = degradeInvalidCommentCitations(
+          finalOutput,
+          allowedCommentIds,
+        );
+        console.warn(
+          JSON.stringify({
+            event: "analysis_invalid_comment_citations_degraded",
+            analysisJobId: claim.id,
+            attempt: claim.attempt,
+            invalidCommentIds: degraded.invalidCommentIds,
+          }),
+        );
+        finalOutput = degraded.output;
+      } else {
+        throw error;
+      }
+    }
+    await this.persistAnalysis(claim.id, finalOutput);
     return { status: "succeeded" };
   }
 
@@ -438,12 +471,12 @@ export class DigestPipeline {
         maximumComments: this.config.analysis.maximumSelectedComments,
       },
     );
-    const article = selectArticleContext(document?.text ?? null, {
-      maximumTokens: Math.max(
-        1,
-        this.config.tokens.article - ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS,
-      ),
-      countTokens: estimateTokens,
+    const article = selectArticleWithinEnvelopeBudget({
+      text: document?.text ?? null,
+      storyHnItemId: record.hnItemId,
+      title: record.title,
+      url: record.url,
+      articleTokenLimit: this.config.tokens.article,
     });
     const selectedCommentHash = hashJson(
       selection.selected.map(({ hnItemId, parentHnItemId, author, text }) => ({
@@ -553,12 +586,12 @@ export class DigestPipeline {
     if (ordered.length !== context.selectedCommentIds.length) {
       throw new Error("Selected comment context is incomplete");
     }
-    const article = selectArticleContext(job.documentText ?? null, {
-      maximumTokens: Math.max(
-        1,
-        this.config.tokens.article - ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS,
-      ),
-      countTokens: estimateTokens,
+    const article = selectArticleWithinEnvelopeBudget({
+      text: job.documentText ?? null,
+      storyHnItemId: job.storyHnItemId,
+      title: job.title,
+      url: job.url,
+      articleTokenLimit: this.config.tokens.article,
     });
     return this.assembleRequest({
       storyHnItemId: job.storyHnItemId,
@@ -1032,6 +1065,63 @@ export function hasArticleContent(
   return Boolean(document?.text);
 }
 
+export function selectArticleWithinEnvelopeBudget(options: {
+  readonly text: string | null;
+  readonly storyHnItemId: number;
+  readonly title: string;
+  readonly url: string | null;
+  readonly articleTokenLimit: number;
+  readonly countTokens?: (text: string) => number;
+}) {
+  const countTokens = options.countTokens ?? estimateTokens;
+  const envelopeOverheadTokens = countTokens(
+    JSON.stringify({
+      kind: "untrusted_article_source",
+      storyHnItemId: options.storyHnItemId,
+      text: "",
+      title: options.title,
+      truncated: true,
+      url: options.url,
+    }),
+  );
+  let budget = Math.max(
+    1,
+    options.articleTokenLimit -
+      Math.max(
+        ARTICLE_SOURCE_ENVELOPE_RESERVE_TOKENS,
+        envelopeOverheadTokens + 16,
+      ),
+  );
+  const countEscapedTokens = (candidate: string) =>
+    countTokens(JSON.stringify(candidate));
+
+  let selection = selectArticleContext(options.text, {
+    maximumTokens: budget,
+    countTokens: countEscapedTokens,
+  });
+
+  while (
+    budget > 1 &&
+    countTokens(
+      JSON.stringify({
+        kind: "untrusted_article_source",
+        storyHnItemId: options.storyHnItemId,
+        text: selection.text,
+        title: options.title,
+        truncated: selection.metadata.truncated,
+        url: options.url,
+      }),
+    ) > options.articleTokenLimit
+  ) {
+    budget = Math.max(1, budget - 64);
+    selection = selectArticleContext(options.text, {
+      maximumTokens: budget,
+      countTokens: countEscapedTokens,
+    });
+  }
+  return selection;
+}
+
 export function estimateTokens(text: string): number {
   // Conservative-enough planning estimate for English prose/JSON. Provider
   // usage remains the billing source of truth after submission.
@@ -1126,11 +1216,6 @@ function citedCommentIds(output: AnalysisOutput): number[] {
       ...output.discussion.insightfulComments.map(({ commentId }) => commentId),
     ]),
   ];
-}
-
-function classifyError(error: unknown): string {
-  if (!(error instanceof Error)) return "pipeline_error";
-  return safeCode(error.name === "Error" ? error.message : error.name);
 }
 
 function safeCode(value: string): string {

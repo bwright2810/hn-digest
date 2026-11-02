@@ -512,7 +512,7 @@ Acceptance criteria:
   deleted users, long comments, safe rendering, mobile layout, and direct HN
   links.
 
-### HD-122 — Make analysis budget failures diagnosable and envelope-safe [in progress]
+### HD-122 — Make analysis budget failures diagnosable and envelope-safe [complete]
 
 Prevent serialized source envelopes from exceeding the raw article allowance,
 and preserve the failing budget category in the safe story reference code.
@@ -576,3 +576,4 @@ bounded on-demand run and returns only its opaque run ID and coalescing state.
 | 2026-08-18 | Complete HD-121 with server-validated comment evidence and a client-side focus/hover/touch preview. | Comment authors and normalized text come only from stored comment rows, missing data stays explicit, HN links remain direct provenance links, and score is shown as unavailable because the upstream comment schema does not provide one. |
 | 2026-08-18 | Add HD-122 through HD-127 from production review feedback. | Analysis failures must identify the affected budget, editorial output must remain English and structurally readable, and discussion evidence must remain usable at narrow mobile widths. |
 | 2026-11-02 | Add `codex` as a third `LLM_PROVIDER` mode (`gpt-6-luna` via non-interactive `codex exec --output-schema`). | Running `codex exec` in ephemeral, read-only mode with strict JSON Schema output allows production digests to use the host ChatGPT subscription session (`gpt-6-luna`) while retaining all existing Zod validation, token accounting, and retry/watchdog bounds. |
+| 2026-11-02 | Complete HD-122 and harden analysis output parsing, prose boundary retries, and partial citation pruning. | Selecting article text against its JSON-escaped envelope budget prevents newline/quote-heavy articles from failing assembly; normalizing overlong prose/arrays before strict Zod parsing, retrying `output_boundary` once with explicit repair instructions, and pruning stray invalid comment IDs from otherwise grounded claims eliminate avoidable partial digest runs. |

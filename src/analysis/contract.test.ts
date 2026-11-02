@@ -189,6 +189,65 @@ describe("analysis output contract", () => {
       }),
     ).toBe(false);
   });
+
+  it("normalizes overlong prose, excess array items, empty citation claims, and trailing semicolons in parseAnalysisOutput", () => {
+    const candidate = validOutput();
+    candidate.article.thesis!.claim = "The article argues for determinism;";
+    candidate.article.keyPoints = [
+      {
+        claim: `${"First sentence is complete. ".repeat(20)}Trailing sentence exceeds six hundred chars ${"word ".repeat(30)}`,
+        citations: [
+          { locator: "A".repeat(200), sourceUrl: "https://example.com" },
+          { locator: "B", sourceUrl: null },
+          { locator: "C", sourceUrl: null },
+          { locator: "D", sourceUrl: null },
+        ],
+      },
+      {
+        claim: "Uncited point that should be filtered out.",
+        citations: [],
+      },
+    ];
+    candidate.discussion.consensus = [
+      {
+        claim: "Grounded consensus point;",
+        supportingCommentIds: [101, 101, 102, 103, 104, 105, 106, 107],
+      },
+      {
+        claim: "Ungrounded consensus point with empty array.",
+        supportingCommentIds: [],
+      },
+    ];
+    candidate.combinedTakeaway.summary = `${"A complete paragraph sentence. ".repeat(28)}Extra tail ${"word ".repeat(20)}`;
+    candidate.combinedTakeaway.tensions = [
+      "T1.",
+      "T2.",
+      "T3.",
+      "T4.",
+      "T5 overflow.",
+    ];
+
+    const parsed = parseAnalysisOutput(candidate);
+    expect(parsed.article.thesis?.claim).toBe(
+      "The article argues for determinism.",
+    );
+    expect(parsed.article.keyPoints).toHaveLength(1);
+    expect(parsed.article.keyPoints[0]!.claim.length).toBeLessThanOrEqual(600);
+    expect(parsed.article.keyPoints[0]!.citations).toHaveLength(3);
+    expect(
+      parsed.article.keyPoints[0]!.citations[0]!.locator.length,
+    ).toBeLessThanOrEqual(160);
+    expect(parsed.discussion.consensus).toHaveLength(1);
+    expect(parsed.discussion.consensus[0]!.claim).toBe(
+      "Grounded consensus point.",
+    );
+    expect(parsed.discussion.consensus[0]!.supportingCommentIds).toEqual([
+      101, 102, 103, 104, 105, 106,
+    ]);
+    expect(parsed.combinedTakeaway.summary.length).toBeLessThanOrEqual(900);
+    expect(parsed.combinedTakeaway.tensions).toHaveLength(4);
+    expect(analysisOutputHasCompleteProse(parsed)).toBe(true);
+  });
 });
 
 function expectEveryObjectToBeStrictAndRequired(value: unknown): void {

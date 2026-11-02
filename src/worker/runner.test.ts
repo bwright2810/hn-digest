@@ -18,6 +18,22 @@ describe("workerErrorOutcome", () => {
     ).toEqual({ status: "failed", errorCode: "invalid_comment_citation" });
   });
 
+  it("retries one incomplete prose boundary response and marks incomplete on attempt 2", () => {
+    const now = new Date("2030-01-01T00:00:00Z");
+    const boundaryError = new Error(
+      "Analysis output prose ended at an incomplete boundary",
+    );
+    expect(workerErrorOutcome(boundaryError, 1, now)).toEqual({
+      status: "retry",
+      errorCode: "output_boundary",
+      availableAt: now,
+    });
+    expect(workerErrorOutcome(boundaryError, 2, now)).toEqual({
+      status: "incomplete",
+      errorCode: "output_boundary",
+    });
+  });
+
   it("does not retry unrelated worker failures", () => {
     expect(workerErrorOutcome(new TypeError("bad value"), 1)).toEqual({
       status: "failed",

@@ -3,18 +3,59 @@ import { describe, expect, it } from "vitest";
 import {
   degradeInvalidCommentCitations,
   instructionsForCitationAttempt,
+  prunePartialInvalidCitations,
 } from "./citations";
 import { ANALYSIS_PROMPT_VERSION, type AnalysisOutput } from "./contract";
 
 describe("instructionsForCitationAttempt", () => {
-  it("adds a correction only after the first citation attempt", () => {
-    expect(instructionsForCitationAttempt("base", 1)).toBe("base");
+  it("adds a correction only after the first citation attempt and includes allowed comment IDs when provided", () => {
+    expect(instructionsForCitationAttempt("base", 1, [101, 102])).toBe("base");
     expect(instructionsForCitationAttempt("base", 2)).toContain(
       "CORRECTION ATTEMPT",
     );
     expect(instructionsForCitationAttempt("base", 2)).toContain(
       "must exactly match",
     );
+    expect(instructionsForCitationAttempt("base", 2, [101, 102])).toContain(
+      "Allowed comment IDs: [101, 102].",
+    );
+  });
+});
+
+describe("prunePartialInvalidCitations", () => {
+  it("strips stray invalid comment IDs when a claim still has valid supporting comment IDs", () => {
+    const candidate: AnalysisOutput = {
+      promptVersion: ANALYSIS_PROMPT_VERSION,
+      schemaVersion: "analysis-schema-v1",
+      article: {
+        thesis: null,
+        keyPoints: [],
+        evidence: [],
+        limitations: [],
+        confidence: "low",
+        sourceQualityNotes: [],
+      },
+      discussion: {
+        consensus: [
+          { claim: "Partly valid", supportingCommentIds: [101, 999] },
+          { claim: "Completely invalid", supportingCommentIds: [998] },
+        ],
+        competingViewpoints: [],
+        insightfulComments: [],
+        unresolvedQuestions: [],
+        confidence: "medium",
+        sourceQualityNotes: [],
+      },
+      combinedTakeaway: {
+        summary: "Summary.",
+        tensions: [],
+        confidence: "medium",
+      },
+    };
+
+    const pruned = prunePartialInvalidCitations(candidate, new Set([101]));
+    expect(pruned.discussion.consensus[0]?.supportingCommentIds).toEqual([101]);
+    expect(pruned.discussion.consensus[1]?.supportingCommentIds).toEqual([998]);
   });
 });
 

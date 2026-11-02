@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { clampEditorialProse } from "./contract";
+
 export const HUMANIZER_PROMPT_VERSION = "humanizer-prompt-v1";
 export const HUMANIZER_SCHEMA_VERSION = "humanizer-schema-v1";
 export const HUMANIZER_OUTPUT_NAME = "hn_digest_humanized_prose";
@@ -64,5 +66,35 @@ Style rewrite rules:
 Return only the required structured output. Set promptVersion to "${HUMANIZER_PROMPT_VERSION}" and schemaVersion to "${HUMANIZER_SCHEMA_VERSION}".`;
 
 export function parseHumanizerOutput(value: unknown): HumanizerOutput {
-  return humanizerOutputSchema.parse(value);
+  return humanizerOutputSchema.parse(normalizeHumanizerOutputCandidate(value));
+}
+
+function normalizeHumanizerOutputCandidate(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+  const root: Record<string, unknown> = {
+    ...(value as Record<string, unknown>),
+  };
+  if (Array.isArray(root.stories)) {
+    root.stories = root.stories.map((item) => {
+      if (typeof item !== "object" || item === null || Array.isArray(item)) {
+        return item;
+      }
+      const record = item as Record<string, unknown>;
+      return {
+        ...record,
+        ...(typeof record.article === "string"
+          ? { article: clampEditorialProse(record.article, 600) }
+          : {}),
+        ...(typeof record.discussion === "string"
+          ? { discussion: clampEditorialProse(record.discussion, 600) }
+          : {}),
+        ...(typeof record.takeaway === "string"
+          ? { takeaway: clampEditorialProse(record.takeaway, 900) }
+          : {}),
+      };
+    });
+  }
+  return root;
 }

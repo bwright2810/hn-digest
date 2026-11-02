@@ -169,5 +169,219 @@ Full unslop editorial pass:
 Return only the required structured output. Set promptVersion to "${ANALYSIS_PROMPT_VERSION}" and schemaVersion to "${ANALYSIS_SCHEMA_VERSION}".`;
 
 export function parseAnalysisOutput(value: unknown): AnalysisOutput {
-  return analysisOutputSchema.parse(value);
+  return analysisOutputSchema.parse(normalizeAnalysisOutputCandidate(value));
+}
+
+export function clampEditorialProse(value: string, maxLength: number): string {
+  let text = value.trim();
+  if (/;$/u.test(text)) {
+    text = `${text.slice(0, -1).trimEnd()}.`;
+  }
+  if (text.length <= maxLength) return text;
+
+  const window = text.slice(0, maxLength);
+  const minSentenceBoundary = Math.floor(maxLength * 0.5);
+  let lastSentenceEnd = -1;
+  for (
+    let index = window.length - 1;
+    index >= minSentenceBoundary;
+    index -= 1
+  ) {
+    const char = window[index];
+    if (char === "." || char === "!" || char === "?") {
+      lastSentenceEnd = index;
+      break;
+    }
+  }
+  if (lastSentenceEnd >= minSentenceBoundary) {
+    return window.slice(0, lastSentenceEnd + 1).trimEnd();
+  }
+
+  const budget = Math.max(1, maxLength - 1);
+  let truncated = text.slice(0, budget);
+  const lastSpace = truncated.lastIndexOf(" ");
+  if (lastSpace >= Math.floor(budget * 0.6)) {
+    truncated = truncated.slice(0, lastSpace);
+  }
+  truncated = truncated.replace(/[,;:\s—–-]+$/u, "");
+  if (truncated.length === 0) {
+    return text.slice(0, maxLength);
+  }
+  return /[.!?]$/u.test(truncated) ? truncated : `${truncated}.`;
+}
+
+function clampLocatorText(value: string, maxLength: number): string {
+  const text = value.trim();
+  if (text.length <= maxLength) return text;
+  let truncated = text.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(" ");
+  if (lastSpace >= Math.floor(maxLength * 0.6)) {
+    truncated = truncated.slice(0, lastSpace);
+  }
+  return truncated.replace(/[,;:\s—–-]+$/u, "") || text.slice(0, maxLength);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeArticleClaimCandidate(value: unknown): unknown {
+  if (!isPlainRecord(value)) return value;
+  const normalized: Record<string, unknown> = { ...value };
+  if (typeof normalized.claim === "string") {
+    normalized.claim = clampEditorialProse(normalized.claim, 600);
+  }
+  if (Array.isArray(normalized.citations)) {
+    normalized.citations = normalized.citations.slice(0, 3).map((citation) => {
+      if (!isPlainRecord(citation)) return citation;
+      return {
+        ...citation,
+        ...(typeof citation.locator === "string"
+          ? { locator: clampLocatorText(citation.locator, 160) }
+          : {}),
+      };
+    });
+  }
+  return normalized;
+}
+
+function hasNonEmptyCitations(value: unknown): boolean {
+  if (!isPlainRecord(value)) return true;
+  return !Array.isArray(value.citations) || value.citations.length > 0;
+}
+
+function normalizeDiscussionClaimCandidate(value: unknown): unknown {
+  if (!isPlainRecord(value)) return value;
+  const normalized: Record<string, unknown> = { ...value };
+  if (typeof normalized.claim === "string") {
+    normalized.claim = clampEditorialProse(normalized.claim, 600);
+  }
+  if (Array.isArray(normalized.supportingCommentIds)) {
+    const seen = new Set<number>();
+    const deduped: unknown[] = [];
+    for (const item of normalized.supportingCommentIds) {
+      if (typeof item === "number" && Number.isInteger(item) && item > 0) {
+        if (!seen.has(item)) {
+          seen.add(item);
+          deduped.push(item);
+        }
+      } else {
+        deduped.push(item);
+      }
+    }
+    normalized.supportingCommentIds = deduped.slice(0, 6);
+  }
+  return normalized;
+}
+
+function hasNonEmptySupportingComments(value: unknown): boolean {
+  if (!isPlainRecord(value)) return true;
+  return (
+    !Array.isArray(value.supportingCommentIds) ||
+    value.supportingCommentIds.length > 0
+  );
+}
+
+function normalizeAnalysisOutputCandidate(value: unknown): unknown {
+  if (!isPlainRecord(value)) return value;
+  const root: Record<string, unknown> = { ...value };
+
+  if (isPlainRecord(root.article)) {
+    const article: Record<string, unknown> = { ...root.article };
+    if (article.thesis !== null && article.thesis !== undefined) {
+      const thesis = normalizeArticleClaimCandidate(article.thesis);
+      article.thesis = hasNonEmptyCitations(thesis) ? thesis : null;
+    }
+    if (Array.isArray(article.keyPoints)) {
+      article.keyPoints = article.keyPoints
+        .map(normalizeArticleClaimCandidate)
+        .filter(hasNonEmptyCitations)
+        .slice(0, 6);
+    }
+    if (Array.isArray(article.evidence)) {
+      article.evidence = article.evidence
+        .map(normalizeArticleClaimCandidate)
+        .filter(hasNonEmptyCitations)
+        .slice(0, 6);
+    }
+    if (Array.isArray(article.limitations)) {
+      article.limitations = article.limitations
+        .map(normalizeArticleClaimCandidate)
+        .filter(hasNonEmptyCitations)
+        .slice(0, 4);
+    }
+    if (Array.isArray(article.sourceQualityNotes)) {
+      article.sourceQualityNotes = article.sourceQualityNotes
+        .slice(0, 4)
+        .map((note) =>
+          typeof note === "string" ? clampEditorialProse(note, 300) : note,
+        );
+    }
+    root.article = article;
+  }
+
+  if (isPlainRecord(root.discussion)) {
+    const discussion: Record<string, unknown> = { ...root.discussion };
+    if (Array.isArray(discussion.consensus)) {
+      discussion.consensus = discussion.consensus
+        .map(normalizeDiscussionClaimCandidate)
+        .filter(hasNonEmptySupportingComments)
+        .slice(0, 4);
+    }
+    if (Array.isArray(discussion.competingViewpoints)) {
+      discussion.competingViewpoints = discussion.competingViewpoints
+        .map(normalizeDiscussionClaimCandidate)
+        .filter(hasNonEmptySupportingComments)
+        .slice(0, 6);
+    }
+    if (Array.isArray(discussion.unresolvedQuestions)) {
+      discussion.unresolvedQuestions = discussion.unresolvedQuestions
+        .map(normalizeDiscussionClaimCandidate)
+        .filter(hasNonEmptySupportingComments)
+        .slice(0, 4);
+    }
+    if (Array.isArray(discussion.insightfulComments)) {
+      discussion.insightfulComments = discussion.insightfulComments
+        .slice(0, 5)
+        .map((entry) => {
+          if (!isPlainRecord(entry)) return entry;
+          return {
+            ...entry,
+            ...(typeof entry.insight === "string"
+              ? { insight: clampEditorialProse(entry.insight, 600) }
+              : {}),
+            ...(typeof entry.whyNotable === "string"
+              ? { whyNotable: clampEditorialProse(entry.whyNotable, 300) }
+              : {}),
+          };
+        });
+    }
+    if (Array.isArray(discussion.sourceQualityNotes)) {
+      discussion.sourceQualityNotes = discussion.sourceQualityNotes
+        .slice(0, 4)
+        .map((note) =>
+          typeof note === "string" ? clampEditorialProse(note, 300) : note,
+        );
+    }
+    root.discussion = discussion;
+  }
+
+  if (isPlainRecord(root.combinedTakeaway)) {
+    const takeaway: Record<string, unknown> = { ...root.combinedTakeaway };
+    if (typeof takeaway.summary === "string") {
+      takeaway.summary = clampEditorialProse(takeaway.summary, 900);
+    }
+    if (Array.isArray(takeaway.tensions)) {
+      takeaway.tensions = takeaway.tensions
+        .slice(0, 4)
+        .map((tension) =>
+          typeof tension === "string"
+            ? clampEditorialProse(tension, 300)
+            : tension,
+        );
+    }
+    root.combinedTakeaway = takeaway;
+  }
+
+  return root;
 }
