@@ -18,15 +18,15 @@ describe("loadConfig", () => {
       timeZone: "America/New_York",
       morningTime: "08:00",
       eveningTime: "17:00",
-      missedRunGraceMs: 21_600_000,
+      missedRunGraceMs: 43_200_000,
     });
     expect(config.stories).toEqual({
       perRun: 10,
       minimumCommentCount: 10,
     });
     expect(config.articleFetch).toEqual({
-      timeoutMs: 10_000,
-      maximumBytes: 2_097_152,
+      timeoutMs: 20_000,
+      maximumBytes: 4_194_304,
       maximumRedirects: 5,
       archiveFallbackEnabled: false,
     });
@@ -49,8 +49,8 @@ describe("loadConfig", () => {
         binaryPath: "codex",
         codexHome: null,
       },
-      timeoutMs: 180_000,
-      maximumRetries: 2,
+      timeoutMs: 360_000,
+      maximumRetries: 4,
       prices: {
         inputUsdPerMillionTokens: 0.1,
         cachedReadUsdPerMillionTokens: 0.002,
@@ -59,19 +59,19 @@ describe("loadConfig", () => {
       },
     });
     expect(config.tokens).toEqual({
-      instructions: 2_000,
-      article: 12_000,
-      comments: 8_000,
-      output: 4_000,
+      instructions: 4_000,
+      article: 24_000,
+      comments: 16_000,
+      output: 8_000,
     });
     expect(config.analysis).toEqual({
-      maximumRequestCostUsd: 0.1,
-      maximumSelectedComments: 30,
+      maximumRequestCostUsd: 0.2,
+      maximumSelectedComments: 60,
     });
     expect(config.worker).toEqual({
       fetchConcurrencyPerHost: 2,
       llmConcurrency: 2,
-      leaseMs: 300_000,
+      leaseMs: 600_000,
       pollIntervalMs: 5_000,
     });
     expect(config.runtime).toEqual({
@@ -79,10 +79,10 @@ describe("loadConfig", () => {
       shutdownGraceMs: 30_000,
     });
     expect(config.spend).toEqual({
-      dailySoftLimitUsd: 2,
-      dailyHardLimitUsd: 3,
-      monthlySoftLimitUsd: 30,
-      monthlyHardLimitUsd: 40,
+      dailySoftLimitUsd: 4,
+      dailyHardLimitUsd: 6,
+      monthlySoftLimitUsd: 60,
+      monthlyHardLimitUsd: 80,
     });
     expect(config.subscribers).toEqual({
       emailEncryptionKey: Buffer.alloc(32, 11),
