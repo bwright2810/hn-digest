@@ -43,6 +43,12 @@ describe("loadConfig", () => {
         reasoningEffort: "high",
         baseUrl: "https://openrouter.ai/api/v1",
       },
+      codex: {
+        model: "gpt-6-luna",
+        reasoningEffort: "low",
+        binaryPath: "codex",
+        codexHome: null,
+      },
       timeoutMs: 180_000,
       maximumRetries: 2,
       prices: {
@@ -204,6 +210,26 @@ describe("loadConfig", () => {
     expect(config.llm.provider).toBe("openai");
     expect(config.llm.openai.apiKey).toBe("openai-value-only");
     expect(config.llm.openrouter.apiKey).toBe("");
+
+    const codexConfig = loadConfig({
+      NODE_ENV: "development",
+      DATABASE_URL: requiredSecrets.DATABASE_URL,
+      SUBSCRIBER_EMAIL_ENCRYPTION_KEY:
+        requiredSecrets.SUBSCRIBER_EMAIL_ENCRYPTION_KEY,
+      SUBSCRIBER_LOOKUP_HMAC_KEY: requiredSecrets.SUBSCRIBER_LOOKUP_HMAC_KEY,
+      LLM_PROVIDER: "codex",
+      LLM_CODEX_MODEL: "gpt-6-luna",
+      LLM_CODEX_REASONING_EFFORT: "low",
+      LLM_CODEX_BINARY_PATH: "/codex/bin/codex",
+      LLM_CODEX_HOME: "/codex/home",
+    });
+    expect(codexConfig.llm.provider).toBe("codex");
+    expect(codexConfig.llm.codex).toEqual({
+      model: "gpt-6-luna",
+      reasoningEffort: "low",
+      binaryPath: "/codex/bin/codex",
+      codexHome: "/codex/home",
+    });
   });
 
   it("requires provider settings only when public newsletter signup is enabled", () => {

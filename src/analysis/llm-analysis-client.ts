@@ -22,6 +22,13 @@ import {
   classifyChatCompletionResponse,
   mapChatCompletionUsage,
 } from "./chat-completion-provider";
+import {
+  classifyCodexExecResult,
+  CodexExecProviderError,
+  runCodexExecProcess,
+  type CodexExecRawResult,
+  type CodexExecRequest,
+} from "./codex-exec-provider";
 
 const WATCHDOG_GRACE_MS = 5_000;
 
@@ -38,10 +45,25 @@ export interface OpenRouterProviderCredentials extends LlmProviderCredentials {
   readonly baseUrl: string;
 }
 
+export interface CodexProviderCredentials {
+  readonly model: string;
+  readonly reasoningEffort: ReasoningEffort;
+  readonly binaryPath: string;
+  readonly codexHome: string | null;
+}
+
+const DEFAULT_CODEX_CREDENTIALS: CodexProviderCredentials = {
+  model: "gpt-6-luna",
+  reasoningEffort: "low",
+  binaryPath: "codex",
+  codexHome: null,
+};
+
 export interface LlmAnalysisClientOptions {
-  readonly provider: "openai" | "openrouter";
+  readonly provider: "openai" | "openrouter" | "codex";
   readonly openai: LlmProviderCredentials;
   readonly openrouter: OpenRouterProviderCredentials;
+  readonly codex?: CodexProviderCredentials;
   readonly timeoutMs: number;
   readonly maximumRetries: number;
   readonly logger?: AnalysisClientLogger;
@@ -51,6 +73,9 @@ export interface LlmAnalysisClientOptions {
   readonly createCompletion?: (
     request: ChatCompletionCreateParamsNonStreaming,
   ) => Promise<ChatCompletion>;
+  readonly runCodexExec?: (
+    request: CodexExecRequest,
+  ) => Promise<CodexExecRawResult>;
   readonly sleep?: (milliseconds: number) => Promise<void>;
 }
 
@@ -110,6 +135,7 @@ export class LlmAnalysisClient {
   ) => Promise<AnalysisResponseOutcome>;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly logger: AnalysisClientLogger;
+  private readonly activeModel: string;
 
   constructor(private readonly options: LlmAnalysisClientOptions) {
     requirePositiveInteger(options.timeoutMs, "timeoutMs");
@@ -117,12 +143,36 @@ export class LlmAnalysisClient {
     if (options.maximumRetries > 5) {
       throw new RangeError("maximumRetries must not exceed 5");
     }
-    const active =
-      options.provider === "openrouter" ? options.openrouter : options.openai;
-    if (!active.model.trim()) throw new RangeError("model must not be empty");
-    if (!active.apiKey) throw new RangeError("apiKey must not be empty");
 
-    if (options.provider === "openrouter") {
+    if (options.provider === "codex") {
+      const codex = options.codex ?? DEFAULT_CODEX_CREDENTIALS;
+      if (!codex.model.trim()) throw new RangeError("model must not be empty");
+      if (!codex.binaryPath.trim()) {
+        throw new RangeError("binaryPath must not be empty");
+      }
+      this.activeModel = codex.model;
+      const runCodex = options.runCodexExec ?? runCodexExecProcess;
+      this.invoke = (request) =>
+        runCodex({
+          binaryPath: codex.binaryPath,
+          codexHome: codex.codexHome,
+          model: codex.model,
+          reasoningEffort: codex.reasoningEffort,
+          instructions: request.instructions,
+          content: `${request.articleData}\n\n${request.commentData}`,
+          outputSchema: analysisOutputJsonSchema,
+          timeoutMs: options.timeoutMs,
+        }).then((raw) =>
+          classifyCodexExecResult(raw, codex.model, parseAnalysisOutput),
+        );
+    } else if (options.provider === "openrouter") {
+      if (!options.openrouter.model.trim()) {
+        throw new RangeError("model must not be empty");
+      }
+      if (!options.openrouter.apiKey) {
+        throw new RangeError("apiKey must not be empty");
+      }
+      this.activeModel = options.openrouter.model;
       const createCompletion =
         options.createCompletion ??
         ((request) =>
@@ -145,6 +195,13 @@ export class LlmAnalysisClient {
           }),
         ).then(classifyCompletionResponse);
     } else {
+      if (!options.openai.model.trim()) {
+        throw new RangeError("model must not be empty");
+      }
+      if (!options.openai.apiKey) {
+        throw new RangeError("apiKey must not be empty");
+      }
+      this.activeModel = options.openai.model;
       const createResponse =
         options.createResponse ??
         ((request) =>
@@ -165,10 +222,6 @@ export class LlmAnalysisClient {
   async analyze(
     request: AssembledAnalysisRequest,
   ): Promise<AnalysisResponseOutcome> {
-    const active =
-      this.options.provider === "openrouter"
-        ? this.options.openrouter
-        : this.options.openai;
     const maximumAttempts = this.options.maximumRetries + 1;
 
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
@@ -177,7 +230,7 @@ export class LlmAnalysisClient {
         attempt,
         maximumAttempts,
         provider: this.options.provider,
-        model: active.model,
+        model: this.activeModel,
         estimatedInputTokens: request.tokens.totalInput,
         maximumOutputTokens: request.tokens.maximumOutput,
       });
@@ -265,6 +318,15 @@ export class LlmAnalysisClient {
 
 export function classifyLlmError(error: unknown): LlmAnalysisError {
   if (error instanceof LlmAnalysisError) return error;
+  if (error instanceof CodexExecProviderError) {
+    return new LlmAnalysisError(
+      error.code,
+      error.retryable,
+      error.status,
+      error.requestId,
+      { cause: error },
+    );
+  }
   if (error instanceof OpenAI.APIConnectionError) {
     const code =
       error instanceof OpenAI.APIConnectionTimeoutError

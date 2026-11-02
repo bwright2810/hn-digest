@@ -21,6 +21,9 @@ const DEVELOPMENT_DEFAULTS = {
   LLM_OPENROUTER_MODEL: "deepseek/deepseek-v4-flash",
   LLM_OPENROUTER_REASONING_EFFORT: "high",
   LLM_OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1",
+  LLM_CODEX_MODEL: "gpt-6-luna",
+  LLM_CODEX_REASONING_EFFORT: "low",
+  LLM_CODEX_BINARY_PATH: "codex",
   LLM_REQUEST_TIMEOUT_MS: "180000",
   LLM_MAX_RETRIES: "2",
   LLM_INPUT_USD_PER_MILLION_TOKENS: "0.1",
@@ -154,7 +157,7 @@ const environmentSchema = z
     DIGEST_TRIGGER_SECRET: z
       .string()
       .min(16, "must contain at least 16 characters"),
-    LLM_PROVIDER: z.enum(["openai", "openrouter"]),
+    LLM_PROVIDER: z.enum(["openai", "openrouter", "codex"]),
     LLM_OPENAI_API_KEY: z.string().min(1).optional(),
     LLM_OPENAI_MODEL: z.string().min(1),
     LLM_OPENAI_REASONING_EFFORT: reasoningEffortSchema,
@@ -162,6 +165,10 @@ const environmentSchema = z
     LLM_OPENROUTER_MODEL: z.string().min(1),
     LLM_OPENROUTER_REASONING_EFFORT: reasoningEffortSchema,
     LLM_OPENROUTER_BASE_URL: applicationUrl,
+    LLM_CODEX_MODEL: z.string().min(1).default("gpt-6-luna"),
+    LLM_CODEX_REASONING_EFFORT: reasoningEffortSchema.default("low"),
+    LLM_CODEX_BINARY_PATH: z.string().min(1).default("codex"),
+    LLM_CODEX_HOME: z.string().min(1).optional(),
     LLM_REQUEST_TIMEOUT_MS: positiveInteger,
     LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().max(5),
     LLM_INPUT_USD_PER_MILLION_TOKENS: positiveMoney,
@@ -224,15 +231,21 @@ const environmentSchema = z
     PUBLIC_API_TRUSTED_PROXY_CIDRS: cidrList,
   })
   .superRefine((values, context) => {
-    const activeProviderKey =
-      values.LLM_PROVIDER === "openai"
-        ? "LLM_OPENAI_API_KEY"
-        : "LLM_OPENROUTER_API_KEY";
-    if (!values[activeProviderKey]) {
+    if (values.LLM_PROVIDER === "openai" && !values.LLM_OPENAI_API_KEY) {
       context.addIssue({
         code: "custom",
-        path: [activeProviderKey],
-        message: `is required when LLM_PROVIDER=${values.LLM_PROVIDER}`,
+        path: ["LLM_OPENAI_API_KEY"],
+        message: "is required when LLM_PROVIDER=openai",
+      });
+    }
+    if (
+      values.LLM_PROVIDER === "openrouter" &&
+      !values.LLM_OPENROUTER_API_KEY
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["LLM_OPENROUTER_API_KEY"],
+        message: "is required when LLM_PROVIDER=openrouter",
       });
     }
     for (const [softKey, hardKey] of [
@@ -281,7 +294,7 @@ export interface AppConfig {
     readonly url: string;
   };
   readonly llm: {
-    readonly provider: "openai" | "openrouter";
+    readonly provider: "openai" | "openrouter" | "codex";
     readonly openai: {
       readonly apiKey: string;
       readonly model: string;
@@ -292,6 +305,12 @@ export interface AppConfig {
       readonly model: string;
       readonly reasoningEffort: ReasoningEffort;
       readonly baseUrl: string;
+    };
+    readonly codex: {
+      readonly model: string;
+      readonly reasoningEffort: ReasoningEffort;
+      readonly binaryPath: string;
+      readonly codexHome: string | null;
     };
     readonly timeoutMs: number;
     readonly maximumRetries: number;
@@ -441,6 +460,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
         model: values.LLM_OPENROUTER_MODEL,
         reasoningEffort: values.LLM_OPENROUTER_REASONING_EFFORT,
         baseUrl: values.LLM_OPENROUTER_BASE_URL,
+      }),
+      codex: Object.freeze({
+        model: values.LLM_CODEX_MODEL,
+        reasoningEffort: values.LLM_CODEX_REASONING_EFFORT,
+        binaryPath: values.LLM_CODEX_BINARY_PATH,
+        codexHome: values.LLM_CODEX_HOME ?? null,
       }),
       timeoutMs: values.LLM_REQUEST_TIMEOUT_MS,
       maximumRetries: values.LLM_MAX_RETRIES,

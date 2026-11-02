@@ -130,9 +130,11 @@ export class DigestPipeline {
       ? createArchiveFallbackFetcher(config.articleFetch)
       : undefined;
     this.activeLlm =
-      config.llm.provider === "openrouter"
-        ? config.llm.openrouter
-        : config.llm.openai;
+      config.llm.provider === "codex"
+        ? config.llm.codex
+        : config.llm.provider === "openrouter"
+          ? config.llm.openrouter
+          : config.llm.openai;
     this.openaiClient =
       dependencies.openaiClient ??
       new LlmAnalysisClient({

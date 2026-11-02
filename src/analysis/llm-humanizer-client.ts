@@ -17,6 +17,7 @@ import {
 import {
   classifyLlmError,
   LlmAnalysisError,
+  type CodexProviderCredentials,
   type LlmAnalysisClientOptions,
 } from "./llm-analysis-client";
 import type { AssembledHumanizerRequest } from "./humanizer-request";
@@ -25,10 +26,23 @@ import {
   classifyChatCompletionResponse,
   mapChatCompletionUsage,
 } from "./chat-completion-provider";
+import {
+  classifyCodexExecResult,
+  runCodexExecProcess,
+  type CodexExecRawResult,
+  type CodexExecRequest,
+} from "./codex-exec-provider";
+
+const DEFAULT_CODEX_CREDENTIALS: CodexProviderCredentials = {
+  model: "gpt-6-luna",
+  reasoningEffort: "low",
+  binaryPath: "codex",
+  codexHome: null,
+};
 
 export type HumanizerClientOptions = Omit<
   LlmAnalysisClientOptions,
-  "createResponse" | "createCompletion"
+  "createResponse" | "createCompletion" | "runCodexExec"
 > & {
   readonly createResponse?: (
     request: ResponseCreateParamsNonStreaming,
@@ -36,6 +50,9 @@ export type HumanizerClientOptions = Omit<
   readonly createCompletion?: (
     request: ChatCompletionCreateParamsNonStreaming,
   ) => Promise<ChatCompletion>;
+  readonly runCodexExec?: (
+    request: CodexExecRequest,
+  ) => Promise<CodexExecRawResult>;
 };
 
 export interface HumanizerClientLogger {
@@ -81,6 +98,7 @@ export class HumanizerClient {
   ) => Promise<HumanizerResponseOutcome>;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly logger: HumanizerClientLogger;
+  private readonly activeModel: string;
 
   constructor(private readonly options: HumanizerClientOptions) {
     requirePositiveInteger(options.timeoutMs, "timeoutMs");
@@ -88,12 +106,36 @@ export class HumanizerClient {
     if (options.maximumRetries > 5) {
       throw new RangeError("maximumRetries must not exceed 5");
     }
-    const active =
-      options.provider === "openrouter" ? options.openrouter : options.openai;
-    if (!active.model.trim()) throw new RangeError("model must not be empty");
-    if (!active.apiKey) throw new RangeError("apiKey must not be empty");
 
-    if (options.provider === "openrouter") {
+    if (options.provider === "codex") {
+      const codex = options.codex ?? DEFAULT_CODEX_CREDENTIALS;
+      if (!codex.model.trim()) throw new RangeError("model must not be empty");
+      if (!codex.binaryPath.trim()) {
+        throw new RangeError("binaryPath must not be empty");
+      }
+      this.activeModel = codex.model;
+      const runCodex = options.runCodexExec ?? runCodexExecProcess;
+      this.invoke = (request) =>
+        runCodex({
+          binaryPath: codex.binaryPath,
+          codexHome: codex.codexHome,
+          model: codex.model,
+          reasoningEffort: codex.reasoningEffort,
+          instructions: request.instructions,
+          content: request.inputData,
+          outputSchema: request.outputSchema,
+          timeoutMs: options.timeoutMs,
+        }).then((raw) =>
+          classifyCodexExecResult(raw, codex.model, parseHumanizerOutput),
+        );
+    } else if (options.provider === "openrouter") {
+      if (!options.openrouter.model.trim()) {
+        throw new RangeError("model must not be empty");
+      }
+      if (!options.openrouter.apiKey) {
+        throw new RangeError("apiKey must not be empty");
+      }
+      this.activeModel = options.openrouter.model;
       const createCompletion =
         options.createCompletion ??
         ((request) =>
@@ -116,6 +158,13 @@ export class HumanizerClient {
           }),
         ).then(classifyCompletionResponse);
     } else {
+      if (!options.openai.model.trim()) {
+        throw new RangeError("model must not be empty");
+      }
+      if (!options.openai.apiKey) {
+        throw new RangeError("apiKey must not be empty");
+      }
+      this.activeModel = options.openai.model;
       const createResponse =
         options.createResponse ??
         ((request) =>
@@ -136,10 +185,6 @@ export class HumanizerClient {
   async humanize(
     request: AssembledHumanizerRequest,
   ): Promise<HumanizerResponseOutcome> {
-    const active =
-      this.options.provider === "openrouter"
-        ? this.options.openrouter
-        : this.options.openai;
     const maximumAttempts = this.options.maximumRetries + 1;
 
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
@@ -148,7 +193,7 @@ export class HumanizerClient {
         attempt,
         maximumAttempts,
         provider: this.options.provider,
-        model: active.model,
+        model: this.activeModel,
         estimatedInputTokens: request.tokens.totalInput,
         maximumOutputTokens: request.tokens.maximumOutput,
       });
