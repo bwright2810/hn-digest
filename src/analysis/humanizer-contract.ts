@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { clampEditorialProse } from "./contract";
+import { clampEditorialProse, normalizeTakeawayParagraphs } from "./contract";
 
 export const HUMANIZER_PROMPT_VERSION = "humanizer-prompt-v1";
 export const HUMANIZER_SCHEMA_VERSION = "humanizer-schema-v1";
@@ -54,7 +54,8 @@ Grounding rules:
 - Never add, remove, or alter a fact, name, number, date, claim, quotation, or comparison. If you cannot rewrite a sentence without changing what it asserts, leave it as close to the original as possible rather than guessing.
 - Do not invent color, biography, opinions, or examples that were not already present.
 - Return exactly one output item per input item, in the same order, with the same storyId. If an input field is null, its output must also be null. Never add or drop a story.
-- Keep each rewritten article or discussion field under 600 characters and each takeaway under 900 characters.
+- Keep each rewritten article or discussion field under 600 characters and each takeaway under 900 characters (aim for 500–800 characters so the final sentence is always complete).
+- Format every rewritten takeaway as three short paragraphs of complete sentences separated by blank lines (\n\n): paragraph 1 on the article/post substance, paragraph 2 on the main thread debate, and paragraph 3 on a concrete detail or notable commenter observation. Never merge paragraphs into a single block or turn the third paragraph into a wrap-up synthesis, summary conclusion, or meta-caveat about what the evidence leaves open.
 
 Style rewrite rules:
 - Vary sentence length and structure across the whole batch; do not force every takeaway into the same shape.
@@ -91,7 +92,12 @@ function normalizeHumanizerOutputCandidate(value: unknown): unknown {
           ? { discussion: clampEditorialProse(record.discussion, 600) }
           : {}),
         ...(typeof record.takeaway === "string"
-          ? { takeaway: clampEditorialProse(record.takeaway, 900) }
+          ? {
+              takeaway: normalizeTakeawayParagraphs(
+                clampEditorialProse(record.takeaway, 900),
+                900,
+              ),
+            }
           : {}),
       };
     });

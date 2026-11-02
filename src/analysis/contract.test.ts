@@ -171,6 +171,12 @@ describe("analysis output contract", () => {
       "Every discussion claim must list one or more supporting Hacker News comment IDs",
     );
     expect(ANALYSIS_PROMPT).toContain("at most 900 characters");
+    expect(ANALYSIS_PROMPT).toContain(
+      "Third paragraph: a concrete detail, specific technical trade-off, or standout commenter observation",
+    );
+    expect(ANALYSIS_PROMPT).toContain(
+      "Never make the third paragraph a wrap-up synthesis",
+    );
     expect(ANALYSIS_PROMPT).toContain("Full unslop editorial pass");
     expect(ANALYSIS_PROMPT).toContain(
       "Factual accuracy and source grounding override style",
@@ -247,6 +253,12 @@ describe("analysis output contract", () => {
     expect(parsed.combinedTakeaway.summary.length).toBeLessThanOrEqual(900);
     expect(parsed.combinedTakeaway.tensions).toHaveLength(4);
     expect(analysisOutputHasCompleteProse(parsed)).toBe(true);
+
+    const nearLimitCutOff = validOutput();
+    nearLimitCutOff.combinedTakeaway.summary = `${"A complete paragraph sentence. ".repeat(25)}The supplied evidence supports concern about recurring risk; it is`;
+    const parsedNearLimit = parseAnalysisOutput(nearLimitCutOff);
+    expect(parsedNearLimit.combinedTakeaway.summary).toMatch(/\.$/u);
+    expect(parsedNearLimit.combinedTakeaway.summary).not.toContain("; it is");
   });
 });
 

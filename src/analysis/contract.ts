@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { takeawayParagraphs } from "../digests/takeaway";
+
 export const ANALYSIS_PROMPT_VERSION = "analysis-prompt-v2-unslop-full";
 export const ANALYSIS_SCHEMA_VERSION = "analysis-schema-v1";
 export const ANALYSIS_OUTPUT_NAME = "hn_digest_analysis";
@@ -154,7 +156,10 @@ Editorial expectations:
 - Capture the article thesis, up to 6 key points, up to 6 important pieces of evidence, and up to 4 limitations.
 - Summarize up to 4 areas of discussion consensus without treating popularity as correctness.
 - Preserve up to 6 materially different viewpoints, up to 5 insightful comments, and up to 4 unresolved questions.
-- End with one combined takeaway of at most 900 characters, formatted as exactly three short paragraphs separated by blank lines, and no more than 4 concise tensions.
+- End with one combined takeaway of at most 900 characters (aim for 500–800 characters so the final sentence is always complete), formatted as three short paragraphs of complete sentences separated by blank lines (\n\n), and no more than 4 concise tensions:
+  1. First paragraph: the core technical mechanism, claim, or concrete substance from the article or post.
+  2. Second paragraph: the main pushback, debate, or competing arguments from the HN discussion.
+  3. Third paragraph: a concrete detail, specific technical trade-off, or standout commenter observation/counterexample from the thread (or a specific detail from the post when comments are sparse). Never make the third paragraph a wrap-up synthesis, summary conclusion, or meta-caveat about what "the supplied evidence leaves open", "cannot settle", or "has not been independently verified"—keep source-quality caveats in sourceQualityNotes and limitations instead.
 - Write all editorial prose in clear English, even when a source contains non-English text. Preserve non-English proper nouns and technical terms only when needed for accuracy.
 - Keep each claim under 600 characters, each source-quality note or tension under 300 characters, and each article citation locator under 160 characters.
 - Use low, medium, or high confidence based only on the completeness, consistency, and directness of the supplied evidence.
@@ -163,7 +168,7 @@ Full unslop editorial pass:
 - Write like a careful human editor with a point of view, while preserving every sourced fact and uncertainty exactly. Never invent color, biography, numbers, quotations, or opinions to make the prose feel more human.
 - Strongly rewrite generic model prose: restructure stiff paragraphs, vary sentence length, favor concrete nouns and direct verbs, and allow a short sentence or fragment when it improves the rhythm.
 - Remove sycophancy, empty throat-clearing, stacked hedges, performative balance, repetitive tricolons, and stock AI vocabulary such as "delve", "tapestry", "testament", "pivotal", "paramount", "realm", "landscape", "seamless", and filler uses of "robust", "nuanced", or "comprehensive".
-- Do not force every claim into the same sentence shape. Avoid tidy essay conclusions that merely restate earlier sections, and use no more than two em dashes in a paragraph.
+- Do not force every claim into the same sentence shape. Avoid tidy essay conclusions that merely restate earlier sections, never end the takeaway with a synthesis or boilerplate epistemic disclaimer, and use no more than two em dashes in a paragraph.
 - Keep technical terms, source distinctions, confidence, citations, HN comment IDs, and genuine caveats intact. Factual accuracy and source grounding override style.
 
 Return only the required structured output. Set promptVersion to "${ANALYSIS_PROMPT_VERSION}" and schemaVersion to "${ANALYSIS_SCHEMA_VERSION}".`;
@@ -177,7 +182,10 @@ export function clampEditorialProse(value: string, maxLength: number): string {
   if (/;$/u.test(text)) {
     text = `${text.slice(0, -1).trimEnd()}.`;
   }
-  if (text.length <= maxLength) return text;
+  const nearLimitIncomplete =
+    text.length >= Math.floor(maxLength * 0.75) &&
+    !/[.!?]["')\]}]*$/u.test(text);
+  if (text.length <= maxLength && !nearLimitIncomplete) return text;
 
   const window = text.slice(0, maxLength);
   const minSentenceBoundary = Math.floor(maxLength * 0.5);
@@ -369,7 +377,10 @@ function normalizeAnalysisOutputCandidate(value: unknown): unknown {
   if (isPlainRecord(root.combinedTakeaway)) {
     const takeaway: Record<string, unknown> = { ...root.combinedTakeaway };
     if (typeof takeaway.summary === "string") {
-      takeaway.summary = clampEditorialProse(takeaway.summary, 900);
+      takeaway.summary = normalizeTakeawayParagraphs(
+        clampEditorialProse(takeaway.summary, 900),
+        900,
+      );
     }
     if (Array.isArray(takeaway.tensions)) {
       takeaway.tensions = takeaway.tensions
@@ -384,4 +395,14 @@ function normalizeAnalysisOutputCandidate(value: unknown): unknown {
   }
 
   return root;
+}
+
+export function normalizeTakeawayParagraphs(
+  value: string,
+  maxLength = 900,
+): string {
+  const paragraphs = takeawayParagraphs(value);
+  if (paragraphs.length <= 1) return value;
+  const joined = paragraphs.join("\n\n");
+  return joined.length <= maxLength ? joined : value;
 }
