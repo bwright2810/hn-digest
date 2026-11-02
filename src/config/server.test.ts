@@ -28,7 +28,7 @@ describe("loadConfig", () => {
       timeoutMs: 20_000,
       maximumBytes: 4_194_304,
       maximumRedirects: 5,
-      archiveFallbackEnabled: false,
+      archiveFallbackEnabled: true,
     });
     expect(config.llm).toEqual({
       provider: "openrouter",

@@ -265,10 +265,133 @@ export function createSourceAwareArticleFetcher(options: {
       "x-github-api-version": "2022-11-28",
     },
   });
-  const fetcher = new GitHubSourceFetcher({
+  const jsonApiFetcher = new ArticleFetcher({
+    timeoutMs: options.timeoutMs,
+    maximumBytes: options.maximumBytes,
+    maximumRedirects: options.maximumRedirects,
+    fetch: options.fetch,
+    lookup: options.lookup,
+    supportedContentTypes: new Set(["application/json"]),
+    requestHeaders: {
+      accept: "application/json",
+    },
+  });
+  const githubFetcher = new GitHubSourceFetcher({
     articleFetcher,
     apiFetcher: githubApiFetcher,
     maximumBytes: options.maximumBytes,
   });
-  return fetcher;
+  return {
+    async fetch(source: string | URL): Promise<ArticleFetchResult> {
+      const socialResult = await tryFetchPublicSocialPost(
+        source,
+        jsonApiFetcher,
+      );
+      if (socialResult) return socialResult;
+      return githubFetcher.fetch(source);
+    },
+  };
+}
+
+const MASTODON_STATUS_PATH =
+  /^\/(?:@[^/]+\/(\d{5,30})|users\/[^/]+\/statuses\/(\d{5,30}))\/?$/u;
+const BLUESKY_POST_PATH =
+  /^\/profile\/([A-Za-z0-9._:-]+)\/post\/([A-Za-z0-9]+)\/?$/u;
+
+async function tryFetchPublicSocialPost(
+  source: string | URL,
+  jsonApiFetcher: FetchArticleClient,
+): Promise<ArticleFetchResult | null> {
+  let url: URL;
+  try {
+    url = new URL(source);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) return null;
+
+  const mastodonMatch = MASTODON_STATUS_PATH.exec(url.pathname);
+  const statusId = mastodonMatch?.[1] ?? mastodonMatch?.[2];
+  if (statusId && url.hostname.toLowerCase() !== "github.com") {
+    try {
+      const apiUrl = new URL(`/api/v1/statuses/${statusId}`, url.origin);
+      const response = await jsonApiFetcher.fetch(apiUrl);
+      const parsed = JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(response.body),
+      ) as Record<string, unknown>;
+      if (typeof parsed.content === "string" && parsed.content.trim()) {
+        const account =
+          typeof parsed.account === "object" && parsed.account !== null
+            ? (parsed.account as Record<string, unknown>)
+            : null;
+        const author =
+          (typeof account?.display_name === "string" &&
+            account.display_name.trim()) ||
+          (typeof account?.acct === "string" && account.acct.trim()) ||
+          url.hostname;
+        const createdAt =
+          typeof parsed.created_at === "string" ? parsed.created_at : "";
+        const canonical =
+          typeof parsed.url === "string" && parsed.url.startsWith("https://")
+            ? parsed.url
+            : url.href;
+        const html = `<!doctype html><html><head><title>Post by ${escapeHtml(author)}</title><meta name="author" content="${escapeHtml(author)}" />${createdAt ? `<meta property="article:published_time" content="${escapeHtml(createdAt)}" />` : ""}</head><body><article><h1>Post by ${escapeHtml(author)}</h1>${parsed.content}</article></body></html>`;
+        const body = new TextEncoder().encode(html);
+        return {
+          sourceUrl: url.href,
+          finalUrl: canonical,
+          contentType: "text/html",
+          body,
+          byteLength: body.byteLength,
+          redirectCount: response.redirectCount,
+          status: 200,
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  if (
+    ["bsky.app", "www.bsky.app"].includes(url.hostname.toLowerCase()) &&
+    BLUESKY_POST_PATH.test(url.pathname)
+  ) {
+    try {
+      const oembedUrl = new URL("https://embed.bsky.app/oembed");
+      oembedUrl.searchParams.set("url", url.href);
+      const response = await jsonApiFetcher.fetch(oembedUrl);
+      const parsed = JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(response.body),
+      ) as Record<string, unknown>;
+      if (typeof parsed.html === "string" && parsed.html.trim()) {
+        const author =
+          typeof parsed.author_name === "string" && parsed.author_name.trim()
+            ? parsed.author_name.trim()
+            : "Bluesky";
+        const html = `<!doctype html><html><head><title>Post by ${escapeHtml(author)}</title><meta name="author" content="${escapeHtml(author)}" /></head><body><article><h1>Post by ${escapeHtml(author)}</h1>${parsed.html}</article></body></html>`;
+        const body = new TextEncoder().encode(html);
+        return {
+          sourceUrl: url.href,
+          finalUrl: url.href,
+          contentType: "text/html",
+          body,
+          byteLength: body.byteLength,
+          redirectCount: response.redirectCount,
+          status: 200,
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }

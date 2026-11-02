@@ -101,7 +101,9 @@ export class ArticleFetcher {
           headers: {
             accept:
               "text/html,application/xhtml+xml;q=0.9,text/markdown;q=0.8,text/plain;q=0.7",
-            "user-agent": "HN-Digest/0.1 article fetcher",
+            "accept-language": "en-US,en;q=0.9",
+            "user-agent":
+              "Mozilla/5.0 (compatible; HN-Digest/0.1; +https://hn.just-dev.us)",
             ...this.requestHeaders,
           },
           redirect: "manual",

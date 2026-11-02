@@ -245,4 +245,34 @@ describe("source-aware article fetcher", () => {
       sourceFetcher.fetch("https://example.com/feed"),
     ).resolves.toMatchObject({ contentType: "application/rss+xml" });
   });
+
+  it("resolves Mastodon status URLs via the public status JSON endpoint", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "117492375462459244",
+          url: "https://grapheneos.social/@GrapheneOS/117492375462459244",
+          created_at: "2026-10-20T12:00:00.000Z",
+          account: { acct: "GrapheneOS", display_name: "GrapheneOS" },
+          content:
+            "<p>GrapheneOS release notes with kernel hardening details.</p>",
+        }),
+        { headers: { "content-type": "application/json" } },
+      ),
+    );
+    const sourceFetcher = createSourceAwareArticleFetcher({
+      timeoutMs: 1_000,
+      maximumBytes: 4_096,
+      maximumRedirects: 1,
+      fetch,
+      lookup: vi.fn().mockResolvedValue(["93.184.216.34"]),
+    });
+    const fetched = await sourceFetcher.fetch(
+      "https://grapheneos.social/@GrapheneOS/117492375462459244",
+    );
+    expect(fetched.contentType).toBe("text/html");
+    expect(new TextDecoder().decode(fetched.body)).toContain(
+      "GrapheneOS release notes with kernel hardening details.",
+    );
+  });
 });

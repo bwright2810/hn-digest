@@ -102,6 +102,30 @@ describe("ArticleExtractor", () => {
     });
   });
 
+  it("falls back to JSON-LD, YouTube player metadata, or OpenGraph description when Readability returns no article", () => {
+    const extractor = new ArticleExtractor();
+
+    const metaFallback = extractor.extract(
+      '<!doctype html><html><head><title>Interactive Demo</title><meta property="og:description" content="An interactive WebGL simulation of orbital mechanics and Lagrange points." /></head><body><div id="app"></div></body></html>',
+      "https://example.com/demo",
+    );
+    expect(metaFallback.status).toBe("low_confidence");
+    expect(metaFallback.text).toContain("Interactive Demo");
+    expect(metaFallback.text).toContain(
+      "An interactive WebGL simulation of orbital mechanics and Lagrange points.",
+    );
+    expect(metaFallback.confidenceReasons).toContain("metadata_fallback");
+
+    const youtubeFallback = extractor.extract(
+      '<!doctype html><html><head><title>YouTube</title></head><body><script>var ytInitialPlayerResponse = {"videoDetails":{"videoId":"abc","title":"Systems Programming Deep Dive","author":"Systems Channel","shortDescription":"First paragraph of video notes.\\n\\nSecond paragraph with benchmarks."}};</script></body></html>',
+      "https://www.youtube.com/watch?v=abc",
+    );
+    expect(youtubeFallback.title).toBe("Systems Programming Deep Dive");
+    expect(youtubeFallback.byline).toBe("Systems Channel");
+    expect(youtubeFallback.text).toContain("First paragraph of video notes.");
+    expect(youtubeFallback.text).toContain("Second paragraph with benchmarks.");
+  });
+
   it("extracts plain-text essays while preserving paragraph structure", async () => {
     const result = new ArticleExtractor().extract(
       await textFixture("plain-text-essay", "txt"),
